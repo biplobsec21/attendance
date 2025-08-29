@@ -3,6 +3,7 @@
 
     Settings module:
     skill
+    skill Category
     rank
     company
     education
