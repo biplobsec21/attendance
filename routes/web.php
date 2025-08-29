@@ -1,12 +1,13 @@
 <?php
 
+use App\Http\Controllers\AttsController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ViewController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\CadreController;
 use App\Http\Controllers\EducationController;
-
+use App\Http\Controllers\EresController;
 use App\Http\Controllers\RankController;
 use App\Http\Controllers\SkillCategoryController;
 use App\Http\Controllers\SkillController;
@@ -67,6 +68,19 @@ Route::resource('skill', SkillController::class);
 // Additional route to toggle course status
 Route::patch('skill/{skill}/toggle-status', [SkillController::class, 'toggleStatus'])
     ->name('skill.toggle-status');
+
+
+
+Route::resource('eres', EresController::class);
+// Additional route to toggle course status
+Route::patch('eres/{ere}/toggle-status', [EresController::class, 'toggleStatus'])
+    ->name('eres.toggle-status');
+
+Route::resource('atts', AttsController::class);
+// Additional route to toggle course status
+Route::patch('atts/{att}/toggle-status', [AttsController::class, 'toggleStatus'])
+    ->name('atts.toggle-status');
+
 
 
 Route::get('sports', [ViewController::class, 'sportsIndex'])->name('sports.index');

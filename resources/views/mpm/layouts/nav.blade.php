@@ -119,6 +119,18 @@
                             Education
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('atts.index') }}"
+                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
+                            ATT
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('eres.index') }}"
+                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
+                            ERE
+                        </a>
+                    </li>
                 </ul>
             </li>
 
