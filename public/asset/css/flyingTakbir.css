@@ -1,0 +1,16 @@
+/* public/css/flyingTakbir.css */
+
+.flying-takbir {
+    position: fixed;
+    /* Using a more traditional and beautiful Arabic font */
+    font-family: 'Scheherazade New', serif; 
+    font-size: 24px;
+    color: #2a9d8f; /* A nice teal color */
+    user-select: none;
+    pointer-events: none;
+    z-index: 9999;
+    /* Centering the text on the cursor */
+    transform: translate(-50%, -50%);
+    opacity: 0; /* Start invisible, animation will make it visible */
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+}

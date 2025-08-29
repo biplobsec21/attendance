@@ -1,0 +1,10 @@
+/* Go to Top Button */
+#go-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 50;
+    display: none;
+    cursor: pointer;
+    transition: opacity 0.3s ease-in-out;
+}

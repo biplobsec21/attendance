@@ -1,0 +1,4 @@
+# Ignore Git files
+.git
+.gitignore
+.gitattributes
