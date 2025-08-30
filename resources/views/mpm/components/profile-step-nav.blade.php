@@ -1,12 +1,13 @@
-@props(['steps' => [], 'profile' => null])
+@props([
+    'steps' => [],
+    'profileId' => null,
+])
 
 @php
-    $profileId = $profile?->id;
-    $currentUrl = url()->current();
+    $currentRoute = \Route::currentRouteName();
 
-    $currentIndex = collect($steps)->search(function ($s) use ($profileId, $currentUrl) {
-        $url = $s['routeName'] && $s['enabled'] ? route($s['routeName'], $s['params'] ?? []) : '#';
-        return $currentUrl === $url;
+    $currentIndex = collect($steps)->search(function ($s) use ($currentRoute) {
+        return isset($s['routeName']) && $s['routeName'] === $currentRoute;
     });
 
     $progressPercent = $steps ? (($currentIndex + 1) / count($steps)) * 100 : 0;

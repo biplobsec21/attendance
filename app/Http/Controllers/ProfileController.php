@@ -191,7 +191,7 @@ class ProfileController extends Controller
                 'title'     => 'Personal',
                 'routeName' => 'profile.personalForm',
                 'params'    => $profileId ? ['id' => $profileId] : [],
-                'icon'      => '1',
+                'icon'      => $profile?->personal_completed ? '✔' : '1',
                 'enabled'   => true,
                 'completed' => $profile?->personal_completed ?? false,
             ],
@@ -202,7 +202,7 @@ class ProfileController extends Controller
                     ? 'profile.serviceForm'
                     : null,
                 'params'    => $profileId && $profile?->personal_completed ? ['id' => $profileId] : [],
-                'icon'      => '2',
+                'icon'      => $profile?->service_completed ? '✔' : '2',
                 'enabled'   => $profile?->personal_completed ?? false,
                 'completed' => $profile?->service_completed ?? false,
             ],
@@ -213,7 +213,9 @@ class ProfileController extends Controller
                     ? 'profile.qualificationsForm'
                     : null,
                 'params'    => $profileId && $profile?->service_completed ? ['id' => $profileId] : [],
-                'icon'      => '3',
+
+                'icon'      => $profile?->qualifications_completed ? '✔' : '3',
+
                 'enabled'   => $profile?->service_completed ?? false,
                 'completed' => $profile?->qualifications_completed ?? false,
             ],
@@ -224,7 +226,9 @@ class ProfileController extends Controller
                     ? 'profile.medicalForm'
                     : null,
                 'params'    => $profileId && $profile?->qualifications_completed ? ['id' => $profileId] : [],
-                'icon'      => '4',
+
+                'icon'      => $profile?->medical_completed ? '✔' : '4',
+
                 'enabled'   => $profile?->qualifications_completed ?? false,
                 'completed' => $profile?->medical_completed ?? false,
             ],
