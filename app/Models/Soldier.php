@@ -28,9 +28,19 @@ class Soldier extends Model
         'district_id',
         'permanent_address',
         'status',
+        'current_duty_status',
+        'personal_completed',
+        'service_completed',
+        'qualifications_completed',
+        'medical_completed',
+
     ];
     protected $casts = [
         'status' => 'boolean',
+        'personal_completed' => 'boolean',
+        'service_completed' => 'boolean',
+        'medical_completed' => 'boolean',
+        'qualifications_completed' => 'boolean',
         'num_boys' => 'integer',
         'num_girls' => 'integer',
     ];

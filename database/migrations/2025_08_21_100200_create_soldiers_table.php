@@ -18,16 +18,25 @@ return new class extends Migration
             $table->enum('gender', ['Male', 'Female'])->nullable();
             $table->string('blood_group')->nullable();
             $table->enum('marital_status', ['Single', 'Married', 'Divorced', 'Widowed'])->nullable();
-            $table->unsignedInteger('num_boys')->default(0);
-            $table->unsignedInteger('num_girls')->default(0);
+            $table->unsignedInteger('num_boys')->nullable()->default(0);
+            $table->unsignedInteger('num_girls')->nullable()->default(0);
             $table->string('village')->nullable();
 
 
 
             $table->text('permanent_address')->nullable();
+
             $table->boolean('status')->default(true);
+            $table->string('current_duty_status')->nullable();
+            $table->boolean('personal_completed')->default(false);
+            $table->boolean('service_completed')->default(false);
+            $table->boolean('qualifications_completed')->default(false);
+            $table->boolean('medical_completed')->default(false);
+
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
+
+
 
             $table->foreignId('company_id')->constrained('companies')->cascadeOnDelete();
             $table->foreignId('rank_id')->constrained('ranks')->cascadeOnDelete();

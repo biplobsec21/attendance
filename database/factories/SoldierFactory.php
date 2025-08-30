@@ -31,6 +31,7 @@ class SoldierFactory extends Factory
             'district_id' => District::factory(),
             'permanent_address' => $this->faker->optional()->address(),
             'status' => $this->faker->boolean(90),
+            'personal_completed' => true,
         ];
     }
 }

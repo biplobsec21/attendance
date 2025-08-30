@@ -5,7 +5,7 @@
 @section('content')
     {{-- Profile Steps Navigation --}}
 
-    <x-profile-step-nav :steps="$profileSteps" />
+    <x-profile-step-nav :steps="$profileSteps" :profileId="$profile->id ?? null" />
 
 
     <div class="container mx-auto p-6">

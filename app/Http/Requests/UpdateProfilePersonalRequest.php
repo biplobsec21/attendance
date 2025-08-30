@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class UpdateProfilePersonalRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        // All authenticated users can update their profile
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     */
+    public function rules(): array
+    {
+
+        return [
+            'image' => 'nullable|image|max:2048',
+            'army_no' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('soldiers', 'army_no')->ignore($this->route('soldier')),
+            ],
+            'full_name' => 'required|string|max:255',
+            'rank_id' => 'required|exists:ranks,id',
+            'company_id' => 'required|exists:companies,id',
+            'mobile' => 'required|string|max:20',
+            'gender' => 'required|string|in:Male,Female',
+            'blood_group' => 'required|string|in:A+,A-,B+,B-,O+,O-,AB+,AB-',
+            'marital_status' => 'nullable|string|in:Single,Married,Divorced,Widowed',
+            'num_boys' => 'nullable|integer|min:0',
+            'num_girls' => 'nullable|integer|min:0',
+            'village' => 'required|string|max:255',
+            'district_id' => 'required|exists:districts,id',
+            'permanent_address' => 'required|string',
+        ];
+    }
+
+    /**
+     * Custom messages for validation errors (optional)
+     */
+    public function messages(): array
+    {
+        return [
+            'army_no.required' => 'Army number is required.',
+            'army_no.unique' => 'This army number is already taken.',
+            'full_name.required' => 'Full name is required.',
+            'rank_id.required' => 'Please select a rank.',
+            'company_id.required' => 'Please select a company.',
+            'mobile.required' => 'Mobile number is required.',
+            'gender.required' => 'Gender is required.',
+            'blood_group.required' => 'Blood group is required.',
+            'district_id.required' => 'District is required.',
+        ];
+    }
+}

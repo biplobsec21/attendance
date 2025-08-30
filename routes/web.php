@@ -83,24 +83,36 @@ Route::patch('atts/{att}/toggle-status', [AttsController::class, 'toggleStatus']
     ->name('atts.toggle-status');
 
 Route::prefix('profile')->group(function () {
+    // Profile list
     Route::get('/', [ProfileController::class, 'index'])->name('profile.index');
 
-    Route::get('personal', [ProfileController::class, 'personalForm'])->name('profile.personalForm');
+    // Personal step (optional {profile} for first-time creation)
+    Route::get('personal/{profile?}', [ProfileController::class, 'personalForm'])->name('profile.personalForm');
     Route::post('personal', [ProfileController::class, 'savePersonal'])->name('profile.savePersonal');
+    Route::put('profile/{soldier}/personal', [ProfileController::class, 'updatePersonal'])
+        ->name('profile.updatePersonal');
 
-    Route::get('service', [ProfileController::class, 'serviceForm'])->name('profile.serviceForm');
-    Route::post('service', [ProfileController::class, 'saveService'])->name('profile.saveService');
 
-    Route::get('qualifications', [ProfileController::class, 'qualificationsForm'])->name('profile.qualificationsForm');
-    Route::post('qualifications', [ProfileController::class, 'saveQualifications'])->name('profile.saveQualifications');
+    // Service step
+    Route::get('{id}/service', [ProfileController::class, 'serviceForm'])->name('profile.serviceForm');
+    Route::post('{id}/service', [ProfileController::class, 'saveService'])->name('profile.saveService');
 
-    Route::get('medical', [ProfileController::class, 'medicalForm'])->name('profile.medicalForm');
-    Route::post('medical', [ProfileController::class, 'saveMedical'])->name('profile.saveMedical');
+    // Qualifications
+    Route::get('{id}/qualifications', [ProfileController::class, 'qualificationsForm'])->name('profile.qualificationsForm');
+    Route::post('{id}/qualifications', [ProfileController::class, 'saveQualifications'])->name('profile.saveQualifications');
 
+    // Medical
+    Route::get('{id}/medical', [ProfileController::class, 'medicalForm'])->name('profile.medicalForm');
+    Route::post('{id}/medical', [ProfileController::class, 'saveMedical'])->name('profile.saveMedical');
+
+    // Complete
     Route::get('complete', function () {
         return view('profile.complete');
     })->name('profile.complete');
 });
+
+
+
 
 
 Route::get('sports', [ViewController::class, 'sportsIndex'])->name('sports.index');

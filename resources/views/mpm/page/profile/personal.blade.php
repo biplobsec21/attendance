@@ -1,20 +1,33 @@
 @extends('mpm.layouts.app')
 
-@section('title', 'Create Profile')
+@section('title', $profile ? 'Update Profile' : 'Create Profile')
 
 @section('content')
     {{-- Profile Steps Navigation --}}
-
-    <x-profile-step-nav :steps="$profileSteps" />
-
+    <x-profile-step-nav :steps="$profileSteps" :profileId="$profile->id ?? null" />
 
     <div class="container mx-auto p-6">
-        <div class="mb-8">
-            <h1 class="text-4xl font-bold text-gray-800 mb-2">Create Your Profile</h1>
-            <p class="text-gray-500">Fill in your details below. Make sure the information is accurate.</p>
+        <div class="grid md:grid-cols-12 gap-6 items-center">
+            <div class="md:col-span-7 mb-8">
+                <h1 class="text-4xl font-bold text-gray-800 mb-2"> {{ $profile ? 'Update' : 'Create' }} Your Profile</h1>
+                <p class="text-gray-500">{{ $profile ? 'Update' : 'Fill' }} in your details below. Make sure the information
+                    is
+                    accurate.</p>
+            </div>
+            <div class="md:col-span-5">
+                @include('mpm.components.alerts')
+
+            </div>
         </div>
 
-        <form id="create-profile-form" class="bg-white shadow-lg rounded-lg p-8 space-y-8">
+        <form id="create-profile-form"
+            action="{{ $profile ? route('profile.updatePersonal', $profile->id) : route('profile.savePersonal') }}"
+            method="POST" enctype="multipart/form-data" class="bg-white shadow-lg rounded-lg p-8 space-y-8">
+            @csrf
+            @if ($profile)
+                @method('PUT') {{-- Required for updating --}}
+            @endif
+
 
             {{-- Profile Image --}}
             <div class="grid md:grid-cols-12 gap-6 items-center">
@@ -23,13 +36,23 @@
                     <p class="text-gray-500 text-sm">Upload a clear, professional headshot for your profile.</p>
                 </div>
                 <div class="md:col-span-8 flex items-center gap-4">
-                    <img id="image-preview" src="https://via.placeholder.com/150"
+
+                    <img id="image-preview"
+                        src="{{ old('image')
+                            ? asset('storage/' . old('image'))
+                            : ($profile?->image
+                                ? asset('storage/' . $profile->image)
+                                : 'https://via.placeholder.com/150') }}"
                         class="w-40 h-40 rounded-full border-2 border-gray-300 object-cover">
+
                     <label for="profile-image-input"
                         class="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors">
                         Upload Image
                     </label>
                     <input type="file" id="profile-image-input" class="hidden" name="image" accept="image/*">
+                    @error('image')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 
@@ -41,14 +64,17 @@
                 </div>
                 <div class="md:col-span-8 grid sm:grid-cols-3 gap-4">
                     <div>
-                        <label for="army-no" class="block text-sm font-medium text-gray-600 mb-1">Army No.</label>
-                        <input id="army-no" type="text" placeholder="e.g., 123456" name="army_no"
-                            class="w-full border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <x-form.input name="army_no" label="Army No." placeholder="e.g., 123456" :value="old('army_no') ?? $profile?->army_no" />
+                        @error('army_no')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
                     <div class="sm:col-span-2">
-                        <label for="fullName" class="block text-sm font-medium text-gray-600 mb-1">Full Name</label>
-                        <input id="fullName" type="text" placeholder="e.g., John M. Doe" name="full_name"
-                            class="w-full border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <x-form.input name="full_name" label="Full Name" placeholder="e.g., John M. Doe"
+                            :value="old('full_name') ?? $profile?->full_name" />
+                        @error('full_name')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -59,29 +85,40 @@
                     <h2 class="font-semibold text-lg text-gray-700">Rank & Company</h2>
                     <p class="text-gray-500 text-sm">Select your current rank and assigned company.</p>
                 </div>
-                <div class="md:col-span-8 flex flex-col sm:flex-row gap-4">
+                <div class="md:col-span-8 grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <x-form.select name="rank_id" label="Rank">
+                            <option value="">Select Rank</option>
+                            @foreach ($groupedRanks as $type => $ranksInGroup)
+                                <optgroup label="{{ $type }}">
+                                    @foreach ($ranksInGroup as $r)
+                                        <option value="{{ $r->id }}"
+                                            {{ (old('rank_id') ?? $profile?->rank_id) == $r->id ? 'selected' : '' }}>
+                                            {{ $r->name }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </x-form.select>
+                        @error('rank_id')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-                    <select name="rank_id"
-                        class="w-full sm:w-1/2 p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
-                        <option value="">Select Rank</option>
-
-                        @foreach ($groupedRanks as $type => $ranksInGroup)
-                            <optgroup label="{{ $type }}">
-                                @foreach ($ranksInGroup as $r)
-                                    <option value="{{ $r->id }}">{{ $r->name }}</option>
-                                @endforeach
-                            </optgroup>
-                        @endforeach
-
-                    </select>
-                    <select
-                        class="w-full sm:w-1/2 p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none"
-                        name="company_id">
-                        <option value="">Select Company</option>
-                        @foreach ($company as $cp)
-                            <option value="{{ $cp->id }}">{{ $cp->name }}</option>
-                        @endforeach
-                    </select>
+                    <div>
+                        <x-form.select name="company_id" label="Company">
+                            <option value="">Select Company</option>
+                            @foreach ($company as $cp)
+                                <option value="{{ $cp->id }}"
+                                    {{ (old('company_id') ?? $profile?->company_id) == $cp->id ? 'selected' : '' }}>
+                                    {{ $cp->name }}
+                                </option>
+                            @endforeach
+                        </x-form.select>
+                        @error('company_id')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
             </div>
 
@@ -93,68 +130,69 @@
                 </div>
                 <div class="md:col-span-8 grid sm:grid-cols-2 gap-4">
                     <div>
-                        <label for="mobile-no" class="block text-sm font-medium text-gray-600 mb-1">Mobile No.</label>
-                        <input id="mobile-no" type="tel" placeholder="e.g., 01712345678" name="mobile"
-                            class="w-full border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <x-form.input name="mobile" label="Mobile No." placeholder="e.g., 01712345678" type="tel"
+                            :value="old('mobile') ?? $profile?->mobile" />
+                        @error('mobile')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
+
                     <div>
-                        <label for="gender-select" class="block text-sm font-medium text-gray-600 mb-1">Gender</label>
-                        <select id="gender-select" mame="gender"
-                            class="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
-                            <option>Select Gender</option>
-                            <option>Male</option>
-                            <option>Female</option>
-                        </select>
+                        <x-form.select name="gender" label="Gender">
+                            <option value="">Select Gender</option>
+                            <option value="Male" {{ (old('gender') ?? $profile?->gender) == 'Male' ? 'selected' : '' }}>
+                                Male</option>
+                            <option value="Female"
+                                {{ (old('gender') ?? $profile?->gender) == 'Female' ? 'selected' : '' }}>Female</option>
+                        </x-form.select>
+                        @error('gender')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
+
                     <div>
-                        <label for="blood-group-select" class="block text-sm font-medium text-gray-600 mb-1">Blood
-                            Group</label>
-                        <select id="blood-group-select" name="blood_group"
-                            class="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
-                            <option>Select Group</option>
-                            <option>A+</option>
-                            <option>A-</option>
-                            <option>B+</option>
-                            <option>B-</option>
-                            <option>O+</option>
-                            <option>O-</option>
-                            <option>AB+</option>
-                            <option>AB-</option>
-                        </select>
+                        <x-form.select name="blood_group" label="Blood Group">
+                            <option value="">Select Group</option>
+                            @foreach (['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'] as $bg)
+                                <option value="{{ $bg }}"
+                                    {{ (old('blood_group') ?? $profile?->blood_group) == $bg ? 'selected' : '' }}>
+                                    {{ $bg }}
+                                </option>
+                            @endforeach
+                        </x-form.select>
+                        @error('blood_group')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
+
                     <div>
-                        <label for="marital-status-select" class="block text-sm font-medium text-gray-600 mb-1">Marital
-                            Status</label>
-                        <select id="marital-status-select" name="marital_status"
-                            class="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        <x-form.select name="marital_status" label="Marital Status" id="marital_status">
                             <option value="">Select Status</option>
-                            <option value="Single">Single</option>
-                            <option value="Married">Married</option>
-                            <option value="Divorced">Divorced</option>
-                            <option value="Widowed">Widowed</option>
-                        </select>
+                            @foreach (['Single', 'Married', 'Divorced', 'Widowed'] as $status)
+                                <option value="{{ $status }}"
+                                    {{ (old('marital_status') ?? $profile?->marital_status) == $status ? 'selected' : '' }}>
+                                    {{ $status }}
+                                </option>
+                            @endforeach
+                        </x-form.select>
+                        @error('marital_status')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
                 </div>
             </div>
 
             {{-- Children Info --}}
-            <div id="children-info-container" class="grid md:grid-cols-12 gap-6 border-t pt-6 hidden">
+            <div id="children-info-container"
+                class="grid md:grid-cols-12 gap-6 border-t pt-6 {{ (old('marital_status') ?? $profile?->marital_status) == 'Married' ? '' : 'hidden' }}">
                 <div class="md:col-span-4">
                     <h2 class="font-semibold text-lg text-gray-700">Children Information</h2>
                     <p class="text-gray-500 text-sm">Please enter the number of your children.</p>
                 </div>
                 <div class="md:col-span-8 grid sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="num-boys" class="block text-sm font-medium text-gray-600 mb-1">Number of Boys</label>
-                        <input id="num-boys" type="number" min="0" name="num_boys"
-                            class="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <label for="num-girls" class="block text-sm font-medium text-gray-600 mb-1">Number of
-                            Girls</label>
-                        <input id="num-girls" type="number" min="0" name="num_girls"
-                            class="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
-                    </div>
+                    <x-form.input name="num_boys" label="Number of Boys" type="number" min="0" :value="old('num_boys') ?? $profile?->num_boys" />
+                    <x-form.input name="num_girls" label="Number of Girls" type="number" min="0"
+                        :value="old('num_girls') ?? $profile?->num_girls" />
                 </div>
             </div>
 
@@ -165,38 +203,50 @@
                     <p class="text-gray-500 text-sm">Specify your home village and district.</p>
                 </div>
                 <div class="md:col-span-8 flex flex-col sm:flex-row gap-4">
-                    <input id="village" type="text" placeholder="Village" name="village"
-                        class="w-full sm:w-1/2 border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
-                    <select id="district" name="district_id"
-                        class="w-full sm:w-1/2 border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
-                        <option>Select District</option>
-                        @foreach ($district as $ds)
-                            <option value="{{ $ds->id }}">{{ $ds->name }}</option>
-                        @endforeach
-                    </select>
+                    <div class="sm:w-1/2">
+                        <x-form.input name="village" label="Village" placeholder="Village" :value="old('village') ?? $profile?->village" />
+                        @error('village')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="sm:w-1/2">
+                        <x-form.select name="district_id" label="District">
+                            <option value="">Select District</option>
+                            @foreach ($district as $ds)
+                                <option value="{{ $ds->id }}"
+                                    {{ (old('district_id') ?? $profile?->district_id) == $ds->id ? 'selected' : '' }}>
+                                    {{ $ds->name }}
+                                </option>
+                            @endforeach
+                        </x-form.select>
+                        @error('district_id')
+                            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
             </div>
 
             {{-- Permanent Address --}}
             <div class="grid md:grid-cols-12 gap-6 border-t pt-6">
                 <div class="md:col-span-4">
-                    <h2 class="font-semibold text-lg text-gray-700">Permanent Address</h2>
+                    <h2 class="font-semibold text-lg text-gray-700">Permanent Address </h2>
                     <p class="text-gray-500 text-sm">Full permanent address including Post Office and Upazila.</p>
                 </div>
                 <div class="md:col-span-8">
-                    <textarea id="permanent-address" rows="4" placeholder="House 123, Vill- ABC, P.O- XYZ"
-                        name="permanent_address"
-                        class="w-full border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none"></textarea>
+                    <x-form.textarea name="permanent_address" label="Permanent Address" rows="4"
+                        placeholder="House 123, Vill- ABC, P.O- XYZ" :value="old('permanent_address') ?? $profile?->permanent_address" />
+                    @error('permanent_address')
+                        <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 
             <div class="text-right">
                 <button type="submit"
                     class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-all">
-                    Save Profile
+                    {{ $profile ? 'Update Profile' : 'Save Profile & Continue' }}
                 </button>
             </div>
-
         </form>
     </div>
 @endsection
@@ -204,7 +254,7 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const maritalStatusSelect = document.getElementById('marital-status-select');
+            const maritalStatusSelect = document.getElementById('marital_status');
             const childrenInfoContainer = document.getElementById('children-info-container');
 
             maritalStatusSelect?.addEventListener('change', function() {
@@ -221,11 +271,6 @@
                     reader.onload = e => imagePreview.src = e.target.result;
                     reader.readAsDataURL(file);
                 }
-            });
-
-            document.getElementById('create-profile-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                alert('Form submitted! Implement your JS submission logic here.');
             });
         });
     </script>
