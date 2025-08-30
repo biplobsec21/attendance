@@ -22,7 +22,7 @@
                     <input type="text" id="table-search"
                         class="w-full sm:w-auto px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                         placeholder="Search profiles...">
-                    <a href="{{ url('profile/create') }}"
+                    <a href="{{ url('profile/personal') }}"
                         class="w-full sm:w-auto bg-transparent text-black font-semibold py-2 px-4 border border-black rounded-lg hover:bg-black hover:text-white transition-colors text-center no-underline">Add
                         New Profile</a>
                 </div>

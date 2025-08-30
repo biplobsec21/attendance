@@ -19,12 +19,13 @@ class ProfileController extends Controller
     public function personalForm()
     {
         $district = District::get();
-        $rank = Rank::get();
+        $ranks = Rank::where('status', true)->orderBy('type')->orderBy('id')->get();
+        $groupedRanks = $ranks->groupBy('type');
         $company = Company::get();
 
         $profileSteps = $this->getProfileSteps();
 
-        return view('mpm.page.profile.personal', compact('district', 'rank', 'company', 'profileSteps'));
+        return view('mpm.page.profile.personal', compact('district', 'groupedRanks', 'company', 'profileSteps'));
     }
 
 
@@ -75,14 +76,15 @@ class ProfileController extends Controller
 
     public function qualificationsForm()
     {
-        $profile = Soldier::where('user_id', auth()->id())->first();
+        // $profile = Soldier::where('user_id', auth()->id())->first();
 
-        if (!$profile || !$profile->service_type) {
-            return redirect()->route('profile.serviceForm')
-                ->with('error', 'Please complete service info first.');
-        }
+        // if (!$profile || !$profile->service_type) {
+        //     return redirect()->route('profile.serviceForm')
+        //         ->with('error', 'Please complete service info first.');
+        // }
+        $profileSteps = $this->getProfileSteps();
 
-        return view('profile.qualifications');
+        return view('mpm.page.profile.qualification', compact('profileSteps'));
     }
 
     public function saveQualifications(Request $request)
@@ -100,14 +102,16 @@ class ProfileController extends Controller
 
     public function medicalForm()
     {
-        $profile = Soldier::where('user_id', auth()->id())->first();
+        // $profile = Soldier::where('user_id', auth()->id())->first();
 
-        if (!$profile || !$profile->degree) {
-            return redirect()->route('profile.qualificationsForm')
-                ->with('error', 'Please complete qualifications first.');
-        }
+        // if (!$profile || !$profile->degree) {
+        //     return redirect()->route('profile.qualificationsForm')
+        //         ->with('error', 'Please complete qualifications first.');
+        // }
 
-        return view('profile.medical');
+        $profileSteps = $this->getProfileSteps();
+
+        return view('mpm.page.profile.medical', compact('profileSteps'));
     }
 
     public function saveMedical(Request $request)

@@ -29,7 +29,7 @@
                         class="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors">
                         Upload Image
                     </label>
-                    <input type="file" id="profile-image-input" class="hidden" accept="image/*">
+                    <input type="file" id="profile-image-input" class="hidden" name="image" accept="image/*">
                 </div>
             </div>
 
@@ -42,12 +42,12 @@
                 <div class="md:col-span-8 grid sm:grid-cols-3 gap-4">
                     <div>
                         <label for="army-no" class="block text-sm font-medium text-gray-600 mb-1">Army No.</label>
-                        <input id="army-no" type="text" placeholder="e.g., 123456"
+                        <input id="army-no" type="text" placeholder="e.g., 123456" name="army_no"
                             class="w-full border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
                     </div>
                     <div class="sm:col-span-2">
                         <label for="fullName" class="block text-sm font-medium text-gray-600 mb-1">Full Name</label>
-                        <input id="fullName" type="text" placeholder="e.g., John M. Doe"
+                        <input id="fullName" type="text" placeholder="e.g., John M. Doe" name="full_name"
                             class="w-full border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
                     </div>
                 </div>
@@ -60,39 +60,27 @@
                     <p class="text-gray-500 text-sm">Select your current rank and assigned company.</p>
                 </div>
                 <div class="md:col-span-8 flex flex-col sm:flex-row gap-4">
-                    <select
+
+                    <select name="rank_id"
                         class="w-full sm:w-1/2 p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
                         <option value="">Select Rank</option>
-                        <optgroup label="Commissioned Officers">
-                            <option value="Second Lieutenant">Second Lieutenant</option>
-                            <option value="Lieutenant">Lieutenant</option>
-                            <option value="Captain">Captain</option>
-                            <option value="Major">Major</option>
-                            <option value="Lieutenant Colonel">Lieutenant Colonel</option>
-                            <option value="Colonel">Colonel</option>
-                            <option value="Brigadier General">Brigadier General</option>
-                            <option value="Major General">Major General</option>
-                            <option value="Lieutenant General">Lieutenant General</option>
-                            <option value="General">General</option>
-                            <option value="Field Marshal">Field Marshal</option>
-                        </optgroup>
-                        <optgroup label="JCOs & NCOs">
-                            <option value="Master Warrant Officer">Master Warrant Officer</option>
-                            <option value="Senior Warrant Officer">Senior Warrant Officer</option>
-                            <option value="Warrant Officer">Warrant Officer</option>
-                            <option value="Sergeant">Sergeant</option>
-                            <option value="Corporal">Corporal</option>
-                            <option value="Lance Corporal">Lance Corporal</option>
-                            <option value="Sainik">Sainik</option>
-                        </optgroup>
+
+                        @foreach ($groupedRanks as $type => $ranksInGroup)
+                            <optgroup label="{{ $type }}">
+                                @foreach ($ranksInGroup as $r)
+                                    <option value="{{ $r->id }}">{{ $r->name }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+
                     </select>
                     <select
-                        class="w-full sm:w-1/2 p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
+                        class="w-full sm:w-1/2 p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                        name="company_id">
                         <option value="">Select Company</option>
-                        <option>Alpha Company</option>
-                        <option>Bravo Company</option>
-                        <option>Charlie Company</option>
-                        <option>Delta Company</option>
+                        @foreach ($company as $cp)
+                            <option value="{{ $cp->id }}">{{ $cp->name }}</option>
+                        @endforeach
                     </select>
                 </div>
             </div>
@@ -106,12 +94,12 @@
                 <div class="md:col-span-8 grid sm:grid-cols-2 gap-4">
                     <div>
                         <label for="mobile-no" class="block text-sm font-medium text-gray-600 mb-1">Mobile No.</label>
-                        <input id="mobile-no" type="tel" placeholder="e.g., 01712345678"
+                        <input id="mobile-no" type="tel" placeholder="e.g., 01712345678" name="mobile"
                             class="w-full border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
                     </div>
                     <div>
                         <label for="gender-select" class="block text-sm font-medium text-gray-600 mb-1">Gender</label>
-                        <select id="gender-select"
+                        <select id="gender-select" mame="gender"
                             class="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
                             <option>Select Gender</option>
                             <option>Male</option>
@@ -121,7 +109,7 @@
                     <div>
                         <label for="blood-group-select" class="block text-sm font-medium text-gray-600 mb-1">Blood
                             Group</label>
-                        <select id="blood-group-select"
+                        <select id="blood-group-select" name="blood_group"
                             class="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
                             <option>Select Group</option>
                             <option>A+</option>
@@ -137,7 +125,7 @@
                     <div>
                         <label for="marital-status-select" class="block text-sm font-medium text-gray-600 mb-1">Marital
                             Status</label>
-                        <select id="marital-status-select"
+                        <select id="marital-status-select" name="marital_status"
                             class="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
                             <option value="">Select Status</option>
                             <option value="Single">Single</option>
@@ -158,13 +146,13 @@
                 <div class="md:col-span-8 grid sm:grid-cols-2 gap-4">
                     <div>
                         <label for="num-boys" class="block text-sm font-medium text-gray-600 mb-1">Number of Boys</label>
-                        <input id="num-boys" type="number" min="0"
+                        <input id="num-boys" type="number" min="0" name="num_boys"
                             class="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
                     </div>
                     <div>
                         <label for="num-girls" class="block text-sm font-medium text-gray-600 mb-1">Number of
                             Girls</label>
-                        <input id="num-girls" type="number" min="0"
+                        <input id="num-girls" type="number" min="0" name="num_girls"
                             class="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none">
                     </div>
                 </div>
@@ -177,11 +165,14 @@
                     <p class="text-gray-500 text-sm">Specify your home village and district.</p>
                 </div>
                 <div class="md:col-span-8 flex flex-col sm:flex-row gap-4">
-                    <input id="village" type="text" placeholder="Village"
+                    <input id="village" type="text" placeholder="Village" name="village"
                         class="w-full sm:w-1/2 border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
-                    <select id="district"
+                    <select id="district" name="district_id"
                         class="w-full sm:w-1/2 border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
                         <option>Select District</option>
+                        @foreach ($district as $ds)
+                            <option value="{{ $ds->id }}">{{ $ds->name }}</option>
+                        @endforeach
                     </select>
                 </div>
             </div>
@@ -194,6 +185,7 @@
                 </div>
                 <div class="md:col-span-8">
                     <textarea id="permanent-address" rows="4" placeholder="House 123, Vill- ABC, P.O- XYZ"
+                        name="permanent_address"
                         class="w-full border rounded-md p-3 focus:ring-2 focus:ring-orange-500 focus:outline-none"></textarea>
                 </div>
             </div>

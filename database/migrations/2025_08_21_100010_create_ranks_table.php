@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('ranks', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('name', 450)->unique();
+            $table->string('type', 450)->nullable();
+
             $table->boolean('status')->default(true); // true = active, false = inactive
             // default timestamps
             $table->timestamp('created_at')->useCurrent();

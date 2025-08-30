@@ -65,6 +65,10 @@
         <ul class="flex gap-6 items-center">
             <li><a href="#" class="hover:text-orange-400 transition-colors">Dashboard</a></li>
             <li><a href="#" class="hover:text-orange-400 transition-colors">Reports</a></li>
+            <a href="{{ route('profile.index') }}"
+                class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'profile' ? 'bg-orange-500 text-white' : 'text-gray-700 hover:bg-gray-100' }}">
+                Profile
+            </a>
 
             <!-- Settings Dropdown -->
             <li class="relative">
@@ -136,7 +140,7 @@
 
             <li>
                 <a href="#"
-                    class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors">Logout</a>
+                    class="hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors">Logout</a>
             </li>
         </ul>
     </div>

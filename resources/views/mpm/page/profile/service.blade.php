@@ -61,10 +61,67 @@
                             Add Appointment</button>
                     </div>
                 </div>
+                <div id="bottom-navigation" class="flex justify-between mt-6 border-t pt-6">
+                    <button id="prev-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded"
+                        style="display: inline-flex;">Previous</button>
+                    <button id="next-btn"
+                        class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded">Save
+                        &amp; Continue</button>
+                </div>
             </form>
         </div>
+
     </div>
 @endsection
 
 @push('scripts')
+    <script>
+        const joiningDateInput = document.getElementById('joining-date');
+        const serviceLengthInput = document.getElementById('service-length');
+
+        function calculateDuration(startDate) {
+            if (!startDate) return '';
+            const fromDate = new Date(startDate);
+            const toDate = new Date('2025-08-28T01:13:54');
+            let years = toDate.getFullYear() - fromDate.getFullYear();
+            let months = toDate.getMonth() - fromDate.getMonth();
+            let days = toDate.getDate() - fromDate.getDate();
+            if (days < 0) {
+                months--;
+                days += new Date(toDate.getFullYear(), toDate.getMonth(), 0).getDate();
+            }
+            if (months < 0) {
+                years--;
+                months += 12;
+            }
+            return `${years}Y ${months}M ${days}D`;
+        }
+        if (joiningDateInput) {
+            joiningDateInput.addEventListener('change', () => {
+                serviceLengthInput.value = calculateDuration(joiningDateInput.value)
+            });
+        }
+
+        const addCurrentBtn = document.getElementById('add-current-appointment');
+        const currentContainer = document.getElementById('current-appointments-container');
+        const addPreviousBtn = document.getElementById('add-previous-appointment');
+        const previousContainer = document.getElementById('previous-appointments-container');
+
+        function createAppointmentRow() {
+            const div = document.createElement('div');
+            div.className = 'grid grid-cols-1 sm:grid-cols-5 gap-2 items-center border p-3 rounded-md';
+            div.innerHTML = `
+        <input type="text" placeholder="Name" class="sm:col-span-2 w-full p-2 border rounded-md">
+        <input type="date" placeholder="Start Date" class="w-full p-2 border rounded-md">
+        <input type="date" placeholder="End Date" class="w-full p-2 border rounded-md">
+        <button type="button" class="remove-row bg-red-500 hover:bg-red-600 text-white p-2 rounded-md h-full">✕</button>
+        `;
+            return div;
+        }
+
+        if (addCurrentBtn) addCurrentBtn.addEventListener('click', () =>
+            currentContainer.appendChild(createAppointmentRow()));
+        if (addPreviousBtn) addPreviousBtn.addEventListener('click', () =>
+            previousContainer.appendChild(createAppointmentRow()));
+    </script>
 @endpush
