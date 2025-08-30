@@ -68,6 +68,7 @@ class StoreAttsRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+
         $this->merge([
             'status' => $this->has('status') ? (bool) $this->input('status') : true,
         ]);

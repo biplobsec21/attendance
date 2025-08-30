@@ -3,31 +3,81 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use App\Models\District;
 
 class DistrictSeeder extends Seeder
 {
     public function run(): void
     {
-        $names = [
-            'Dhaka',
-            'Chattogram',
-            'Rajshahi',
-            'Khulna',
+        $districts = [
+            'Bagerhat',
+            'Bandarban',
+            'Barguna',
             'Barishal',
-            'Sylhet',
+            'Bhola',
+            'Bogura',
+            'Brahmanbaria',
+            'Chandpur',
+            'Chapai Nawabganj',
+            'Chattogram',
+            'Chuadanga',
+            'Cox\'s Bazar',
+            'Cumilla',
+            'Dhaka',
+            'Dinajpur',
+            'Faridpur',
+            'Feni',
+            'Gaibandha',
+            'Gazipur',
+            'Gopalganj',
+            'Habiganj',
+            'Jamalpur',
+            'Jashore',
+            'Jhalokati',
+            'Jhenaidah',
+            'Joypurhat',
+            'Khagrachhari',
+            'Khulna',
+            'Kishoreganj',
+            'Kurigram',
+            'Kushtia',
+            'Lakshmipur',
+            'Lalmonirhat',
+            'Madaripur',
+            'Magura',
+            'Manikganj',
+            'Meherpur',
+            'Moulvibazar',
+            'Munshiganj',
+            'Mymensingh',
+            'Naogaon',
+            'Narail',
+            'Narayanganj',
+            'Narsingdi',
+            'Natore',
+            'Netrokona',
+            'Nilphamari',
+            'Noakhali',
+            'Pabna',
+            'Panchagarh',
+            'Patuakhali',
+            'Pirojpur',
+            'Rajbari',
+            'Rajshahi',
+            'Rangamati',
             'Rangpur',
-            'Mymensingh'
+            'Satkhira',
+            'Shariatpur',
+            'Sherpur',
+            'Sirajganj',
+            'Sunamganj',
+            'Sylhet',
+            'Tangail',
+            'Thakurgaon',
         ];
-        foreach ($names as $name) {
-            DB::table('districts')->updateOrInsert(['name' => $name], ['name' => $name]);
+
+        foreach ($districts as $name) {
+            District::firstOrCreate(['name' => $name]);
         }
     }
 }
-
-
-
-
-
-
-

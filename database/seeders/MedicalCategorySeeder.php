@@ -22,3 +22,4 @@ class MedicalCategorySeeder extends Seeder
 
 
 
+

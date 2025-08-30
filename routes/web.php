@@ -11,6 +11,7 @@ use App\Http\Controllers\EresController;
 use App\Http\Controllers\RankController;
 use App\Http\Controllers\SkillCategoryController;
 use App\Http\Controllers\SkillController;
+use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -81,6 +82,25 @@ Route::resource('atts', AttsController::class);
 Route::patch('atts/{att}/toggle-status', [AttsController::class, 'toggleStatus'])
     ->name('atts.toggle-status');
 
+Route::prefix('profile')->group(function () {
+    Route::get('/', [ProfileController::class, 'index'])->name('profile.index');
+
+    Route::get('personal', [ProfileController::class, 'personalForm'])->name('profile.personalForm');
+    Route::post('personal', [ProfileController::class, 'savePersonal'])->name('profile.savePersonal');
+
+    Route::get('service', [ProfileController::class, 'serviceForm'])->name('profile.serviceForm');
+    Route::post('service', [ProfileController::class, 'saveService'])->name('profile.saveService');
+
+    Route::get('qualifications', [ProfileController::class, 'qualificationsForm'])->name('profile.qualificationsForm');
+    Route::post('qualifications', [ProfileController::class, 'saveQualifications'])->name('profile.saveQualifications');
+
+    Route::get('medical', [ProfileController::class, 'medicalForm'])->name('profile.medicalForm');
+    Route::post('medical', [ProfileController::class, 'saveMedical'])->name('profile.saveMedical');
+
+    Route::get('complete', function () {
+        return view('profile.complete');
+    })->name('profile.complete');
+});
 
 
 Route::get('sports', [ViewController::class, 'sportsIndex'])->name('sports.index');

@@ -3,22 +3,28 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use App\Models\Rank;
 
 class RankSeeder extends Seeder
 {
     public function run(): void
     {
-        $names = ['Private', 'Lance Corporal', 'Corporal', 'Sergeant', 'Warrant Officer'];
-        foreach ($names as $name) {
-            DB::table('ranks')->updateOrInsert(['name' => $name], ['name' => $name]);
+        $ranks = [
+            'Private',
+            'Lance Corporal',
+            'Corporal',
+            'Sergeant',
+            'Staff Sergeant',
+            'Warrant Officer',
+            'Lieutenant',
+            'Captain',
+            'Major',
+            'Colonel',
+            'General',
+        ];
+
+        foreach ($ranks as $rank) {
+            Rank::firstOrCreate(['name' => $rank], ['status' => true]);
         }
     }
 }
-
-
-
-
-
-
-

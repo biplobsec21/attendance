@@ -10,21 +10,60 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Soldier extends Model
 {
     use HasFactory;
+    protected $table = 'soldiers';
 
     protected $fillable = [
-        'full_name',
         'image',
-        'rank',
-        'mobile',
+        'army_no',
+        'full_name',
+        'rank_id',
         'company_id',
-        'designation_id',
-        'current_status',
+        'mobile',
+        'gender',
+        'blood_group',
+        'marital_status',
+        'num_boys',
+        'num_girls',
+        'village',
+        'district_id',
+        'permanent_address',
+        'status',
     ];
+    protected $casts = [
+        'status' => 'boolean',
+        'num_boys' => 'integer',
+        'num_girls' => 'integer',
+    ];
+
+    // ✅ Relationship with district
+    public function district()
+    {
+        return $this->belongsTo(District::class);
+    }
+
+    // ✅ Accessors
+    public function getFullChildrenCountAttribute()
+    {
+        return $this->num_boys + $this->num_girls;
+    }
+
+    public function getStatusTextAttribute()
+    {
+        return $this->status ? 'Active' : 'Inactive';
+    }
 
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
     }
+    public function rank(): BelongsTo
+    {
+        return $this->belongsTo(Rank::class);
+    }
+    // public function district(): BelongsTo
+    // {
+    //     return $this->belongsTo(District::class);
+    // }
 
     public function designation(): BelongsTo
     {
@@ -52,14 +91,3 @@ class Soldier extends Model
             ->withTimestamps();
     }
 }
-
-
-
-
-
-
-
-
-
-
-

@@ -38,3 +38,4 @@ class CourseSeeder extends Seeder
 
 
 
+

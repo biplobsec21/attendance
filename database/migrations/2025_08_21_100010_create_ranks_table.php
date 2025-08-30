@@ -11,19 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('districts', function (Blueprint $table) {
-            $table->increments('id');
-            $table->string('name', 100)->unique();
+        Schema::create('ranks', function (Blueprint $table) {
+            $table->bigIncrements('id');
+            $table->string('name', 450)->unique();
+            $table->boolean('status')->default(true); // true = active, false = inactive
+            // default timestamps
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
     }
-
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('districts');
+        Schema::dropIfExists('ranks');
     }
 };

@@ -22,3 +22,4 @@ class EducationSeeder extends Seeder
 
 
 
+

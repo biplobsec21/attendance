@@ -30,3 +30,4 @@ class SkillCategoryFactory extends Factory
 
 
 
+
