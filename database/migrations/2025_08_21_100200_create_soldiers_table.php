@@ -24,8 +24,8 @@ return new class extends Migration
 
 
 
+            $table->string('joining_date')->nullable();
             $table->text('permanent_address')->nullable();
-
             $table->boolean('status')->default(true);
             $table->string('current_duty_status')->nullable();
             $table->boolean('personal_completed')->default(false);

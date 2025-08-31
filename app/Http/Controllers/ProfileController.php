@@ -4,14 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProfilePersonalRequest;
 use App\Http\Requests\UpdateProfilePersonalRequest;
+use App\Http\Requests\SoldierServiceRequest;
 
 use App\Models\Company;
 use App\Models\District;
 use App\Models\Rank;
+use App\Models\Service;
 use Illuminate\Http\Request;
 use App\Models\Soldier;
+use App\Models\SoldierServices;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
@@ -99,45 +103,88 @@ class ProfileController extends Controller
 
     public function serviceForm($id)
     {
-        // $profile = Soldier::where('user_id', auth()->id())->first();
+        // Eager load all services in a single query
+        $profile = Soldier::with('services')->findOrFail($id);
 
-        // // prevent skipping step
-        // if (!$profile || !$profile->name || !$profile->dob) {
-        //     return redirect()->route('profile.personalForm')
-        //         ->with('error', 'Please complete personal info first.');
-        // }
+        // Separate current and previous appointments from the loaded services
+        $current = $profile->services->where('appointment_type', 'current')->last();
+        $previous = $profile->services->where('appointment_type', 'previous');
 
-        $profile = Soldier::findOrFail($id);
         $profileSteps = $this->getProfileSteps($profile);
 
-        return view('mpm.page.profile.service', compact('profileSteps', 'profile'));
+        return view('mpm.page.profile.service', compact('profileSteps', 'profile', 'current', 'previous'));
     }
 
-    public function saveService(Request $request)
-    {
-        $profile = Soldier::where('user_id', auth()->id())->firstOrFail();
 
-        $request->validate([
-            'service_type' => 'required|string',
-            'joining_date' => 'required|date',
+
+    public function saveService(SoldierServiceRequest $request)
+    {
+
+        $profile = Soldier::findOrFail($request->id);
+
+        DB::transaction(function () use ($request) {
+            // === Delete old records first ===
+            SoldierServices::where('soldier_id', $request->id)
+                ->whereIn('appointment_type', ['previous', 'current'])
+                ->delete();
+
+            $insertData = [];
+
+            // === Previous Appointments ===
+            if ($request->has('previous_appointments')) {
+
+                foreach ($request->previous_appointments as $prev) {
+                    if (!empty($prev['name'])) {
+                        $insertData[] = [
+                            'appointments_name'      => $prev['name'],
+                            'appointment_type'       => 'previous',
+                            'soldier_id'             => $request->id,
+                            'appointments_from_date' => $prev['from_date'] ?? null,
+                            'appointments_to_date'   => $prev['to_date'] ?? null,
+                        ];
+                    }
+                }
+            }
+
+            // === Current Appointments ===
+
+            if ($request->filled('current_appointment_name')) {
+                $insertData[] = [
+                    'appointments_name' => $request->current_appointment_name,
+                    'appointment_type' => 'current',
+                    'soldier_id' => $request->id,
+                    'appointments_from_date' => $request->current_appointment_from_date,
+                    'appointments_to_date' => null,
+                ];
+            }
+
+            // === Insert fresh data ===
+            if (!empty($insertData)) {
+                SoldierServices::insert($insertData);
+            }
+        });
+
+
+
+        // Update soldier
+        $profile->update([
+            'service_completed' => 1,
+            'joining_date' => $request->joining_date,
         ]);
-
-        $profile->update($request->only(['service_type', 'joining_date']));
-
-        return redirect()->route('profile.qualificationsForm');
+        if ($request->redirect) {
+            return redirect()->back()->with('success', 'Service information updated successfully');
+        } else {
+            return redirect()->route('profile.qualificationsForm', $request->id);
+        }
     }
 
-    public function qualificationsForm()
+    public function qualificationsForm($id)
     {
-        // $profile = Soldier::where('user_id', auth()->id())->first();
+        $profile = Soldier::findOrFail($id);
 
-        // if (!$profile || !$profile->service_type) {
-        //     return redirect()->route('profile.serviceForm')
-        //         ->with('error', 'Please complete service info first.');
-        // }
-        $profileSteps = $this->getProfileSteps();
+        $profileSteps = $this->getProfileSteps($profile);
 
-        return view('mpm.page.profile.qualification', compact('profileSteps'));
+        return view('mpm.page.profile.qualification', compact('profileSteps', 'profile'));
     }
 
     public function saveQualifications(Request $request)
