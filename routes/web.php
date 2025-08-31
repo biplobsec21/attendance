@@ -112,7 +112,19 @@ Route::prefix('profile')->group(function () {
 });
 
 
+// routes/web.php
+use App\Http\Controllers\DutyController;
 
+// Route to show the create form
+Route::get('/duty/create', [DutyController::class, 'create'])->name('duty.create');
+Route::get('/duty/index', [DutyController::class, 'index'])->name('duty.index');
+Route::get('/duty/{duty}/edit', [DutyController::class, 'edit'])->name('duty.edit');
+
+// This route handles the form submission to update the record in the database.
+Route::put('/duty/{duty}', [DutyController::class, 'update'])->name('duty.update');
+// Route to handle the form submission and store the new record
+Route::post('/duty', [DutyController::class, 'store'])->name('duty.store');
+Route::delete('/duty/{duty}', [DutyController::class, 'destroy'])->name('duty.destroy');
 
 
 Route::get('sports', [ViewController::class, 'sportsIndex'])->name('sports.index');
@@ -127,8 +139,8 @@ Route::get('absent/index', [ViewController::class, 'absentIndex'])->name('absent
 Route::get('absent/create', [ViewController::class, 'absentCreate'])->name('absent.create');
 
 
-Route::get('duty/index', [ViewController::class, 'dutyIndex'])->name('duty.index');
-Route::get('duty/create', [ViewController::class, 'dutyCreate'])->name('duty.create');
+// Route::get('duty/index', [ViewController::class, 'dutyIndex'])->name('duty.index');
+// Route::get('duty/create', [ViewController::class, 'dutyCreate'])->name('duty.create');
 
 
 Route::get('assignDuty/index', [ViewController::class, 'assignDutyIndex'])->name('assignDuty.index');

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Duty Roster</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --header-color: #2c3e50;
+            --card-bg: #ffffff;
+            --border-color: #e0e0e0;
+            --primary-btn: #3498db;
+            --primary-btn-hover: #2980b9;
+            --text-color: #333;
+            --unfilled-color: #e74c3c;
+            --fixed-duty-bg: #ecf0f1;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            color: var(--header-color);
+            margin: 0;
+        }
+
+        .roster-generator {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            padding: 25px;
+            border: 1px solid var(--border-color);
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        button {
+            background-color: var(--primary-btn);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: var(--primary-btn-hover);
+        }
+
+        #roster-output h2 {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            color: var(--header-color);
+        }
+
+        .assignment-card {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-left: 5px solid var(--primary-btn);
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .assignment-card.fixed {
+            background-color: var(--fixed-duty-bg);
+            border-left-color: #95a5a6;
+        }
+        
+        .assignment-card.unfilled {
+            border-left-color: var(--unfilled-color);
+        }
+
+        .duty-info strong {
+            display: block;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        
+        .duty-info span {
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .soldier-info {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .soldier-info.unfilled-text {
+            color: var(--unfilled-color);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>🎖️ Automated Duty Roster</h1>
+        </header>
+
+        <main class="roster-generator">
+            <div class="controls">
+                <button id="generate-btn">Generate Today's Assignments</button>
+            </div>
+            <div id="roster-output">
+                </div>
+        </main>
+    </div>
+
+    <script>
+        // --- 1. INPUT DATA ---
+        const soldiers = [
+            { id: 1, name: 'Colonel Adams', rank: 'Colonel', status: 'active' },
+            { id: 2, name: 'Sergeant Xing', rank: 'Sergeant', status: 'active' },
+            { id: 3, name: 'Sergeant Yancy', rank: 'Sergeant', status: 'active' },
+            { id: 4, name: 'Private Ali', rank: 'Private', status: 'active' },
+            { id: 5, name: 'Private Bravo', rank: 'Private', status: 'active' },
+            { id: 6, name: 'Private Cruz', rank: 'Private', status: 'active' },
+            { id: 7, name: 'Private Davis', rank: 'Private', status: 'active' },
+            { id: 8, name: 'Private Edwards', rank: 'Private', status: 'sick' }, // Sick soldier
+        ];
+
+        const duties = [
+            { id: 101, name: 'Battalion Boss', eligibleRanks: ['Colonel'], isFixed: true, fixedAssigneeId: 1, startTime: 8, endTime: 17 },
+            { id: 102, name: 'Patrol', eligibleRanks: ['Sergeant'], isFixed: false, startTime: 9, endTime: 11 },
+            { id: 103, name: 'Guard Duty (Lunch)', eligibleRanks: ['Private'], isFixed: false, startTime: 12, endTime: 13 },
+            { id: 104, name: 'Guard Duty (Afternoon)', eligibleRanks: ['Private'], isFixed: false, startTime: 14, endTime: 15 },
+        ];
+        
+        // Yesterday's data to test the "no repeat" rule
+        const yesterdayAssignments = [
+            { soldier_id: 2, duty_id: 102 }, // Sergeant Xing did Patrol
+            { soldier_id: 4, duty_id: 103 }, // Private Ali did Lunch Guard
+            { soldier_id: 5, duty_id: 104 }, // Private Bravo did Afternoon Guard
+        ];
+
+        // --- 2. ALGORITHM IMPLEMENTATION ---
+
+        document.getElementById('generate-btn').addEventListener('click', () => {
+            const todaysAssignments = generateRoster();
+            displayRoster(todaysAssignments);
+        });
+
+        function generateRoster() {
+            const assignments = [];
+            
+            // Step 1: Exclude Sick Soldiers
+            const availableSoldiers = soldiers.filter(s => s.status !== 'sick');
+            
+            // Step 2: Assign Fixed Duties
+            const fixedDuties = duties.filter(d => d.isFixed);
+            for (const duty of fixedDuties) {
+                assignments.push({
+                    duty_id: duty.id,
+                    soldier_id: duty.fixedAssigneeId,
+                    startTime: duty.startTime,
+                    endTime: duty.endTime,
+                });
+            }
+
+            // Step 3: Assign Rotating Duties
+            const rotatingDuties = duties.filter(d => !d.isFixed);
+            for (const duty of rotatingDuties) {
+                // Find soldiers with the correct rank
+                let eligibleGroup = availableSoldiers.filter(s => duty.eligibleRanks.includes(s.rank));
+                
+                // Build the final pool by applying exclusion filters
+                let pool = eligibleGroup.filter(soldier => {
+                    // Exclude soldiers who had this duty yesterday
+                    const hadDutyYesterday = yesterdayAssignments.some(a => a.soldier_id === soldier.id && a.duty_id === duty.id);
+                    if (hadDutyYesterday) return false;
+
+                    // Exclude soldiers already assigned to an overlapping time slot today
+                    const todaysSoldierAssignments = assignments.filter(a => a.soldier_id === soldier.id);
+                    const hasOverlap = todaysSoldierAssignments.some(a =>
+                        (duty.startTime < a.endTime) && (duty.endTime > a.startTime)
+                    );
+                    if (hasOverlap) return false;
+
+                    // All checks passed, soldier is available for this duty
+                    return true;
+                });
+                
+                // Assign from the pool or mark as unfilled
+                if (pool.length > 0) {
+                    // Randomly pick a soldier from the pool
+                    const assignedSoldier = pool[Math.floor(Math.random() * pool.length)];
+                    assignments.push({
+                        duty_id: duty.id,
+                        soldier_id: assignedSoldier.id,
+                        startTime: duty.startTime,
+                        endTime: duty.endTime,
+                    });
+                } else {
+                    // Mark as unfilled if no one is available
+                    assignments.push({
+                        duty_id: duty.id,
+                        soldier_id: null, // Indicates unfilled
+                        startTime: duty.startTime,
+                        endTime: duty.endTime,
+                    });
+                }
+            }
+            
+            // Step 4 is implicit: we return the generated assignments
+            return assignments;
+        }
+
+
+        // --- 3. DISPLAY LOGIC ---
+
+        function displayRoster(assignments) {
+            const outputDiv = document.getElementById('roster-output');
+            outputDiv.innerHTML = '<h2>Today\'s Duty Roster</h2>'; // Clear previous results and add header
+
+            if (assignments.length === 0) {
+                outputDiv.innerHTML += '<p>No assignments generated.</p>';
+                return;
+            }
+            
+            // Sort assignments by start time for logical display
+            assignments.sort((a, b) => a.startTime - b.startTime);
+
+            assignments.forEach(assignment => {
+                const duty = duties.find(d => d.id === assignment.duty_id);
+                const soldier = soldiers.find(s => s.id === assignment.soldier_id);
+                
+                // Determine CSS classes for styling
+                const isFixed = duty.isFixed ? 'fixed' : '';
+                const isUnfilled = !soldier ? 'unfilled' : '';
+                
+                const card = `
+                    <div class="assignment-card ${isFixed} ${isUnfilled}">
+                        <div class="duty-info">
+                            <strong>${duty.name}</strong>
+                            <span>Time: ${duty.startTime}:00 - ${duty.endTime}:00</span>
+                        </div>
+                        <div class="soldier-info ${isUnfilled ? 'unfilled-text' : ''}">
+                            ${soldier ? soldier.name : 'UNFILLED'}
+                        </div>
+                    </div>
+                `;
+                outputDiv.innerHTML += card;
+            });
+        }
+    </script>
+</body>
+</html>
