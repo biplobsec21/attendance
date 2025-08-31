@@ -190,9 +190,9 @@
                     <p class="text-gray-500 text-sm">Please enter the number of your children.</p>
                 </div>
                 <div class="md:col-span-8 grid sm:grid-cols-2 gap-4">
-                    <x-form.input name="num_boys" label="Number of Boys" type="number" min="0" :value="old('num_boys') ?? $profile?->num_boys" />
+                    <x-form.input name="num_boys" label="Number of Boys" type="number" min="0" :value="old('num_boys', $profile?->num_boys ?? 0)" />
                     <x-form.input name="num_girls" label="Number of Girls" type="number" min="0"
-                        :value="old('num_girls') ?? $profile?->num_girls" />
+                        :value="old('num_girls', $profile?->num_girls ?? 0)" />
                 </div>
             </div>
 
