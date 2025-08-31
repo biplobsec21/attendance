@@ -27,6 +27,7 @@ class Soldier extends Model
         'village',
         'district_id',
         'permanent_address',
+        'joining_date',
         'status',
         'current_duty_status',
         'personal_completed',
@@ -99,5 +100,9 @@ class Soldier extends Model
         return $this->belongsToMany(Cadre::class, 'soldier_cadres')
             ->withPivot(['remarks', 'result'])
             ->withTimestamps();
+    }
+    public function services()
+    {
+        return $this->hasMany(SoldierServices::class, 'soldier_id');
     }
 }
