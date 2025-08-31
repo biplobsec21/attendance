@@ -27,13 +27,24 @@
 
 
     <main class="container mx-auto p-6">
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">Service Details</h1>
-            <p class="text-gray-500">Please provide your service history and appointment details.</p>
+
+
+        <div class="grid md:grid-cols-12 gap-6 items-center">
+            <div class="md:col-span-7 mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Service Details</h1>
+                <p class="text-gray-500">Please provide your service history and appointment details.</p>
+            </div>
+            <div class="md:col-span-5">
+                @include('mpm.components.alerts')
+            </div>
         </div>
         <div class="bg-white border rounded-lg p-8">
             <form action="{{ route('profile.saveService', $profile->id) }}" method="POST">
                 @csrf
+                @php
+                    $redirectAction = $profile->service_completed;
+                @endphp
+                <input type="hidden" name="redirect" value="{{ $redirectAction }}" />
                 <div class="grid grid-cols-12 gap-8 pb-8">
                     <div class="col-span-12 md:col-span-4">
                         <label class="font-bold text-gray-700">Service Dates</label>
@@ -171,6 +182,7 @@
 
             // Calculate on page load
             calculateServiceLength();
+            joiningDateInput.addEventListener("change", calculateServiceLength);
 
             let index = {{ count($previousAppointments) }};
 

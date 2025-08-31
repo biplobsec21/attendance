@@ -171,8 +171,11 @@ class ProfileController extends Controller
             'service_completed' => 1,
             'joining_date' => $request->joining_date,
         ]);
-
-        return redirect()->route('profile.qualificationsForm', $request->id);
+        if ($request->redirect) {
+            return redirect()->back()->with('success', 'Service information updated successfully');
+        } else {
+            return redirect()->route('profile.qualificationsForm', $request->id);
+        }
     }
 
     public function qualificationsForm($id)
