@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttsController;
+use App\Http\Controllers\LeaveTypeController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ViewController;
 use App\Http\Controllers\CompanyController;
@@ -77,6 +78,24 @@ Route::resource('eres', EresController::class);
 Route::patch('eres/{ere}/toggle-status', [EresController::class, 'toggleStatus'])
     ->name('eres.toggle-status');
 
+
+
+
+
+
+    // For Leave Type 
+// Using a prefix and group for better organization, similar to your other routes
+Route::prefix('mpm')->name('mpm.')->group(function () {
+    // Defines create, read, update, delete routes for leave types
+    Route::resource('leave-types', LeaveTypeController::class);
+
+    // Defines the route for toggling the active/inactive status
+    Route::patch('leave-types/{leave_type}/toggle-status', [LeaveTypeController::class, 'toggleStatus'])
+        ->name('leave-types.toggle-status');
+});
+
+
+    
 Route::resource('atts', AttsController::class);
 // Additional route to toggle course status
 Route::patch('atts/{att}/toggle-status', [AttsController::class, 'toggleStatus'])
@@ -139,6 +158,10 @@ Route::get('absent/index', [ViewController::class, 'absentIndex'])->name('absent
 Route::get('absent/create', [ViewController::class, 'absentCreate'])->name('absent.create');
 
 
+// Route::get('leaveType/index', [ViewController::class, 'leaveTypeIndex'])->name('leaveType.index');
+// Route::get('leaveType/create', [ViewController::class, 'leaveTypeCreate'])->name('leaveType.create');
+
+
 // Route::get('duty/index', [ViewController::class, 'dutyIndex'])->name('duty.index');
 // Route::get('duty/create', [ViewController::class, 'dutyCreate'])->name('duty.create');
 
@@ -151,8 +174,8 @@ Route::get('approval/duty', [ViewController::class, 'approveDuty'])->name('appro
 Route::get('approval/leave', [ViewController::class, 'approveLeave'])->name('approveDuty.leave');
 
 
-Route::get('leave/index', [ViewController::class, 'leaveIndex'])->name('leave.index');
-Route::get('leave/create', [ViewController::class, 'leaveCreate'])->name('leave.create');
+Route::get('assignLeave/index', [ViewController::class, 'assignLeaveIndex'])->name('assignLeave.index');
+Route::get('assignLeave/create', [ViewController::class, 'assignLeaveCreate'])->name('assignLeave.create');
 
 
 

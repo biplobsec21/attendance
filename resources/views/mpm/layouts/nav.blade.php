@@ -82,6 +82,12 @@
 
                 <ul id="settingsMenu" class="absolute left-0 mt-2 w-40 bg-white border rounded-lg shadow-lg hidden">
                     <li>
+                        <a href="{{ route('duty.index') }}"
+                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
+                            Duty
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('ranks.index') }}"
                             class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
                             Rank

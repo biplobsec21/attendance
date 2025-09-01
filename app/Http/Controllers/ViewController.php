@@ -81,6 +81,16 @@ class ViewController extends Controller
         return view("mpm.page.absent.create");
     }
 
+    public function leaveTypeIndex()
+    {
+        return view("mpm.page.leaveType.index");
+    }
+
+    public function leaveTypeCreate()
+    {
+        return view("mpm.page.leaveType.create");
+    }
+
     public function dutyIndex()
     {
         return view("mpm.page.duty.index");
@@ -106,14 +116,14 @@ class ViewController extends Controller
         return view("mpm.page.approval.duty");
     }
 
-    public function leaveIndex()
+    public function assignLeaveIndex()
     {
-        return view("mpm.page.leave.index");
+        return view("mpm.page.assignLeave.index");
     }
 
-    public function leaveCreate()
+    public function assignLeaveCreate()
     {
-        return view("mpm.page.leave.create");
+        return view("mpm.page.assignLeave.create");
     }
 
     public function approveLeave()
@@ -122,7 +132,18 @@ class ViewController extends Controller
     }
 
 
+
+
+
+
+
+
+
+
+
+
     
+
 
     public function filter()
     {
