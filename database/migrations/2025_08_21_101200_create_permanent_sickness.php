@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('medical_categories', function (Blueprint $table) {
-            $table->increments('id');
+        Schema::create('permanent_sickness', function (Blueprint $table) {
+            $table->bigIncrements('id');
             $table->string('name', 350)->unique();
 
             $table->timestamp('created_at')->useCurrent();
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('medical_categories');
+        Schema::dropIfExists('permanent_sickness');
     }
 };

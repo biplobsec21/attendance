@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             EducationSeeder::class,
             CadreSeeder::class,
             MedicalCategorySeeder::class,
+            PermanentSicknessSeeder::class,
             CompanySeeder::class,
             DesignationSeeder::class,
             SkillCategorySeeder::class,

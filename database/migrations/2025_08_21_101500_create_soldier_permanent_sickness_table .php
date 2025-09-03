@@ -8,22 +8,22 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('soldier_medical_categories', function (Blueprint $table) {
+        Schema::create('soldier_permanent_sickness', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->foreignId('soldier_id')->constrained('soldiers')->cascadeOnDelete();
-            $table->unsignedInteger('medical_category_id');
+            $table->unsignedBigInteger('permanent_sickness_id');
             $table->text('remarks')->nullable();
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
-            $table->foreign('medical_category_id')->references('id')->on('medical_categories')->cascadeOnDelete();
+            $table->foreign('permanent_sickness_id')->references('id')->on('permanent_sickness')->cascadeOnDelete();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('soldier_medical_categories');
+        Schema::dropIfExists('soldier_permanent_sickness');
     }
 };

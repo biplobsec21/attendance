@@ -55,3 +55,4 @@ class SoldierSeeder extends Seeder
 
 
 
+

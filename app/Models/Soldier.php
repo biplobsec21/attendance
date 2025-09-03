@@ -91,14 +91,13 @@ class Soldier extends Model
     public function skills(): BelongsToMany
     {
         return $this->belongsToMany(Skill::class, 'soldier_skills')
-            ->withPivot(['proficiency_level'])
+            ->withPivot(['proficiency_level', 'remarks'])
             ->withTimestamps();
     }
 
     public function cadres(): BelongsToMany
     {
         return $this->belongsToMany(Cadre::class, 'soldier_cadres')
-            ->withPivot(['remarks', 'result'])
             ->withPivot(['completion_date', 'start_date', 'end_date', 'remarks', 'course_status'])
 
             ->withTimestamps();
@@ -107,6 +106,11 @@ class Soldier extends Model
     {
         return $this->hasMany(SoldierServices::class, 'soldier_id');
     }
+    public function educationsData()
+    {
+        return $this->hasMany(SoldierEducation::class, 'soldier_id');
+    }
+
     public function educations(): BelongsToMany
     {
 
@@ -117,14 +121,14 @@ class Soldier extends Model
 
     public function ere(): BelongsToMany
     {
-        return $this->belongsToMany(Eres::class, 'soldier_ere')
-            ->withPivot(['remarks', 'result'])
+        return $this->belongsToMany(Eres::class, 'soldiers_ere')
+            ->withPivot(['start_date', 'end_date', 'remarks'])
             ->withTimestamps();
     }
     public function att(): BelongsToMany
     {
-        return $this->belongsToMany(Atts::class, 'soldier_att')
-            ->withPivot(['remarks', 'result'])
+        return $this->belongsToMany(Atts::class, 'soldiers_att')
+            ->withPivot(['start_date', 'end_date', 'remarks'])
             ->withTimestamps();
     }
 }

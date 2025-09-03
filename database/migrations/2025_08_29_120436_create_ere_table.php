@@ -13,7 +13,7 @@ return new class extends Migration
     {
 
         Schema::create('eres', function (Blueprint $table) {
-            $table->increments('id');
+            $table->bigIncrements('id');
             $table->string('name', 350)->unique();
             $table->boolean('status')->default(true); // true = active, false = inactive
 
