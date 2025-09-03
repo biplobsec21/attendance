@@ -5,11 +5,17 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProfilePersonalRequest;
 use App\Http\Requests\UpdateProfilePersonalRequest;
 use App\Http\Requests\SoldierServiceRequest;
-
+use App\Http\Requests\StoreQualificationRequest;
+use App\Models\Atts;
+use App\Models\Cadre;
 use App\Models\Company;
+use App\Models\Course;
 use App\Models\District;
+use App\Models\Education;
+use App\Models\Eres;
 use App\Models\Rank;
 use App\Models\Service;
+use App\Models\Skill;
 use Illuminate\Http\Request;
 use App\Models\Soldier;
 use App\Models\SoldierServices;
@@ -48,9 +54,6 @@ class ProfileController extends Controller
 
         return view('mpm.page.profile.personal', compact('district', 'groupedRanks', 'company', 'profileSteps', 'profile'));
     }
-
-
-
     public function savePersonal(StoreProfilePersonalRequest $request): RedirectResponse
     {
         try {
@@ -101,6 +104,10 @@ class ProfileController extends Controller
     // <end>*************************Profile personal information<end>
     // <end>*************************Profile personal information<end>
 
+
+    // <start>*************************Profile service information<start>
+    // <start>*************************Profile service information<start>
+    // <start>*************************Profile service information<start>
     public function serviceForm($id)
     {
         // Eager load all services in a single query
@@ -114,8 +121,6 @@ class ProfileController extends Controller
 
         return view('mpm.page.profile.service', compact('profileSteps', 'profile', 'current', 'previous'));
     }
-
-
 
     public function saveService(SoldierServiceRequest $request)
     {
@@ -177,27 +182,151 @@ class ProfileController extends Controller
             return redirect()->route('profile.qualificationsForm', $request->id);
         }
     }
+    // <end>*************************Profile service information<end>
+    // <end>*************************Profile service information<end>
+    // <end>*************************Profile service information<end>
+
 
     public function qualificationsForm($id)
     {
         $profile = Soldier::findOrFail($id);
-
         $profileSteps = $this->getProfileSteps($profile);
 
-        return view('mpm.page.profile.qualification', compact('profileSteps', 'profile'));
+        $educations = Education::all();
+        $cadres = Cadre::all();
+        $courses = Course::all();
+        $atts = Atts::all();
+        $eres = Eres::all();
+        $skills = Skill::all();
+
+        $sections = [
+            'education' => [
+                'label' => 'Education',
+                'description' => 'Add your academic qualifications.',
+                'options' => $educations,
+                'fields' => ['status' => ['Running', 'Passed'], 'year' => 'Year'],
+            ],
+            'courses' => [
+                'label' => 'Courses',
+                'description' => 'List any professional courses.',
+                'options' => $courses,
+                'fields' => [
+                    'status' => ['Running', 'Passed'],
+                    'start_date' => 'Start Date',
+                    'end_date' => 'End Date',
+                    'result' => 'Result',
+                ],
+            ],
+            'cadres' => [
+                'label' => 'Cadres',
+                'description' => 'List any professional cadres.',
+                'options' => $cadres,
+                'fields' => [
+                    'status' => ['Running', 'Passed'],
+                    'start_date' => 'Start Date',
+                    'end_date' => 'End Date',
+                    'result' => 'Result',
+                ],
+            ],
+            'cocurricular' => [
+                'label' => 'Co-Curricular Activities',
+                'description' => 'Include sports, clubs, etc.',
+                'options' => $skills,
+                'fields' => ['result' => 'Achievement / Remark'],
+            ],
+            'ere' => [
+                'label' => 'ERE',
+                'description' => 'List your ERE history.',
+                'options' => $eres,
+                'fields' => ['start_date' => 'Start Date', 'end_date' => 'End Date'],
+            ],
+            'attachments' => [
+                'label' => 'Attachments',
+                'description' => 'List any attachments.',
+                'options' => $atts,
+                'fields' => ['start_date' => 'Start Date', 'end_date' => 'End Date'],
+            ],
+        ];
+
+        return view('mpm.page.profile.qualification', compact(
+            'profileSteps',
+            'profile',
+            'sections'
+        ));
     }
 
-    public function saveQualifications(Request $request)
+
+    public function saveQualifications(StoreQualificationRequest  $request)
     {
-        $profile = Soldier::where('user_id', auth()->id())->firstOrFail();
+        $profile = Soldier::findOrFail($request->id);
 
-        $request->validate([
-            'degree' => 'required|string',
+        $request->filled('education') ? $request->education : [];
+        // Save education qualifications
+        if ($request->filled('education')) {
+            foreach ($request->education as $edu) {
+                if (empty($edu['name'])) continue; // skip if no education selected
+
+                $profile->educations()->attach($edu['name'], [
+                    'remarks'      => $edu['remark'] ?? null,
+                    'result'       => $edu['status'] ?? null,
+                    'passing_year' => $edu['year'] ?? null,
+                ]);
+            }
+        }
+
+
+        // Save other sections similarly: courses, cadre, cocurricular, etc.
+        if ($request->filled('courses')) {
+            foreach ($request->courses as $course) {
+                if (empty($course['name'])) continue;
+
+                $profile->courses()->attach($course['name'], [
+                    'course_status' => $course['status'] ?? null,
+                    'remarks'       => $course['result'] ?? null,
+                    'start_date'    => $course['start_date'] ?? null,
+                    'end_date'      => $course['end_date'] ?? null,
+                    'completion_date'  => null,
+                ]);
+            }
+        }
+
+        if ($request->filled('cadres')) {
+            foreach ($request->cadres as $cadres) {
+                if (empty($cadres['name'])) continue;
+
+                $profile->cadres()->attach($cadres['name'], [
+                    'course_status' => $cadres['status'] ?? null,
+                    'remarks'       => $cadres['result'] ?? null,
+                    'start_date'    => $cadres['start_date'] ?? null,
+                    'end_date'      => $cadres['end_date'] ?? null,
+                    'completion_date'  => null,
+                ]);
+            }
+        }
+
+
+
+        $request->filled('cadre') ? $request->cadre : [];
+        $request->filled('cocurricular') ? $request->cocurricular : [];
+        $request->filled('ere') ? $request->ere : [];
+        $request->filled('att') ? $request->att : [];
+        $request->filled('skill') ? $request->skill : [];
+        dd($request->all());
+
+        // $profileSteps = $this->getProfileSteps($profile);
+        // // dropdown data generation
+        // $educations = Education::all();
+        // $cadres = Cadre::all();
+        // $courses = Course::all();
+        // $atts = Atts::all();
+        // $eres = Eres::all();
+        // $skills = Skill::all();
+        // dropdown data generation
+        // Update soldier
+        $profile->update([
+            'qualification_completed' => 1
         ]);
-
-        $profile->update($request->only(['degree']));
-
-        return redirect()->route('profile.medicalForm');
+        return redirect()->route('profile.medicalForm', $request->id);
     }
 
     public function medicalForm()

@@ -12,8 +12,13 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->foreignId('soldier_id')->constrained('soldiers')->cascadeOnDelete();
             $table->unsignedInteger('cadre_id');
-            $table->text('remarks')->nullable();
+
             $table->text('result')->nullable();
+            $table->string('course_status')->nullable();
+            $table->date('completion_date')->nullable();
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
+            $table->text('remarks')->nullable();
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
