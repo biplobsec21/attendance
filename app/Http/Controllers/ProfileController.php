@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProfilePersonalRequest;
 use App\Http\Requests\UpdateProfilePersonalRequest;
 use App\Http\Requests\SoldierServiceRequest;
+use App\Http\Requests\StoreMedicalRequest;
 use App\Http\Requests\StoreQualificationRequest;
 use App\Models\Atts;
 use App\Models\Cadre;
@@ -13,6 +14,8 @@ use App\Models\Course;
 use App\Models\District;
 use App\Models\Education;
 use App\Models\Eres;
+use App\Models\MedicalCategory;
+use App\Models\PermanentSickness;
 use App\Models\Rank;
 use App\Models\Service;
 use App\Models\Skill;
@@ -199,6 +202,59 @@ class ProfileController extends Controller
         $eres = Eres::all();
         $skills = Skill::all();
 
+        // existing data //
+        $educationsData = $profile->educations->map(function ($edu) {
+            return [
+                'name' => $edu->id,
+                'status' => $edu->pivot->result,
+                'year' => $edu->pivot->passing_year,
+                'remark' => $edu->pivot->remark,
+            ];
+        });
+
+        $coursesData = $profile->courses->map(function ($data) {
+            return [
+                'name' => $data->id,
+                'status' => $data->pivot->course_status,
+                'start_date' => $data->pivot->start_date,
+                'end_date' => $data->pivot->end_date,
+                'result' => $data->pivot->remarks,
+            ];
+        });
+        $cadresData = $profile->cadres->map(function ($data) {
+            return [
+                'name' => $data->id,
+                'status' => $data->pivot->course_status,
+                'start_date' => $data->pivot->start_date,
+                'end_date' => $data->pivot->end_date,
+                'result' => $data->pivot->remarks,
+            ];
+        });
+        // dd($cadresData);
+
+        $cocurricular = $profile->skills->map(function ($data) {
+            return [
+                'name' => $data->id,
+                'result' => $data->pivot->remarks,
+            ];
+        });
+        $attData = $profile->att->map(function ($data) {
+            return [
+                'name' => $data->id,
+                'start_date' => $data->pivot->start_date,
+                'end_date' => $data->pivot->end_date,
+            ];
+        });
+        $ereData = $profile->ere->map(function ($data) {
+            return [
+                'name' => $data->id,
+                'start_date' => $data->pivot->start_date,
+                'end_date' => $data->pivot->end_date,
+            ];
+        });
+
+
+
         $sections = [
             'education' => [
                 'label' => 'Education',
@@ -248,10 +304,18 @@ class ProfileController extends Controller
             ],
         ];
 
+
         return view('mpm.page.profile.qualification', compact(
             'profileSteps',
             'profile',
-            'sections'
+            'sections',
+            'educationsData',
+            'coursesData',
+            'cadresData',
+            'cocurricular',
+            'attData',
+            'ereData',
+
         ));
     }
 
@@ -262,98 +326,125 @@ class ProfileController extends Controller
 
         $request->filled('education') ? $request->education : [];
         // Save education qualifications
-        if ($request->filled('education')) {
-            foreach ($request->education as $edu) {
-                if (empty($edu['name'])) continue; // skip if no education selected
+        DB::transaction(function () use ($request, $profile) {
 
-                $profile->educations()->attach($edu['name'], [
-                    'remarks'      => $edu['remark'] ?? null,
-                    'result'       => $edu['status'] ?? null,
-                    'passing_year' => $edu['year'] ?? null,
-                ]);
+            foreach (['soldiers_att', 'soldiers_ere', 'soldier_skills', 'soldier_educations', 'soldier_cadres', 'soldier_courses'] as $table)
+                DB::table($table)->where('soldier_id', $request->id)->delete();
+
+            // EDUCATIONS
+            if ($request->filled('education')) {
+
+                foreach ($request->education as $edu) {
+                    if (empty($edu['name'])) continue;
+
+                    $profile->educations()->attach($edu['name'], [
+                        'remarks'      => $edu['remark'] ?? null,
+                        'result'       => $edu['status'] ?? null,
+                        'passing_year' => $edu['year'] ?? null,
+                    ]);
+                }
             }
-        }
 
+            // COURSES
+            if ($request->filled('courses')) {
 
-        // Save other sections similarly: courses, cadre, cocurricular, etc.
-        if ($request->filled('courses')) {
-            foreach ($request->courses as $course) {
-                if (empty($course['name'])) continue;
+                foreach ($request->courses as $course) {
+                    if (empty($course['name'])) continue;
 
-                $profile->courses()->attach($course['name'], [
-                    'course_status' => $course['status'] ?? null,
-                    'remarks'       => $course['result'] ?? null,
-                    'start_date'    => $course['start_date'] ?? null,
-                    'end_date'      => $course['end_date'] ?? null,
-                    'completion_date'  => null,
-                ]);
+                    $profile->courses()->attach($course['name'], [
+                        'course_status'   => $course['status'] ?? null,
+                        'remarks'         => $course['result'] ?? null,
+                        'start_date'      => $course['start_date'] ?? null,
+                        'end_date'        => $course['end_date'] ?? null,
+                        'completion_date' => null,
+                    ]);
+                }
             }
-        }
 
-        if ($request->filled('cadres')) {
-            foreach ($request->cadres as $cadres) {
-                if (empty($cadres['name'])) continue;
+            // CADRES
+            if ($request->filled('cadres')) {
 
-                $profile->cadres()->attach($cadres['name'], [
-                    'course_status' => $cadres['status'] ?? null,
-                    'remarks'       => $cadres['result'] ?? null,
-                    'start_date'    => $cadres['start_date'] ?? null,
-                    'end_date'      => $cadres['end_date'] ?? null,
-                    'completion_date'  => null,
-                ]);
+                foreach ($request->cadres as $cadre) {
+                    if (empty($cadre['name'])) continue;
+
+                    $profile->cadres()->attach($cadre['name'], [
+                        'course_status'   => $cadre['status'] ?? null,
+                        'remarks'         => $cadre['result'] ?? null,
+                        'start_date'      => $cadre['start_date'] ?? null,
+                        'end_date'        => $cadre['end_date'] ?? null,
+                        'completion_date' => null,
+                    ]);
+                }
             }
-        }
+
+            // CO-CURRICULAR
+            if ($request->filled('cocurricular')) {
+
+                foreach ($request->cocurricular as $skill) {
+                    if (empty($skill['name'])) continue;
+
+                    $profile->skills()->attach($skill['name'], [
+                        'remarks'           => $skill['result'] ?? null,
+                        'proficiency_level' => 'Beginner'
+                    ]);
+                }
+            }
+
+            // ERE
+            if ($request->filled('ere')) {
+
+                foreach ($request->ere as $er) {
+                    if (empty($er['name'])) continue;
+
+                    $profile->ere()->attach($er['name'], [
+                        'start_date' => $er['start_date'] ?? null,
+                        'end_date'   => $er['end_date'] ?? null,
+                    ]);
+                }
+            }
+
+            // ATTACHMENTS
+            if ($request->filled('attachments')) {
+
+                foreach ($request->attachments as $att) {
+                    if (empty($att['name'])) continue;
+
+                    $profile->att()->attach($att['name'], [
+                        'start_date' => $att['start_date'] ?? null,
+                        'end_date'   => $att['end_date'] ?? null,
+                    ]);
+                }
+            }
+        });
 
 
-
-        $request->filled('cadre') ? $request->cadre : [];
-        $request->filled('cocurricular') ? $request->cocurricular : [];
-        $request->filled('ere') ? $request->ere : [];
-        $request->filled('att') ? $request->att : [];
-        $request->filled('skill') ? $request->skill : [];
-        dd($request->all());
-
-        // $profileSteps = $this->getProfileSteps($profile);
-        // // dropdown data generation
-        // $educations = Education::all();
-        // $cadres = Cadre::all();
-        // $courses = Course::all();
-        // $atts = Atts::all();
-        // $eres = Eres::all();
-        // $skills = Skill::all();
-        // dropdown data generation
-        // Update soldier
         $profile->update([
-            'qualification_completed' => 1
-        ]);
-        return redirect()->route('profile.medicalForm', $request->id);
-    }
-
-    public function medicalForm()
-    {
-        // $profile = Soldier::where('user_id', auth()->id())->first();
-
-        // if (!$profile || !$profile->degree) {
-        //     return redirect()->route('profile.qualificationsForm')
-        //         ->with('error', 'Please complete qualifications first.');
-        // }
-
-        $profileSteps = $this->getProfileSteps();
-
-        return view('mpm.page.profile.medical', compact('profileSteps'));
-    }
-
-    public function saveMedical(Request $request)
-    {
-        $profile = Soldier::where('user_id', auth()->id())->firstOrFail();
-
-        $request->validate([
-            'blood_group' => 'required|string',
-            'allergies'   => 'nullable|string',
+            'qualifications_completed' => 1
         ]);
 
-        $profile->update($request->only(['blood_group', 'allergies']));
+        if ($request->action_update) {
+            return redirect()->route('profile.qualificationsForm', $request->id)->with('success', 'Information updated successfully');
+        }
+        return redirect()->route('profile.medicalForm', $request->id)->with('success', 'Information inserted successfully');
+    }
 
+    public function medicalForm($id)
+    {
+        $profile = Soldier::findOrFail($id);
+        $profileSteps = $this->getProfileSteps($profile);
+
+        $medicalCategory = MedicalCategory::all();
+        $permanentSickness = PermanentSickness::all();
+
+        return view('mpm.page.profile.medical', compact('profileSteps', 'profile', 'medicalCategory', 'permanentSickness'));
+    }
+
+    public function saveMedical(StoreMedicalRequest $request)
+    {
+        $profile = Soldier::findOrFail($request->id);
+        $profileSteps = $this->getProfileSteps($profile);
+
+        dd($request->all());
         return redirect()->route('profile.complete')
             ->with('success', 'Profile completed successfully!');
     }

@@ -4,7 +4,7 @@
 
 @section('content')
     <x-profile-step-nav :steps="$profileSteps" />
-    @if ($errors->any())
+    {{-- @if ($errors->any())
         <div class="alert alert-danger">
             <ul>
                 @foreach ($errors->all() as $error)
@@ -12,18 +12,27 @@
                 @endforeach
             </ul>
         </div>
-    @endif
+    @endif --}}
     <main class="container mx-auto p-6">
-        <div class="mb-10">
-            <h1 class="text-3xl font-bold text-gray-800">Qualifications & Activities</h1>
-            <p class="text-gray-500">Add your academic background, courses, and other professional qualifications.</p>
+
+        <div class="grid md:grid-cols-12 gap-6 items-center">
+            <div class="md:col-span-7 mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Qualifications & Activities</h1>
+                <p class="text-gray-500">Add your academic background, courses, and other professional qualifications.</p>
+
+            </div>
+            <div class="md:col-span-5">
+                @include('mpm.components.alerts')
+
+            </div>
         </div>
+
 
         <div class="bg-white border rounded-2xl p-8 shadow-lg">
             <form action="{{ route('profile.saveQualifications', $profile->id) }}" method="post">
                 @csrf
-
-                @foreach ($sections as $key => $section)
+                <input type="hidden" name="action_update" value="{{ $profile->qualifications_completed ?? false }}"
+                    @foreach ($sections as $key => $section)
                     @php
                         $isEven = $loop->index % 2 === 0;
                         $rowBg = $isEven ? 'bg-orange-50' : 'bg-blue-50';
@@ -55,22 +64,18 @@
                         <div id="{{ $key }}-container" class="space-y-4 grid grid-cols-2 gap-4">
                             {{-- Dynamic rows will be appended here --}}
                         </div>
-                    </div>
-                @endforeach
-
-
-
-                <div class="flex justify-between mt-6 border-t pt-6">
-                    <button type="button" id="prev-btn"
-                        class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition">
-                        ← Previous
-                    </button>
-                    <button type="submit"
-                        class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg transition">
-                        Save & Continue
-                    </button>
-                </div>
-            </form>
+                    </div> @endforeach
+                    <div class="flex justify-between mt-6 border-t pt-6">
+                <button type="button" id="prev-btn"
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition">
+                    ← Previous
+                </button>
+                <button type="submit"
+                    class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg transition">
+                    Save & Continue
+                </button>
+        </div>
+        </form>
         </div>
     </main>
 @endsection
@@ -79,7 +84,29 @@
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const sections = @json($sections);
-            const oldData = @json(old());
+
+            const existingData = {
+                education: @json($educationsData ?? []),
+                courses: @json($coursesData ?? []),
+                cadres: @json($cadresData ?? []),
+                cocurricular: @json($cocurricular ?? []),
+                attachments: @json($attData ?? []),
+                ere: @json($ereData ?? [])
+            };
+
+            console.log(existingData);
+            // Merge old() and existing DB data: old() has priority
+            const oldData = {};
+            Object.keys(existingData).forEach(key => {
+                const oldSection = @json(old())?.[key] ?? null;
+                if (oldSection && oldSection.length) {
+                    oldData[key] = oldSection; // use old input if exists
+                } else if (existingData[key] && existingData[key].length) {
+                    oldData[key] = existingData[key]; // fallback to DB values
+                } else {
+                    oldData[key] = [{}]; // empty row if nothing exists
+                }
+            });
             const errors = @json($errors->getMessages());
 
             function createField(type, name, value, error, options = null, placeholder = '') {

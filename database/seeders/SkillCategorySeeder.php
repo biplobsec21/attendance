@@ -31,3 +31,4 @@ class SkillCategorySeeder extends Seeder
 
 
 
+
