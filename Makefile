@@ -102,7 +102,7 @@ start:
 	@echo "=== Generating APP_KEY if missing ==="
 	docker-compose exec $(APP_CONTAINER) php artisan key:generate
 	@echo "=== Running migrations and seeders ==="
-	docker-compose exec $(APP_CONTAINER) php artisan migrate --seed
+	docker-compose exec $(APP_CONTAINER) php artisan migrate:fresh --seed
 	@echo "=== Serving Laravel app ==="
 	@docker-compose exec -d $(APP_CONTAINER) php artisan serve --host=0.0.0.0 --port=8000
 	@echo "=== Opening phpMyAdmin ==="
