@@ -324,7 +324,7 @@ class ProfileController extends Controller
     {
         $profile = Soldier::findOrFail($request->id);
 
-        $request->filled('education') ? $request->education : [];
+
         // Save education qualifications
         DB::transaction(function () use ($request, $profile) {
 
@@ -333,7 +333,7 @@ class ProfileController extends Controller
 
             // EDUCATIONS
             if ($request->filled('education')) {
-
+                // dd($request->education);
                 foreach ($request->education as $edu) {
                     if (empty($edu['name'])) continue;
 
@@ -347,7 +347,6 @@ class ProfileController extends Controller
 
             // COURSES
             if ($request->filled('courses')) {
-
                 foreach ($request->courses as $course) {
                     if (empty($course['name'])) continue;
 
@@ -436,7 +435,55 @@ class ProfileController extends Controller
         $medicalCategory = MedicalCategory::all();
         $permanentSickness = PermanentSickness::all();
 
-        return view('mpm.page.profile.medical', compact('profileSteps', 'profile', 'medicalCategory', 'permanentSickness'));
+        $soldierMedicalData = $profile->medicalCategory->map(function ($data) {
+            return [
+                'category'    => $data->pivot->medical_category_id,
+                'remarks'     => $data->pivot->remarks,
+                'start_date'  => $data->pivot->start_date,
+                'end_date'    => $data->pivot->end_date,
+            ];
+        });
+
+        $soldierSicknessData = $profile->sickness->map(function ($data) {
+            return [
+                'category' => $data->pivot->permanent_sickness_id,
+                'remarks' => $data->pivot->remarks,
+                'start_date' => $data->pivot->start_date,
+                'end_date' => $data->pivot->end_date,
+            ];
+        });
+
+        $goodBehevior = $profile->goodDiscipline->map(function ($data) {
+            return [
+                'name' => $data->discipline_name,
+                'remarks' => $data->remarks,
+            ];
+        });
+
+
+        $badBehavior = $profile->punishmentDiscipline->map(function ($data) {
+            return [
+                'name' => $data->discipline_name,
+                'start_date'         => $data->start_date,
+                'remarks' => $data->remarks,
+            ];
+        });
+
+
+        return view(
+            'mpm.page.profile.medical',
+            compact(
+                'profileSteps',
+                'profile',
+                'medicalCategory',
+                'permanentSickness',
+
+                'badBehavior',
+                'goodBehevior',
+                'soldierSicknessData',
+                'soldierMedicalData'
+            )
+        );
     }
 
     public function saveMedical(StoreMedicalRequest $request)
@@ -444,9 +491,179 @@ class ProfileController extends Controller
         $profile = Soldier::findOrFail($request->id);
         $profileSteps = $this->getProfileSteps($profile);
 
-        dd($request->all());
-        return redirect()->route('profile.complete')
+        DB::transaction(function () use ($request, $profile) {
+            // Medical categories
+            $syncData = [];
+            foreach ($request->medical as $medic) {
+                if (empty($medic['category'])) continue;
+
+                $syncData[$medic['category']] = [
+                    'remarks'    => $medic['remarks'] ?? null,
+                    'start_date' => $medic['start_date'] ?? null,
+                    'end_date'   => $medic['end_date'] ?? null,
+                ];
+            }
+            $profile->medicalCategory()->sync($syncData);
+
+            // sickness data
+            $syncDataSickness = [];
+            foreach ($request->sickness as $sickness) {
+                if (empty($sickness['category'])) continue;
+                $syncDataSickness[$sickness['category']] = [
+                    'remarks'    => $sickness['remarks'] ?? null,
+                    'start_date' => $sickness['start_date'] ?? null,
+                ];
+            }
+            // dd($syncDataSickness);
+            $profile->sickness()->sync($syncDataSickness);
+
+            // discipline data table
+            $profile->discipline()->delete(); // delete existing
+
+            if ($request->good_behavior) {
+                $profile->discipline()->create([
+                    'discipline_name' => $request->good_behavior,
+                    'discipline_type' => 'good',
+                ]);
+            }
+
+
+            if ($request->filled('punishments')) {
+                foreach ($request->punishments as $punishments) {
+                    if (!empty($punishments['type'])) {
+                        $profile->discipline()->create([
+                            'discipline_name' => $punishments['type'],
+                            'discipline_type' => 'punishment',
+                            'remarks'         => $punishments['remarks'] ?? null,
+                            'start_date'         => $punishments['date'] ?? null,
+
+                        ]);
+                    }
+                }
+            }
+            $profile->update([
+                'medical_completed' => 1
+            ]);
+        });
+
+        if ($request->action_update) {
+            return redirect()->route('profile.medicalForm', $request->id)->with('success', 'Information updated successfully');
+        }
+
+        return redirect()->route('profile.complete', $request->id)
             ->with('success', 'Profile completed successfully!');
+    }
+    public function details($id)
+    {
+        $profile = Soldier::findOrFail($id);
+        // Separate current and previous appointments from the loaded services
+        $current = $profile->services->where('appointment_type', 'current')->last();
+        $previous = $profile->services->where('appointment_type', 'previous');
+
+        // existing data //
+        $educationsData = $profile->educations->map(function ($edu) {
+            return [
+                'name' => $edu->name,
+                'status' => $edu->pivot->result,
+                'year' => $edu->pivot->passing_year,
+                'remark' => $edu->pivot->remark,
+            ];
+        });
+
+        $coursesData = $profile->courses->map(function ($data) {
+            return [
+                'name' => $data->name,
+                'status' => $data->pivot->course_status,
+                'start_date' => $data->pivot->start_date,
+                'end_date' => $data->pivot->end_date,
+                'result' => $data->pivot->remarks,
+            ];
+        });
+
+        $cadresData = $profile->cadres->map(function ($data) {
+            return [
+                'name' => $data->id,
+                'status' => $data->pivot->course_status,
+                'start_date' => $data->pivot->start_date,
+                'end_date' => $data->pivot->end_date,
+                'result' => $data->pivot->remarks,
+            ];
+        });
+        // dd($cadresData);
+
+        $cocurricular = $profile->skills->map(function ($data) {
+            return [
+                'name' => $data->id,
+                'result' => $data->pivot->remarks,
+            ];
+        });
+        $attData = $profile->att->map(function ($data) {
+            return [
+                'name' => $data->name,
+                'start_date' => $data->pivot->start_date,
+                'end_date' => $data->pivot->end_date,
+            ];
+        });
+        $ereData = $profile->ere->map(function ($data) {
+            return [
+                'name' => $data->name,
+                'start_date' => $data->pivot->start_date,
+                'end_date' => $data->pivot->end_date,
+            ];
+        });
+
+        $soldierMedicalData = $profile->medicalCategory->map(function ($data) {
+            return [
+                'category'    => $data->name,
+                'remarks'     => $data->pivot->remarks,
+                'start_date'  => $data->pivot->start_date,
+                'end_date'    => $data->pivot->end_date,
+            ];
+        });
+
+        $soldierSicknessData = $profile->sickness->map(function ($data) {
+            return [
+                'category' => $data->name,
+                'remarks' => $data->pivot->remarks,
+                'start_date' => $data->pivot->start_date,
+                'end_date' => $data->pivot->end_date,
+            ];
+        });
+
+        $goodBehevior = $profile->goodDiscipline->map(function ($data) {
+            return [
+                'name' => $data->discipline_name,
+                'remarks' => $data->remarks,
+            ];
+        });
+
+
+        $badBehavior = $profile->punishmentDiscipline->map(function ($data) {
+            return [
+                'name' => $data->discipline_name,
+                'start_date'         => $data->start_date,
+                'remarks' => $data->remarks,
+            ];
+        });
+
+        return view(
+            'mpm.page.profile.details',
+            compact(
+                'profile',
+                'current',
+                'previous',
+                'educationsData',
+                'coursesData',
+                'cadresData',
+                'cocurricular',
+                'attData',
+                'ereData',
+                'soldierMedicalData',
+                'soldierSicknessData',
+                'goodBehevior',
+                'badBehavior'
+            )
+        );
     }
     private function getProfileSteps($profile = null)
     {
