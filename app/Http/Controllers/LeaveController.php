@@ -7,6 +7,7 @@ use App\Models\LeaveApplication;
 use App\Models\LeaveType;
 use App\Models\Soldier;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class LeaveController extends Controller
 {
@@ -44,7 +45,30 @@ class LeaveController extends Controller
                 ->with('error', 'An unexpected error occurred while saving. Please try again.');
         }
     }
-    public function changeStatus($id) {}
+    public function changeStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'application_current_status' => ['required', 'string'],
+            'status_reason' => [
+                'nullable',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->application_current_status === 'rejected' && empty($value)) {
+                        $fail('Reason is required when rejecting.');
+                    }
+                },
+            ],
+        ]);
+
+        $leave = LeaveApplication::findOrFail($request->leave_id);
+
+        $leave->update([
+            'application_current_status' => $validated['application_current_status'],
+            'reject_reason' => $request->status_reason,
+            'reject_status_date' => now(),
+        ]);
+
+        return back()->with('success', 'Leave status updated successfully.');
+    }
     public function approvalList() {}
     public function approvalAction() {}
 }

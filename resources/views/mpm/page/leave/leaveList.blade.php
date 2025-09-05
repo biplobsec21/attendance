@@ -32,8 +32,8 @@
             <!-- Leave Table -->
             <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-lg">
                 <table class="min-w-full bg-white divide-y divide-gray-200 rounded-xl">
-                    <thead
-                        class="bg-gradient-to-r from-orange-100 to-orange-50 text-gray-700 uppercase text-sm font-semibold">
+                    <thead class="bg-black text-white text-sm font-semibold uppercase rounded-t-xl">
+
                         <tr>
                             <th class="px-4 py-3 text-left">#</th>
                             <th class="px-4 py-3 text-left">Profile Info</th>
@@ -47,7 +47,11 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100 text-gray-700 text-sm">
                         @foreach ($leaveDatas as $index => $data)
-                            <tr class="hover:bg-orange-50 transition-colors duration-200">
+                            <tr
+                                class="hover:bg-orange-50 transition-colors duration-200
+                        {{ $data->application_current_status == 'rejected' ? 'bg-red-50' : ($data->application_current_status == 'approved' ? 'bg-green-50' : 'bg-yellow-50') }}">
+
+
                                 <!-- Serial -->
                                 <td class="px-4 py-3 font-medium text-gray-800">
                                     {{ $index + 1 }}
@@ -106,18 +110,33 @@
                                             'approved' => 'bg-green-100 text-green-700',
                                             'rejected' => 'bg-red-100 text-red-700',
                                         ];
+
+                                        $statusIcons = [
+                                            'pending' =>
+                                                '<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3"/></svg>',
+                                            'approved' =>
+                                                '<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>',
+                                            'rejected' =>
+                                                '<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>',
+                                        ];
+
                                         $status = strtolower($data->application_current_status ?? 'pending');
                                     @endphp
 
-                                    <button data-id="{{ $data->id }}"
-                                        data-status="{{ strtolower($data->application_current_status ?? 'pending') }}"
-                                        class="openStatusModal text-xs text-blue-600 hover:underline mt-1">
+                                    <button data-id="{{ $data->id }}" data-status="{{ $status }}"
+                                        data-reject_reason="{{ $data->reject_reason ?? '' }}"
+                                        class="openStatusModal text-xs hover:underline mt-1 flex items-center justify-center gap-1"
+                                        title="{{ $data->reject_reason ?? '' }}">
+
                                         <span
-                                            class="px-3 py-1 rounded-full {{ $statusColors[$status] ?? 'bg-gray-100 text-gray-600' }} font-semibold text-xs">
+                                            class="px-3 py-1 rounded-full {{ $statusColors[$status] ?? 'bg-gray-100 text-gray-600' }} font-semibold text-xs flex items-center gap-1">
+                                            {!! $statusIcons[$status] !!}
                                             {{ ucfirst($data->application_current_status ?? 'Pending') }}
                                         </span>
                                     </button>
                                 </td>
+
+
 
                                 <!-- Actions -->
                                 <td class="px-4 py-3 flex gap-2 justify-center">
@@ -248,7 +267,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700">New Status</label>
-                    <select name="status" id="statusSelect"
+                    <select name="application_current_status" id="statusSelect"
                         class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none"
                         required>
                         <option value="pending">Pending</option>
@@ -257,10 +276,16 @@
                     </select>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Reason (optional)</label>
+                <div class="mb-4">
+                    <label for="status_reason" class="block text-sm font-medium text-gray-700">
+                        Reason <span id="reasonRequiredMark" class="text-red-500 hidden">*</span>
+                    </label>
                     <textarea name="status_reason" rows="3"
-                        class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none"></textarea>
+                        class="w-full border-gray-300 rounded-lg shadow-sm focus:ring-orange-400 focus:border-orange-400 @error('status_reason') border-red-500 @enderror"></textarea>
+
+                    @error('status_reason')
+                        <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4 border-t">
@@ -287,6 +312,18 @@
 
 @push('scripts')
     <script>
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const statusBtn = row.querySelector('.openStatusModal');
+            if (statusBtn) {
+                const status = statusBtn.dataset.status;
+                const reason = statusBtn.dataset.reject_reason;
+                if (status === 'rejected' && reason.trim() !== '') {
+                    row.classList.add('bg-red-50'); // highlight row
+                    statusBtn.classList.add('bg-red-200', 'text-red-800'); // highlight button
+                    statusBtn.title = reason;
+                }
+            }
+        });
         // Modal open/close handling
         const openBtn = document.getElementById('openLeaveModal');
         const closeBtn = document.getElementById('closeLeaveModal');
@@ -359,23 +396,79 @@
         });
 
         // =================== STATUS MODAL ===================
+        // =================== STATUS MODAL ===================
         const statusModal = document.getElementById('statusModal');
         const closeStatusModal = document.getElementById('closeStatusModal');
         const closeStatusModal2 = document.getElementById('closeStatusModal2');
         const statusLeaveId = document.getElementById('statusLeaveId');
         const statusSelect = document.getElementById('statusSelect');
+        const statusForm = document.getElementById('statusForm');
+        const statusReason = statusForm.querySelector('textarea[name="status_reason"]');
+        const reasonMark = document.getElementById('reasonRequiredMark');
 
+        // Open modal and populate data
         document.querySelectorAll('.openStatusModal').forEach(btn => {
+            // Highlight rejected buttons with reason
+            const status = btn.dataset.status;
+            const reason = btn.dataset.reject_reason;
+            if (status === 'rejected' && reason.trim() !== '') {
+                btn.classList.add('bg-red-200', 'text-red-800');
+                btn.title = reason; // tooltip
+            }
+
+            // On click, open modal and load data
             btn.addEventListener('click', () => {
                 statusLeaveId.value = btn.dataset.id;
-                statusSelect.value = btn.dataset.status;
+                statusSelect.value = status;
+                statusReason.value = reason;
+
+                // Reset styles
+                statusReason.classList.remove('border-red-500');
+                reasonMark.classList.add('hidden');
+
                 statusModal.classList.remove('hidden');
+                statusSelect.dispatchEvent(new Event('change'));
             });
         });
 
+        // Close modal
         [closeStatusModal, closeStatusModal2].forEach(btn => {
             btn.addEventListener('click', () => statusModal.classList.add('hidden'));
         });
+
+        // Real-time validation on status change
+        statusSelect.addEventListener('change', () => {
+            if (statusSelect.value === 'rejected') {
+                reasonMark.classList.remove('hidden');
+                statusReason.classList.add('border-red-500');
+                statusReason.setAttribute('required', 'required');
+            } else {
+                reasonMark.classList.add('hidden');
+                statusReason.classList.remove('border-red-500');
+                statusReason.removeAttribute('required');
+            }
+        });
+
+        // Real-time validation on input
+        statusReason.addEventListener('input', () => {
+            if (statusSelect.value === 'rejected') {
+                if (statusReason.value.trim() === '') {
+                    statusReason.classList.add('border-red-500');
+                } else {
+                    statusReason.classList.remove('border-red-500');
+                }
+            }
+        });
+
+        // Form submit validation
+        statusForm.addEventListener('submit', function(e) {
+            if (statusSelect.value === 'rejected' && statusReason.value.trim() === '') {
+                e.preventDefault();
+                alert('Please provide a reason for rejection.');
+                statusReason.focus();
+            }
+        });
+
 
         // =================== IMAGE MODAL ===================
         const imageModal = document.getElementById('imageModal');

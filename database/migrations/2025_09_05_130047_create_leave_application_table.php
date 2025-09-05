@@ -17,6 +17,8 @@ return new class extends Migration
             $table->foreignId('soldier_id')->constrained('soldiers')->cascadeOnDelete();
             $table->unsignedInteger('leave_type_id');
             $table->text('reason')->nullable();
+            $table->text('reject_reason')->nullable();
+            $table->date('reject_status_date');
             $table->string('hard_copy')->nullable();
             $table->date('start_date');
             $table->date('end_date');
