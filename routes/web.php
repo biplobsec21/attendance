@@ -30,9 +30,9 @@ Route::get('/', function () {
 });
 
 
-Route::get('profile', [ViewController::class, 'profileIndex'])->name('profile.index');
-Route::get('profile/create', [ViewController::class, 'profileCreate'])->name('profile.create');
-Route::get('profile/view', [ViewController::class, 'profileView'])->name('profile.view');
+// Route::get('profile', [ViewController::class, 'profileIndex'])->name('profile.index');
+// Route::get('profile/create', [ViewController::class, 'profileCreate'])->name('profile.create');
+// Route::get('profile/view', [ViewController::class, 'profileView'])->name('profile.view');
 
 
 // Company CRUD Routes
@@ -83,7 +83,7 @@ Route::patch('eres/{ere}/toggle-status', [EresController::class, 'toggleStatus']
 
 
 
-    // For Leave Type 
+// For Leave Type
 // Using a prefix and group for better organization, similar to your other routes
 Route::prefix('mpm')->name('mpm.')->group(function () {
     // Defines create, read, update, delete routes for leave types
@@ -95,7 +95,7 @@ Route::prefix('mpm')->name('mpm.')->group(function () {
 });
 
 
-    
+
 Route::resource('atts', AttsController::class);
 // Additional route to toggle course status
 Route::patch('atts/{att}/toggle-status', [AttsController::class, 'toggleStatus'])

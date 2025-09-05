@@ -25,14 +25,30 @@ use App\Models\SoldierServices;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
+use App\Services\ProfileDataFormatter;
 
 class ProfileController extends Controller
 {
-    public function index(): View
+    protected $formatter;
+
+    public function __construct(ProfileDataFormatter $formatter)
     {
+        $this->formatter = $formatter;
+    }
+    public function index(Request $request)
+    {
+        // $profiles = Soldier::with(['rank', 'company'])->get();
+        // dd($profiles);
         $query = Soldier::query();
-        $profile = $query->paginate(10)->withQueryString();
-        return view('mpm.page.profile.index', compact('profile'));
+        // $profile = $query->paginate(20)->withQueryString();
+        if ($request->ajax()) {
+            $profiles = Soldier::with(['rank', 'company'])->get();
+
+            return response()->json([
+                'data' => $this->formatter->formatCollection($profiles)
+            ]);
+        }
+        return view('mpm.page.profile.index');
     }
 
     // <start>*************************Profile personal information<start>
@@ -556,114 +572,38 @@ class ProfileController extends Controller
     public function details($id)
     {
         $profile = Soldier::findOrFail($id);
-        // Separate current and previous appointments from the loaded services
-        $current = $profile->services->where('appointment_type', 'current')->last();
+
+        // Separate current and previous appointments
+        $current  = $profile->services->where('appointment_type', 'current')->last();
         $previous = $profile->services->where('appointment_type', 'previous');
 
-        // existing data //
-        $educationsData = $profile->educations->map(function ($edu) {
-            return [
-                'name' => $edu->name,
-                'status' => $edu->pivot->result,
-                'year' => $edu->pivot->passing_year,
-                'remark' => $edu->pivot->remark,
-            ];
-        });
+        // Use service methods
+        $educationsData      = $this->formatter->formatEducations($profile);
+        $coursesData         = $this->formatter->formatCourses($profile);
+        $cadresData          = $this->formatter->formatCadres($profile);
+        $cocurricular        = $this->formatter->formatSkills($profile);
+        $attData             = $this->formatter->formatAtt($profile);
+        $ereData             = $this->formatter->formatEre($profile);
+        $soldierMedicalData  = $this->formatter->formatMedical($profile);
+        $soldierSicknessData = $this->formatter->formatSickness($profile);
+        $goodBehevior        = $this->formatter->formatGoodDiscipline($profile);
+        $badBehavior         = $this->formatter->formatBadDiscipline($profile);
 
-        $coursesData = $profile->courses->map(function ($data) {
-            return [
-                'name' => $data->name,
-                'status' => $data->pivot->course_status,
-                'start_date' => $data->pivot->start_date,
-                'end_date' => $data->pivot->end_date,
-                'result' => $data->pivot->remarks,
-            ];
-        });
-
-        $cadresData = $profile->cadres->map(function ($data) {
-            return [
-                'name' => $data->id,
-                'status' => $data->pivot->course_status,
-                'start_date' => $data->pivot->start_date,
-                'end_date' => $data->pivot->end_date,
-                'result' => $data->pivot->remarks,
-            ];
-        });
-        // dd($cadresData);
-
-        $cocurricular = $profile->skills->map(function ($data) {
-            return [
-                'name' => $data->id,
-                'result' => $data->pivot->remarks,
-            ];
-        });
-        $attData = $profile->att->map(function ($data) {
-            return [
-                'name' => $data->name,
-                'start_date' => $data->pivot->start_date,
-                'end_date' => $data->pivot->end_date,
-            ];
-        });
-        $ereData = $profile->ere->map(function ($data) {
-            return [
-                'name' => $data->name,
-                'start_date' => $data->pivot->start_date,
-                'end_date' => $data->pivot->end_date,
-            ];
-        });
-
-        $soldierMedicalData = $profile->medicalCategory->map(function ($data) {
-            return [
-                'category'    => $data->name,
-                'remarks'     => $data->pivot->remarks,
-                'start_date'  => $data->pivot->start_date,
-                'end_date'    => $data->pivot->end_date,
-            ];
-        });
-
-        $soldierSicknessData = $profile->sickness->map(function ($data) {
-            return [
-                'category' => $data->name,
-                'remarks' => $data->pivot->remarks,
-                'start_date' => $data->pivot->start_date,
-                'end_date' => $data->pivot->end_date,
-            ];
-        });
-
-        $goodBehevior = $profile->goodDiscipline->map(function ($data) {
-            return [
-                'name' => $data->discipline_name,
-                'remarks' => $data->remarks,
-            ];
-        });
-
-
-        $badBehavior = $profile->punishmentDiscipline->map(function ($data) {
-            return [
-                'name' => $data->discipline_name,
-                'start_date'         => $data->start_date,
-                'remarks' => $data->remarks,
-            ];
-        });
-
-        return view(
-            'mpm.page.profile.details',
-            compact(
-                'profile',
-                'current',
-                'previous',
-                'educationsData',
-                'coursesData',
-                'cadresData',
-                'cocurricular',
-                'attData',
-                'ereData',
-                'soldierMedicalData',
-                'soldierSicknessData',
-                'goodBehevior',
-                'badBehavior'
-            )
-        );
+        return view('mpm.page.profile.details', compact(
+            'profile',
+            'current',
+            'previous',
+            'educationsData',
+            'coursesData',
+            'cadresData',
+            'cocurricular',
+            'attData',
+            'ereData',
+            'soldierMedicalData',
+            'soldierSicknessData',
+            'goodBehevior',
+            'badBehavior'
+        ));
     }
     private function getProfileSteps($profile = null)
     {
