@@ -30,26 +30,113 @@
             </div>
 
             <!-- Leave Table -->
-            <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                <table id="profiles-table" class="min-w-full bg-white divide-y divide-gray-200 rounded-lg">
-                    <thead class="bg-gray-50 text-gray-700 uppercase text-sm font-medium">
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-lg">
+                <table class="min-w-full bg-white divide-y divide-gray-200 rounded-xl">
+                    <thead
+                        class="bg-gradient-to-r from-orange-100 to-orange-50 text-gray-700 uppercase text-sm font-semibold">
                         <tr>
-                            <th class="px-4 py-3">SI</th>
-                            <th class="px-4 py-3">Name</th>
-                            <th class="px-4 py-3">Type</th>
-                            <th class="px-4 py-3">Apply Date</th>
-                            <th class="px-4 py-3">Start Date</th>
-                            <th class="px-4 py-3">End Date</th>
-                            <th class="px-4 py-3">Reason</th>
-                            <th class="px-4 py-3">Days</th>
-                            <th class="px-4 py-3">Actions</th>
+                            <th class="px-4 py-3 text-left">#</th>
+                            <th class="px-4 py-3 text-left">Profile Info</th>
+                            <th class="px-4 py-3 text-left">Apply Date / Type</th>
+                            <th class="px-4 py-3 text-left">Days</th>
+                            <th class="px-4 py-3 text-left max-w-[200px]">Reason</th>
+                            <th class="px-4 py-3 text-center">Application Copy</th>
+                            <th class="px-4 py-3 text-center">Status</th>
+                            <th class="px-4 py-3 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-100 text-gray-700 text-sm">
-                        <!-- Data will be populated by DataTables -->
+                        @foreach ($leaveDatas as $index => $data)
+                            <tr class="hover:bg-orange-50 transition-colors duration-200">
+                                <!-- Serial -->
+                                <td class="px-4 py-3 font-medium text-gray-800">
+                                    {{ $index + 1 }}
+                                </td>
+
+                                <!-- Profile Info -->
+                                <td class="px-4 py-3">
+                                    <p class="font-semibold">{{ $data->soldier->full_name }}</p>
+                                    <p class="text-gray-500">{{ $data->soldier->rank->name ?? 'N/A' }}</p>
+                                    <p class="text-gray-400 text-xs"># {{ $data->soldier->army_no }}</p>
+                                </td>
+
+                                <!-- Apply Date / Type -->
+                                <td class="px-4 py-3">
+                                    <p class="font-semibold">📅 {{ $data->created_at->format('d M Y') }}</p>
+                                    <p class="text-gray-600">Type: {{ $data->leaveType->name ?? 'N/A' }}</p>
+                                </td>
+
+                                <!-- Days -->
+                                <td class="px-4 py-3">
+                                    @php
+                                        $start = \Carbon\Carbon::parse($data->start_date);
+                                        $end = \Carbon\Carbon::parse($data->end_date);
+                                        $totalDays = $start->diffInDays($end) + 1;
+                                    @endphp
+                                    <span
+                                        class="px-3 py-1 rounded-full bg-orange-100 text-orange-700 font-semibold text-xs">
+                                        {{ $totalDays }} Days
+                                    </span>
+                                    <p class="text-gray-400 text-xs mt-1">
+                                        ({{ $start->format('d/m/Y') }} → {{ $end->format('d/m/Y') }})
+                                    </p>
+                                </td>
+
+                                <!-- Reason -->
+                                <td class="px-4 py-3 max-w-[200px] truncate" title="{{ $data->reason }}">
+                                    {{ $data->reason ?? 'N/A' }}
+                                </td>
+
+                                <!-- Application Copy -->
+                                <td class="px-4 py-3 text-center">
+                                    @if ($data->hard_copy)
+                                        <img src="{{ asset('storage/' . $data->hard_copy) }}" alt="Application Image"
+                                            data-img="{{ asset('storage/' . $data->hard_copy) }}"
+                                            class="openImageModal w-20 h-20 rounded-xl object-cover shadow-md mx-auto cursor-pointer hover:opacity-80">
+                                    @else
+                                        <span class="text-gray-400 italic">N/A</span>
+                                    @endif
+                                </td>
+
+                                <!-- Status + Change Link -->
+                                <td class="px-4 py-3 text-center">
+                                    @php
+                                        $statusColors = [
+                                            'pending' => 'bg-yellow-100 text-yellow-700',
+                                            'approved' => 'bg-green-100 text-green-700',
+                                            'rejected' => 'bg-red-100 text-red-700',
+                                        ];
+                                        $status = strtolower($data->application_current_status ?? 'pending');
+                                    @endphp
+
+                                    <button data-id="{{ $data->id }}"
+                                        data-status="{{ strtolower($data->application_current_status ?? 'pending') }}"
+                                        class="openStatusModal text-xs text-blue-600 hover:underline mt-1">
+                                        <span
+                                            class="px-3 py-1 rounded-full {{ $statusColors[$status] ?? 'bg-gray-100 text-gray-600' }} font-semibold text-xs">
+                                            {{ ucfirst($data->application_current_status ?? 'Pending') }}
+                                        </span>
+                                    </button>
+                                </td>
+
+                                <!-- Actions -->
+                                <td class="px-4 py-3 flex gap-2 justify-center">
+                                    <button
+                                        class="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs font-semibold hover:bg-blue-600 transition-colors">
+                                        Edit
+                                    </button>
+                                    <button
+                                        class="px-3 py-1 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition-colors">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
                     </tbody>
                 </table>
             </div>
+
+
 
             <!-- Pagination -->
             <div id="pagination-controls" class="flex justify-center items-center mt-6 space-x-2 flex-wrap"></div>
@@ -147,6 +234,55 @@
             </form>
         </div>
     </div>
+    <!-- Change Status Modal -->
+    <div id="statusModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h2 class="text-lg font-bold text-gray-800">Change Status</h2>
+                <button id="closeStatusModal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+
+            <form id="statusForm" method="POST" action="{{ route('leave.changeStatusSubmit') }}" class="space-y-4">
+                @csrf
+                <input type="hidden" name="leave_id" id="statusLeaveId">
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">New Status</label>
+                    <select name="status" id="statusSelect"
+                        class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none"
+                        required>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approve</option>
+                        <option value="rejected">Reject</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Reason (optional)</label>
+                    <textarea name="status_reason" rows="3"
+                        class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-400 focus:outline-none"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" id="closeStatusModal2"
+                        class="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100">Cancel</button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 transition-colors">
+                        Update
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Image Preview Modal -->
+    <div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+        <div class="relative bg-white rounded-xl shadow-lg max-w-3xl p-4">
+            <button id="closeImageModal"
+                class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            <img id="modalImage" src="" alt="Preview"
+                class="max-h-[80vh] max-w-full object-contain rounded-lg shadow">
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -221,5 +357,38 @@
             submitBtn.disabled = true;
             submitBtn.innerText = 'Submitting...';
         });
+
+        // =================== STATUS MODAL ===================
+        const statusModal = document.getElementById('statusModal');
+        const closeStatusModal = document.getElementById('closeStatusModal');
+        const closeStatusModal2 = document.getElementById('closeStatusModal2');
+        const statusLeaveId = document.getElementById('statusLeaveId');
+        const statusSelect = document.getElementById('statusSelect');
+
+        document.querySelectorAll('.openStatusModal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                statusLeaveId.value = btn.dataset.id;
+                statusSelect.value = btn.dataset.status;
+                statusModal.classList.remove('hidden');
+            });
+        });
+
+        [closeStatusModal, closeStatusModal2].forEach(btn => {
+            btn.addEventListener('click', () => statusModal.classList.add('hidden'));
+        });
+
+        // =================== IMAGE MODAL ===================
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const closeImageModal = document.getElementById('closeImageModal');
+
+        document.querySelectorAll('.openImageModal').forEach(img => {
+            img.addEventListener('click', () => {
+                modalImage.src = img.dataset.img;
+                imageModal.classList.remove('hidden');
+            });
+        });
+
+        closeImageModal.addEventListener('click', () => imageModal.classList.add('hidden'));
     </script>
 @endpush

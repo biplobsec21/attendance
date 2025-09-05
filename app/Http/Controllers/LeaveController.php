@@ -17,7 +17,10 @@ class LeaveController extends Controller
         $leaveType = LeaveType::get();
         $profiles = Soldier::get();
 
-        return view('mpm.page.leave.leaveList', compact('profiles', 'leaveType'));
+        $query = LeaveApplication::query();
+        $leaveDatas = $query->paginate(10)->withQueryString();
+
+        return view('mpm.page.leave.leaveList', compact('profiles', 'leaveType', 'leaveDatas'));
     }
     public function leaveApplicationSubmit(StoreUpdateLeaveApplication $request)
     {
@@ -25,7 +28,7 @@ class LeaveController extends Controller
             $data = $request->validated();
             // Handle image upload
             if ($request->hasFile('application_file')) {
-                $data['hard_copy'] = $request->file('application_file')->store('leave_applications', 'public');
+                $data['hard_copy'] = $request->file('application_file')->store('profiles', 'public');
             }
             LeaveApplication::create($data);
             // Redirect to next step with success message
@@ -41,6 +44,7 @@ class LeaveController extends Controller
                 ->with('error', 'An unexpected error occurred while saving. Please try again.');
         }
     }
+    public function changeStatus($id) {}
     public function approvalList() {}
     public function approvalAction() {}
 }

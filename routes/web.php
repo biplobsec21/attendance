@@ -98,6 +98,7 @@ Route::prefix('mpm')->name('mpm.')->group(function () {
 Route::prefix('leave')->group(function () {
     Route::get('/', [LeaveController::class, 'index'])->name('leave.index');
     Route::post('submit', [LeaveController::class, 'leaveApplicationSubmit'])->name('leave.leaveApplicationSubmit');
+    Route::post('changeStatusSubmit', [LeaveController::class, 'changeStatus'])->name('leave.changeStatusSubmit');
 
     Route::get('approval/', [LeaveController::class, 'approvalList'])->name('leave.approveList');
     Route::post('approval/{id}', [LeaveController::class, 'approvalAction'])->name('leave.approveAction');
