@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Carbon\Carbon;
 
 class Soldier extends Model
 {
@@ -130,5 +131,44 @@ class Soldier extends Model
         return $this->belongsToMany(Atts::class, 'soldiers_att')
             ->withPivot(['start_date', 'end_date', 'remarks'])
             ->withTimestamps();
+    }
+
+    public function medicalCategory(): BelongsToMany
+    {
+        return $this->belongsToMany(MedicalCategory::class, 'soldier_medical_categories')
+            ->withPivot(['remarks', 'start_date', 'end_date', 'medical_category_id'])
+            ->withTimestamps();
+    }
+    public function sickness(): BelongsToMany
+    {
+        return $this->belongsToMany(PermanentSickness::class, 'soldier_permanent_sickness')
+            ->withPivot(['remarks', 'start_date', 'end_date'])
+            ->withTimestamps();
+    }
+    public function discipline()
+    {
+        return $this->hasMany(SoldierDiscipline::class, 'soldier_id');
+    }
+    public function goodDiscipline()
+    {
+        return $this->hasMany(SoldierDiscipline::class, 'soldier_id')
+            ->where('discipline_type', 'good');
+    }
+
+    public function punishmentDiscipline()
+    {
+        return $this->hasMany(SoldierDiscipline::class, 'soldier_id')
+            ->where('discipline_type', 'punishment');
+    }
+    public function getServiceDurationAttribute()
+    {
+        if (!$this->joining_date) {
+            return null;
+        }
+
+        $joiningDate = Carbon::parse($this->joining_date);
+        $diff = $joiningDate->diff(Carbon::now());
+
+        return sprintf('%dY %dM %dD', $diff->y, $diff->m, $diff->d);
     }
 }

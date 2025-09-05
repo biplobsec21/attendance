@@ -6,19 +6,26 @@
     <x-profile-step-nav :steps="$profileSteps" />
 
     <main class="container mx-auto p-6">
-        <div class="mb-10">
-            <h1 class="text-3xl font-bold text-gray-800">Medical & Disciplinary</h1>
-            <p class="text-gray-500">Provide your medical status and any disciplinary records.</p>
+        <div class="grid md:grid-cols-12 gap-6 items-center">
+            <div class="md:col-span-7 mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Medical & Disciplinary</h1>
+                <p class="text-gray-500">Provide your medical status and any disciplinary records.</p>
+            </div>
+            <div class="md:col-span-5">
+                @include('mpm.components.alerts')
+
+            </div>
         </div>
+
 
         <div class="bg-white border rounded-lg p-8 shadow-sm">
             <form method="POST" action="{{ route('profile.saveMedical', $profile->id) }}">
                 @csrf
-
+                <input type="hidden" name="action_update" value="{{ $profile->medical_completed ?? false }}" />
                 {{-- Medical Section --}}
                 <x-section-wrapper title="Medical Category" description="Add your current or past medical categories.">
                     @php
-                        $medicalRows = old('medical', $profile->medicalData ?? []);
+                        $medicalRows = old('medical', $soldierMedicalData ?? []);
                     @endphp
 
                     <div id="medical-container" class="space-y-4">
@@ -63,6 +70,13 @@
                                     class="absolute top-1 right-1 text-red-600 remove-row">&times;</button>
                             </div>
                         @endforelse
+                        @if ($errors->has('medical'))
+                            <span class="text-red-500">{{ $errors->first('medical') }}</span>
+                        @endif
+
+                        @if ($errors->has('medical.*.category'))
+                            <span class="text-red-500">{{ $errors->first('medical.*.category') }}</span>
+                        @endif
                     </div>
                     <button type="button" id="add-medical"
                         class="add-btn mt-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg text-sm">
@@ -73,7 +87,7 @@
                 {{-- Sickness Section --}}
                 <x-section-wrapper title="Permanent Sickness" description="List any permanent sickness if applicable.">
                     @php
-                        $sicknessRows = old('sickness', $profile->sicknessData ?? []);
+                        $sicknessRows = old('sickness', $soldierSicknessData ?? []);
                     @endphp
 
                     <div id="sickness-container" class="space-y-4">
@@ -126,15 +140,21 @@
                 <x-section-wrapper title="Disciplinary Records"
                     description="Mention any good behavior awards and list any punishments.">
 
-                    <x-form.input type="text" name="good_behavior" label="Good Behavior"
-                        placeholder="e.g., Commendation for good service"
-                        value="{{ old('good_behavior', $profile->good_behavior ?? '') }}" />
+                    @forelse($goodBehevior as $index => $good)
+                        <x-form.input type="text" name="good_behavior" label="Good Behavior"
+                            placeholder="e.g., Commendation for good service"
+                            value="{{ old('good_behavior', $good['name'] ?? '') }}" />
+                    @empty
+                        <x-form.input type="text" name="good_behavior" label="Good Behavior"
+                            placeholder="e.g., Commendation for good service" value="{{ old('good_behavior') }}" />
+                    @endforelse
+
 
                     <div class="mt-6">
                         <label class="block text-sm font-medium text-gray-600 mb-2">Punishments</label>
 
                         @php
-                            $punishmentRows = old('punishments', $profile->punishmentsData ?? []);
+                            $punishmentRows = old('punishments', $badBehavior ?? []);
                         @endphp
 
                         <div id="punishments-container" class="space-y-4">
@@ -143,9 +163,9 @@
                                 <div
                                     class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center border p-3 rounded-md relative form-row">
                                     <x-form.input name="punishments[{{ $index }}][type]" label="Type"
-                                        value="{{ $punishment['type'] ?? '' }}" />
+                                        value="{{ $punishment['name'] ?? '' }}" />
                                     <x-form.input name="punishments[{{ $index }}][date]" type="date"
-                                        label="Date" value="{{ $punishment['date'] ?? '' }}" />
+                                        label="Date" value="{{ $punishment['start_date'] ?? '' }}" />
                                     <x-form.input name="punishments[{{ $index }}][remarks]" label="Remarks"
                                         value="{{ $punishment['remarks'] ?? '' }}" />
 

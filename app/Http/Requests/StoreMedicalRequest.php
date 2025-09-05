@@ -16,49 +16,49 @@ class StoreMedicalRequest extends FormRequest
     {
         $rules = [
             // Medical
-            'medical'              => 'nullable|array',
-            'medical.*.category'   => 'nullable|integer|exists:medical_categories,id',
-            'medical.*.start_date' => [
-                'nullable',
-                'date',
-                Rule::requiredIf(function () {
-                    foreach ($this->input('medical', []) as $row) {
-                        if (!empty($row['category'])) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }),
-            ],
-            'medical.*.end_date'   => [
-                'nullable',
-                'date',
-                Rule::requiredIf(function () {
-                    foreach ($this->input('medical', []) as $row) {
-                        if (!empty($row['category'])) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }),
-            ],
+            'medical'              => 'required|array',
+            'medical.*.category'   => 'required|integer|exists:medical_categories,id',
+            // 'medical.*.start_date' => [
+            //     'nullable',
+            //     'date',
+            //     Rule::requiredIf(function () {
+            //         foreach ($this->input('medical', []) as $row) {
+            //             if (!empty($row['category'])) {
+            //                 return true;
+            //             }
+            //         }
+            //         return false;
+            //     }),
+            // ],
+            // 'medical.*.end_date'   => [
+            //     'nullable',
+            //     'date',
+            //     Rule::requiredIf(function () {
+            //         foreach ($this->input('medical', []) as $row) {
+            //             if (!empty($row['category'])) {
+            //                 return true;
+            //             }
+            //         }
+            //         return false;
+            //     }),
+            // ],
             'medical.*.remarks'     => 'nullable|string|max:255',
 
             // Sickness
             'sickness'              => 'nullable|array',
             'sickness.*.category'   => 'nullable|integer|exists:permanent_sickness,id',
-            'sickness.*.start_date' => [
-                'nullable',
-                'date',
-                Rule::requiredIf(function () {
-                    foreach ($this->input('sickness', []) as $row) {
-                        if (!empty($row['category'])) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }),
-            ],
+            // 'sickness.*.start_date' => [
+            //     'nullable',
+            //     'date',
+            //     Rule::requiredIf(function () {
+            //         foreach ($this->input('sickness', []) as $row) {
+            //             if (!empty($row['category']) || $row['category'] == 'None') {
+            //                 return true;
+            //             }
+            //         }
+            //         return false;
+            //     }),
+            // ],
             'sickness.*.remarks'    => 'nullable|string|max:255',
         ];
 
@@ -69,7 +69,13 @@ class StoreMedicalRequest extends FormRequest
     {
         return [
             // Medical
-            'medical.*.category.exists'   => 'The selected medical category is invalid.',
+
+            'medical.required'               => 'Please add at least one medical record.',
+            'medical.min'                    => 'Please add at least one medical record.',
+            'medical.*.category.required'    => 'Please select a category.',
+            'medical.*.category.exists'      => 'The selected medical category is invalid.',
+
+
             'medical.*.start_date.required' => 'Start date is required',
             'medical.*.end_date.required'   => 'End date is required',
             'medical.*.start_date.date'     => 'Start date must be a valid date.',

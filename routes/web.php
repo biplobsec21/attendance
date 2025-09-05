@@ -124,6 +124,7 @@ Route::prefix('profile')->group(function () {
     Route::get('{id}/medical', [ProfileController::class, 'medicalForm'])->name('profile.medicalForm');
     Route::post('{id}/medical', [ProfileController::class, 'saveMedical'])->name('profile.saveMedical');
 
+    Route::get('{id}/details', [ProfileController::class, 'details'])->name('profile.details');
     // Complete
     Route::get('complete', function () {
         return view('profile.complete');
