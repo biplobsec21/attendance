@@ -13,6 +13,7 @@ use App\Http\Controllers\RankController;
 use App\Http\Controllers\SkillCategoryController;
 use App\Http\Controllers\SkillController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\LeaveController;
 
 /*
 |--------------------------------------------------------------------------
@@ -92,6 +93,14 @@ Route::prefix('mpm')->name('mpm.')->group(function () {
     // Defines the route for toggling the active/inactive status
     Route::patch('leave-types/{leave_type}/toggle-status', [LeaveTypeController::class, 'toggleStatus'])
         ->name('leave-types.toggle-status');
+});
+
+Route::prefix('leave')->group(function () {
+    Route::get('/', [LeaveController::class, 'index'])->name('leave.index');
+    Route::post('submit', [LeaveController::class, 'leaveApplicationSubmit'])->name('leave.leaveApplicationSubmit');
+
+    Route::get('approval/', [LeaveController::class, 'approvalList'])->name('leave.approveList');
+    Route::post('approval/{id}', [LeaveController::class, 'approvalAction'])->name('leave.approveAction');
 });
 
 

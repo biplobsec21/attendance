@@ -66,8 +66,12 @@
             <li><a href="#" class="hover:text-orange-400 transition-colors">Dashboard</a></li>
             <li><a href="#" class="hover:text-orange-400 transition-colors">Reports</a></li>
             <a href="{{ route('profile.index') }}"
-                class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'profile' ? 'bg-orange-500 text-white' : 'text-gray-700 hover:bg-gray-100' }}">
+                class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'profile' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">
                 Profile
+            </a>
+            <a href="{{ route('leave.index') }}"
+                class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'leave' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">
+                Leave
             </a>
 
             <!-- Settings Dropdown -->
