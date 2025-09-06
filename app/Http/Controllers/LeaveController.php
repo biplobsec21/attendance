@@ -69,6 +69,46 @@ class LeaveController extends Controller
 
         return back()->with('success', 'Leave status updated successfully.');
     }
+    public function update(StoreUpdateLeaveApplication $request, $id)
+    {
+        $leave = LeaveApplication::findOrFail($id);
+
+        // If user uploaded a new file
+        if ($request->hasFile('application_file')) {
+            // Delete old file if exists
+            if ($leave->hard_copy && \Storage::exists('public/' . $leave->hard_copy)) {
+                \Storage::delete('public/' . $leave->hard_copy);
+            }
+
+            $path = $request->file('application_file')->store('leave_files', 'public');
+            $leave->hard_copy = $path;
+        }
+
+        // If user clicked "remove file"
+        if ($request->remove_hard_copy == "1") {
+            if ($leave->hard_copy && \Storage::exists('public/' . $leave->hard_copy)) {
+                \Storage::delete('public/' . $leave->hard_copy);
+            }
+            $leave->hard_copy = null; // Remove from DB
+        }
+
+        // Other fields update
+        $leave->reason = $request->reason;
+        $leave->start_date = $request->start_date;
+        $leave->end_date = $request->end_date;
+        $leave->leave_type_id = $request->leave_type_id;
+        $leave->soldier_id = $request->soldier_id;
+
+        $leave->save();
+
+        return redirect()->route('leave.index')->with('success', 'Leave updated successfully.');
+    }
+    public function destroy($id)
+    {
+        $leave = LeaveApplication::findOrFail($id);
+        $leave->delete();
+        return redirect()->route('leave.index')->with('success', 'Leave Application deleted successfully.');
+    }
     public function approvalList() {}
     public function approvalAction() {}
 }
