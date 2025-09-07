@@ -14,6 +14,8 @@ use App\Http\Controllers\SkillCategoryController;
 use App\Http\Controllers\SkillController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\DutyController;
+use App\Http\Controllers\DutyAssignmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -146,18 +148,48 @@ Route::prefix('profile')->group(function () {
 
 
 // routes/web.php
-use App\Http\Controllers\DutyController;
+
+Route::prefix('duty')->group(function () {
+
+    Route::get('create', [DutyController::class, 'create'])->name('duty.create');
+    Route::get('', [DutyController::class, 'index'])->name('duty.index');
+    Route::get('{duty}/edit', [DutyController::class, 'edit'])->name('duty.edit');
+
+    // This route handles the form submission to update the record in the database.
+    Route::put('{duty}', [DutyController::class, 'update'])->name('duty.update');
+    // Route to handle the form submission and store the new record
+    Route::post('store', [DutyController::class, 'store'])->name('duty.store');
+    Route::delete('{duty}', [DutyController::class, 'destroy'])->name('duty.destroy');
+
+    Route::get('assign', [DutyController::class, 'assignDuties'])
+        ->name('duty.assign');
+
+    // Store/save the assignments
+
+    Route::get('assignlist', [DutyController::class, 'assignList'])->name('duty.assign');
+    Route::post('assign', [DutyController::class, 'storeAssignments'])->name('duty.storeAssignment');
+    Route::get('assign', [DutyController::class, 'createAssignments'])->name('duty.createAssignment');
+
+
+
+    Route::get('assign/{id}/edit', [DutyController::class, 'editAssignment'])->name('duty.editAssignment');
+    Route::put('assign/{id}', [DutyController::class, 'updateAssignment'])->name('duty.updateAssignment');
+    Route::delete('assign/{id}', [DutyController::class, 'deleteAssignment'])->name('duty.deleteAssignment');
+});
+Route::get('/soldiers/by-rank/{rank}', [ProfileController::class, 'getByRank'])->name('soldiers.byRank');
 
 // Route to show the create form
-Route::get('/duty/create', [DutyController::class, 'create'])->name('duty.create');
-Route::get('/duty/index', [DutyController::class, 'index'])->name('duty.index');
-Route::get('/duty/{duty}/edit', [DutyController::class, 'edit'])->name('duty.edit');
 
-// This route handles the form submission to update the record in the database.
-Route::put('/duty/{duty}', [DutyController::class, 'update'])->name('duty.update');
-// Route to handle the form submission and store the new record
-Route::post('/duty', [DutyController::class, 'store'])->name('duty.store');
-Route::delete('/duty/{duty}', [DutyController::class, 'destroy'])->name('duty.destroy');
+Route::prefix('assignments')->group(function () {
+    Route::get('generate', [DutyAssignmentController::class, 'showForm'])
+        ->name('assignments.generateForm');
+
+    Route::post('today', [DutyAssignmentController::class, 'generateToday'])
+        ->name('assignments.generateToday');
+
+    Route::post('date', [DutyAssignmentController::class, 'generateForDate'])
+        ->name('assignments.generateForDate');
+});
 
 
 Route::get('sports', [ViewController::class, 'sportsIndex'])->name('sports.index');

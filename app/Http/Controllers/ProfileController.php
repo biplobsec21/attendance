@@ -658,4 +658,15 @@ class ProfileController extends Controller
             ],
         ];
     }
+    public function getByRank($rankId)
+    {
+        $soldiers = Soldier::with('rank') // ✅ just eager load the rank
+            ->where('rank_id', $rankId)   // ✅ filter by rank
+            ->where('is_leave', false)
+            ->where('status', 'active')   // optional: only active soldiers
+            ->where('is_sick', false)     // optional: not sick
+            ->get(['id', 'full_name', 'army_no']);
+
+        return response()->json($soldiers);
+    }
 }

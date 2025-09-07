@@ -32,6 +32,8 @@ return new class extends Migration
             $table->boolean('service_completed')->default(false);
             $table->boolean('qualifications_completed')->default(false);
             $table->boolean('medical_completed')->default(false);
+            $table->boolean('is_sick')->default(false);
+            $table->boolean('is_leave')->default(false);
 
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();

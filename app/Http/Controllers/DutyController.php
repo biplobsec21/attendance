@@ -6,6 +6,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreDutyRequest;
 use App\Http\Requests\UpdateDutyRequest;
 use App\Models\Duty;
+use App\Models\DutyRank;
+use App\Models\Rank;
+use App\Models\Soldier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -22,9 +25,9 @@ class DutyController extends Controller
         // Server-side search functionality
         if ($request->filled('search')) {
             $query->where('duty_name', 'like', '%' . $request->search . '%')
-                  ->orWhere('remark', 'like', '%' . $request->search . '%');
+                ->orWhere('remark', 'like', '%' . $request->search . '%');
         }
-        
+
         // Server-side status filter
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -34,7 +37,7 @@ class DutyController extends Controller
         $sortBy = $request->get('sort_by', 'created_at'); // Default sort column
         $sortDirection = $request->get('sort_direction', 'desc'); // Default sort direction
 
-        if (in_array($sortBy, ['duty_name', 'status', 'manpower', 'created_at'])) {
+        if (in_array($sortBy, ['duty_name', 'status', 'created_at'])) {
             $query->orderBy($sortBy, $sortDirection);
         }
 
@@ -100,5 +103,105 @@ class DutyController extends Controller
         $duty->delete();
 
         return redirect()->route('duty.index')->with('success', 'Duty record deleted successfully.');
+    }
+
+
+    public function assignList()
+    {
+
+        $assignments = DutyRank::with(['duty', 'rank'])->get();
+        return view('mpm.page.duty.assignments', compact('assignments'));
+    }
+
+    public function createAssignments()
+    {
+        $duties = Duty::all();
+        $ranks = Rank::all();
+        $soldiers = Soldier::all();
+        $assignments = DutyRank::with(['duty', 'rank'])->get();
+        return view('mpm.page.duty.createAssign', compact('duties', 'ranks', 'soldiers'));
+    }
+
+
+    public function storeAssignments(Request $request)
+    {
+        // dd($request->all());
+        $request->validate([
+            'duty_id' => 'required|exists:duties,id',
+            'rank_id' => 'required|exists:ranks,id',
+            'duty_type' => 'required|in:fixed,roster,regular',
+            'priority' => 'nullable|integer|min:1',
+            'rotation_days' => 'nullable|integer|min:1',
+            'remarks' => 'nullable|string|max:255',
+            'fixed_soldier_id' => [
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->duty_type === 'fixed') {
+                        $soldier = Soldier::where('id', $value)
+                            ->where('rank_id', $request->rank_id)
+                            ->first();
+
+                        if (!$soldier) {
+                            $fail('The selected soldier does not belong to the selected rank.');
+                        }
+                    }
+                }
+            ]
+
+
+        ]);
+
+        // Prevent duplicate assignment
+        $exists = DutyRank::where('duty_id', $request->duty_id)
+            ->where('rank_id', $request->rank_id)
+            ->first();
+
+        if ($exists) {
+            // Send old input back + custom error message
+            return back()
+                ->withInput() // preserve all input values
+                ->with('error', 'This duty is already assigned to this rank. Duty: '
+                    . $exists->duty->duty_name
+                    . ', Rank: ' . $exists->rank->name
+                    . ', Type: ' . $exists->duty_type);
+        }
+
+        DutyRank::create($request->all());
+
+        return redirect()->route('duty.assign')->with('success', 'Duty assigned successfully.');
+    }
+
+    public function editAssignment($id)
+    {
+        $assignment = DutyRank::findOrFail($id);
+        $duties = Duty::all();
+        $ranks = Rank::all();
+
+        return view('mpm.page.duty.editAssign', compact('assignment', 'duties', 'ranks'));
+    }
+
+    public function updateAssignment(Request $request, $id)
+    {
+        $assignment = DutyRank::findOrFail($id);
+
+        $request->validate([
+            'duty_id' => 'required|exists:duties,id',
+            'rank_id' => 'required|exists:ranks,id',
+            'duty_type' => 'required|in:fixed,roster,regular',
+            'priority' => 'nullable|integer|min:1',
+            'rotation_days' => 'nullable|integer|min:1',
+            'remarks' => 'nullable|string|max:255',
+        ]);
+
+        $assignment->update($request->all());
+
+        return redirect()->route('duty.assign')->with('success', 'Assignment updated successfully.');
+    }
+
+    public function deleteAssignment($id)
+    {
+        $assignment = DutyRank::findOrFail($id);
+        $assignment->delete();
+
+        return redirect()->route('duty.assign')->with('success', 'Assignment deleted successfully.');
     }
 }

@@ -69,4 +69,38 @@ class Rank extends Model
     {
         return $this->status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
     }
+    public function duties()
+    {
+        return $this->belongsToMany(Duty::class, 'duty_rank')
+            ->withPivot('duty_type', 'priority', 'rotation_days', 'remarks')
+            ->withTimestamps();
+    }
+
+    /**
+     * Helper: get only fixed duties
+     */
+    public function fixedDuties()
+    {
+        return $this->duties()->wherePivot('duty_type', 'fixed');
+    }
+
+    /**
+     * Helper: get only roster duties
+     */
+    public function rosterDuties()
+    {
+        return $this->duties()->wherePivot('duty_type', 'roster');
+    }
+
+    /**
+     * Helper: get only regular duties
+     */
+    public function regularDuties()
+    {
+        return $this->duties()->wherePivot('duty_type', 'regular');
+    }
+    public function dutyRanks()
+    {
+        return $this->hasMany(DutyRank::class);
+    }
 }

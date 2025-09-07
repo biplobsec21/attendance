@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            DutiesTableSeeder::class,
             LeaveTypeSeeder::class,
             EreSeeder::class,
             AttSeeder::class,
@@ -28,6 +29,8 @@ class DatabaseSeeder extends Seeder
             SkillSeeder::class,
             CourseSeeder::class,
             SoldierSeeder::class,
+
+            DutyRankTableSeeder::class,
 
         ]);
     }

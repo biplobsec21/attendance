@@ -21,8 +21,18 @@ class Duty extends Model
         'duty_name',
         'start_time',
         'end_time',
-        'manpower',
+        // 'manpower',
         'remark',
         'status',
     ];
+    public function ranks()
+    {
+        return $this->belongsToMany(Rank::class, 'duty_rank')
+            ->withPivot('duty_type', 'priority', 'rotation_days', 'remarks', 'manpower')
+            ->withTimestamps();
+    }
+    public function dutyRanks()
+    {
+        return $this->hasMany(DutyRank::class);
+    }
 }
