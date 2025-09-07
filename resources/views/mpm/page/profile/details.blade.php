@@ -47,7 +47,7 @@
                     </div>
 
                     <div class="mt-6 flex gap-2">
-                        <a href="{{ $profile ? route('profile.personalForm', $profile->id) : '#' }}"
+                        <a href="{{ $profile ? route('soldier.personalForm', $profile->id) : '#' }}"
                             class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center transition-colors">
                             <i class="fas fa-edit mr-2"></i>Edit
                         </a>

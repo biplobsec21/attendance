@@ -13,9 +13,12 @@ use App\Http\Controllers\RankController;
 use App\Http\Controllers\SkillCategoryController;
 use App\Http\Controllers\SkillController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SoldierController;
+
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\DutyController;
 use App\Http\Controllers\DutyAssignmentController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,14 +31,12 @@ use App\Http\Controllers\DutyAssignmentController;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [AuthenticatedSessionController::class, 'create'])
+    ->name('login');
 
-
-// Route::get('profile', [ViewController::class, 'profileIndex'])->name('profile.index');
-// Route::get('profile/create', [ViewController::class, 'profileCreate'])->name('profile.create');
-// Route::get('profile/view', [ViewController::class, 'profileView'])->name('profile.view');
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
 
 // Company CRUD Routes
@@ -81,21 +82,15 @@ Route::resource('eres', EresController::class);
 Route::patch('eres/{ere}/toggle-status', [EresController::class, 'toggleStatus'])
     ->name('eres.toggle-status');
 
-
-
-
-
-
 // For Leave Type
 // Using a prefix and group for better organization, similar to your other routes
-Route::prefix('mpm')->name('mpm.')->group(function () {
-    // Defines create, read, update, delete routes for leave types
-    Route::resource('leave-types', LeaveTypeController::class);
 
-    // Defines the route for toggling the active/inactive status
-    Route::patch('leave-types/{leave_type}/toggle-status', [LeaveTypeController::class, 'toggleStatus'])
-        ->name('leave-types.toggle-status');
-});
+// Defines create, read, update, delete routes for leave types
+Route::resource('leave-types', LeaveTypeController::class);
+
+// Defines the route for toggling the active/inactive status
+Route::patch('leave-types/{leave_type}/toggle-status', [LeaveTypeController::class, 'toggleStatus'])
+    ->name('leave-types.toggle-status');
 
 Route::prefix('leave')->group(function () {
     Route::get('/', [LeaveController::class, 'index'])->name('leave.index');
@@ -116,34 +111,34 @@ Route::resource('atts', AttsController::class);
 Route::patch('atts/{att}/toggle-status', [AttsController::class, 'toggleStatus'])
     ->name('atts.toggle-status');
 
-Route::prefix('profile')->group(function () {
+Route::prefix('army')->group(function () {
     // Profile list
-    Route::get('/', [ProfileController::class, 'index'])->name('profile.index');
+    Route::get('/', [SoldierController::class, 'index'])->name('soldier.index');
 
     // Personal step (optional {profile} for first-time creation)
-    Route::get('personal/{profile?}', [ProfileController::class, 'personalForm'])->name('profile.personalForm');
-    Route::post('personal', [ProfileController::class, 'savePersonal'])->name('profile.savePersonal');
-    Route::put('profile/{soldier}/personal', [ProfileController::class, 'updatePersonal'])
-        ->name('profile.updatePersonal');
+    Route::get('personal/{profile?}', [SoldierController::class, 'personalForm'])->name('soldier.personalForm');
+    Route::post('personal', [SoldierController::class, 'savePersonal'])->name('soldier.savePersonal');
+    Route::put('profile/{soldier}/personal', [SoldierController::class, 'updatePersonal'])
+        ->name('soldier.updatePersonal');
 
 
     // Service step
-    Route::get('{id}/service', [ProfileController::class, 'serviceForm'])->name('profile.serviceForm');
-    Route::post('{id}/service', [ProfileController::class, 'saveService'])->name('profile.saveService');
+    Route::get('{id}/service', [SoldierController::class, 'serviceForm'])->name('soldier.serviceForm');
+    Route::post('{id}/service', [SoldierController::class, 'saveService'])->name('soldier.saveService');
 
     // Qualifications
-    Route::get('{id}/qualifications', [ProfileController::class, 'qualificationsForm'])->name('profile.qualificationsForm');
-    Route::post('{id}/qualifications', [ProfileController::class, 'saveQualifications'])->name('profile.saveQualifications');
+    Route::get('{id}/qualifications', [SoldierController::class, 'qualificationsForm'])->name('soldier.qualificationsForm');
+    Route::post('{id}/qualifications', [SoldierController::class, 'saveQualifications'])->name('soldier.saveQualifications');
 
     // Medical
-    Route::get('{id}/medical', [ProfileController::class, 'medicalForm'])->name('profile.medicalForm');
-    Route::post('{id}/medical', [ProfileController::class, 'saveMedical'])->name('profile.saveMedical');
+    Route::get('{id}/medical', [SoldierController::class, 'medicalForm'])->name('soldier.medicalForm');
+    Route::post('{id}/medical', [SoldierController::class, 'saveMedical'])->name('soldier.saveMedical');
 
-    Route::get('{id}/details', [ProfileController::class, 'details'])->name('profile.details');
+    Route::get('{id}/details', [SoldierController::class, 'details'])->name('soldier.details');
     // Complete
     Route::get('complete', function () {
-        return view('profile.complete');
-    })->name('profile.complete');
+        return view('soldier.complete');
+    })->name('soldier.complete');
 });
 
 
@@ -177,9 +172,7 @@ Route::prefix('duty')->group(function () {
     Route::delete('assign/{id}', [DutyController::class, 'deleteAssignment'])->name('duty.deleteAssignment');
 });
 Route::get('/soldiers/by-rank/{rank}', [ProfileController::class, 'getByRank'])->name('soldiers.byRank');
-
 // Route to show the create form
-
 Route::prefix('assignments')->group(function () {
     Route::get('generate', [DutyAssignmentController::class, 'showForm'])
         ->name('assignments.generateForm');
@@ -233,3 +226,11 @@ Route::get('filters', [ViewController::class, 'filters'])->name('filters');
 Route::resource('ranks', RankController::class);
 Route::patch('ranks/{rank}/toggle-status', [RankController::class, 'toggleStatus'])->name('ranks.toggle-status');
 Route::get('ranks-data', [RankController::class, 'getRanks'])->name('ranks.data');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+require __DIR__ . '/auth.php';

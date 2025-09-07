@@ -155,7 +155,7 @@
             }
 
             let table = $('#profiles-table').DataTable({
-                ajax: '{{ route('profile.index') }}',
+                ajax: '{{ route('soldier.index') }}',
                 columns: [{
                         className: 'dt-control',
                         orderable: false,

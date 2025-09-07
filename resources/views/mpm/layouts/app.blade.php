@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="{{ asset('asset/css/goToTop.css') }}">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css" />
 
-
+    {{-- @vite(['resources/css/app.css', 'resources/js/app.js']) --}}
     <style>
         body,
         html {

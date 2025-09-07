@@ -21,7 +21,7 @@
         </div>
 
         <form id="create-profile-form"
-            action="{{ $profile ? route('profile.updatePersonal', $profile->id) : route('profile.savePersonal') }}"
+            action="{{ $profile ? route('soldier.updatePersonal', $profile->id) : route('soldier.savePersonal') }}"
             method="POST" enctype="multipart/form-data" class="bg-white shadow-lg rounded-lg p-8 space-y-8">
             @csrf
             @if ($profile)

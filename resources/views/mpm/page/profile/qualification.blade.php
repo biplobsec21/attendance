@@ -28,7 +28,7 @@
 
 
         <div class="bg-white border rounded-2xl p-8 shadow-lg">
-            <form action="{{ route('profile.saveQualifications', $profile->id) }}" method="post">
+            <form action="{{ route('soldier.saveQualifications', $profile->id) }}" method="post">
                 @csrf
                 <input type="hidden" name="action_update" value="{{ $profile->qualifications_completed ?? false }}" />
                 @foreach ($sections as $key => $section)

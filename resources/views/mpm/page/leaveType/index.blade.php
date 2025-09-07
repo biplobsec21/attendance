@@ -13,7 +13,8 @@
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                 <div class="w-full flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <!-- Search Left -->
-                    <form method="GET" action="{{ route('leave-types.index') }}" class="w-full md:max-w-xl flex items-center gap-2">
+                    <form method="GET" action="{{ route('leave-types.index') }}"
+                        class="w-full md:max-w-xl flex items-center gap-2">
                         <input type="text" name="search" value="{{ request('search') }}"
                             class="flex-1 px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                             placeholder="Search leave types...">
@@ -85,12 +86,13 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-300">
-                        {{-- @forelse($leaveTypes as $leaveType) --}}
+                        @forelse($leaveTypes as $leaveType)
                             <tr>
                                 <td class="px-6 py-4 whitespace-nowrap">{{ $leaveType->id }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap font-medium">{{ $leaveType->name }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <form method="POST" action="{{ route('leave-types.toggle-status', $leaveType) }}" class="inline">
+                                    <form method="POST" action="{{ route('leave-types.toggle-status', $leaveType) }}"
+                                        class="inline">
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit"
@@ -103,8 +105,7 @@
                                     Sep 01, 2025{{-- {{ $leaveType->created_at->format('M d, Y') }} --}}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <a href="{{-- {{ route('leave-types.show', $leaveType) }} --}}"
-                                        class="text-blue-600 hover:text-blue-900 mr-3">View</a>
+                                    <a href="{{-- {{ route('leave-types.show', $leaveType) }} --}}" class="text-blue-600 hover:text-blue-900 mr-3">View</a>
                                     <a href="{{-- {{ route('leave-types.edit', $leaveType) }} --}}"
                                         class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
                                     <form method="POST" action="{{-- {{ route('leave-types.destroy', $leaveType) }} --}}" class="inline"
@@ -118,8 +119,8 @@
                                     </form>
                                 </td>
                             </tr>
-                        {{-- @empty --}}
-                            {{-- <tr>
+                        @empty
+                            <tr>
                                 <td colspan="5" class="px-6 py-4 text-center text-gray-500">
                                     @if (request()->hasAny(['search', 'status']))
                                         No Leave Types found matching your criteria.
@@ -128,18 +129,17 @@
                                             class="text-orange-600 hover:text-orange-800">Create one now</a>.
                                     @endif
                                 </td>
-                            </tr> --}}
-                        {{-- @endforelse --}}
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
 
-            <!-- Pagination -->
-            {{-- @if ($leaveTypes->hasPages())
+            @if ($leaveTypes->hasPages())
                 <div class="flex justify-center items-center mt-4">
                     {{ $leaveTypes->links() }}
                 </div>
-            @endif --}}
+            @endif
         </div>
     </div>
 @endsection

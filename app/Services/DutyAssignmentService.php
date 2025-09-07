@@ -6,174 +6,153 @@ use App\Models\Duty;
 use App\Models\Soldier;
 use App\Models\SoldierDuty;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class DutyAssignmentService
 {
-    public function assignDutiesForDate(string $date)
+    /**
+     * Assign duties for a given date.
+     *
+     * @param  string|Carbon  $date
+     */
+    public function assignDutiesForDate(string|Carbon $date): void
     {
-        $duties = Duty::with('ranks')->get();
+        // Normalize date
+        $date = $date instanceof Carbon ? $date->copy() : Carbon::parse($date);
 
-        foreach ($duties as $duty) {
-            $type = $this->getDutyType($duty);
+        $yesterday = $date->copy()->subDay()->toDateString();
+        $today     = $date->toDateString();
 
-            if ($type === 'fixed') {
-                $this->assignFixedDuty($duty, $date);
-            } elseif ($type === 'roster') {
-                $this->assignRotatingDuty($duty, $date); // roaster duty is the regular duty
-            } else {
-                // $this->assignRegularDuty($duty, $date); // roaster duty is the regular duty
-                $this->assignRotatingDuty($duty, $date);
-            }
-        }
-    }
-
-    protected function getDutyType(Duty $duty)
-    {
-        return $duty->ranks->first()->pivot->duty_type ?? $duty->duty_type;
-    }
-
-    /** ✅ Fixed duties */
-    protected function assignFixedDuty(Duty $duty, string $date)
-    {
-        // Preload today's and yesterday's assignments for this duty
-        $yesterday = Carbon::parse($date)->subDay()->toDateString();
-        $assigned = SoldierDuty::where('duty_id', $duty->id)
-            ->whereIn('assigned_date', [$date, $yesterday])
+        // Preload assignments for yesterday + today
+        $assigned = SoldierDuty::whereIn('assigned_date', [$yesterday, $today])
             ->get()
             ->groupBy('soldier_id');
 
-        foreach ($duty->ranks as $rank) {
-            $manpower = $rank->pivot->manpower;
-
-            if ($rank->pivot->fixed_soldier_id) {
-                $soldier = Soldier::where('id', $rank->pivot->fixed_soldier_id)
-                    ->where('status', 'active')
-                    ->where('is_sick', false)
-                    ->where('is_leave', false)
-                    ->first();
-
-                if ($soldier && !$this->hasOverlappingDutyInCollection($soldier, $duty, $date, $assigned)) {
-                    $this->createAssignment($soldier, $duty, $date);
-                }
-                continue;
+        Duty::with('ranks')->get()->each(function ($duty) use ($date, $assigned, $yesterday) {
+            if ($duty->is_fixed) {
+                $this->assignFixedDuty($duty, $date, $assigned);
+            } elseif ($duty->is_rotating) {
+                $this->assignRotatingDuty($duty, $date, $assigned, $yesterday);
+            } else {
+                $this->assignRegularDuty($duty, $date, $assigned);
             }
+        });
+    }
 
-            $soldiers = Soldier::where('rank_id', $rank->id)
-                ->where('status', 'active')
-                ->where('is_sick', false)
-                ->where('is_leave', false)
-                ->orderBy('id')
-                ->take($manpower)
-                ->get();
+    private function assignFixedDuty(Duty $duty, Carbon $date, $assigned): void
+    {
+        foreach ($duty->ranks as $rank) {
+            $fixedId = $rank->pivot->fixed_soldier_id;
 
-            foreach ($soldiers as $soldier) {
-                if (!$this->hasOverlappingDutyInCollection($soldier, $duty, $date, $assigned)) {
-                    $this->createAssignment($soldier, $duty, $date);
+            if ($fixedId) {
+                $this->createAssignment($duty, $fixedId, $date, $assigned);
+            } else {
+                $eligible = Soldier::availableForDuty()
+                    ->where('rank_id', $rank->id)
+                    ->inRandomOrder()
+                    ->take($rank->pivot->manpower)
+                    ->pluck('id');
+
+                foreach ($eligible as $soldierId) {
+                    $this->createAssignment($duty, $soldierId, $date, $assigned);
                 }
             }
         }
     }
 
-
-
-
-    /** ✅ Rotating duties */
-    protected function assignRotatingDuty(Duty $duty, string $date)
+    private function assignRotatingDuty(Duty $duty, Carbon $date, $assigned, string $yesterday): void
     {
-        $rankIds = $duty->ranks->pluck('id');
+        foreach ($duty->ranks as $rank) {
+            $rankEligible = Soldier::availableForDuty()
+                ->where('rank_id', $rank->id)
+                ->pluck('id');
+
+            // Remove yesterday’s assignees for same duty
+            $yesterdayAssigned = SoldierDuty::where('duty_id', $duty->id)
+                ->where('assigned_date', $yesterday)
+                ->pluck('soldier_id');
+
+            $eligible = $rankEligible->diff($yesterdayAssigned)->shuffle()->take($rank->pivot->manpower);
+
+            if ($eligible->isEmpty()) {
+                Log::warning("No eligible soldiers for rotating duty {$duty->id} on {$date->toDateString()} (rank {$rank->id})");
+            }
+
+            foreach ($eligible as $soldierId) {
+                $this->createAssignment($duty, $soldierId, $date, $assigned);
+            }
+        }
+    }
+
+    private function assignRegularDuty(Duty $duty, Carbon $date, $assigned): void
+    {
+        // Map manpower by rank from pivot table
         $manpowerByRank = $duty->ranks->mapWithKeys(fn($r) => [$r->id => $r->pivot->manpower]);
 
-        // Preload eligible soldiers
-        $eligible = Soldier::whereIn('rank_id', $rankIds)
-            ->where('status', 'active')
-            ->where('is_sick', false)
-            ->where('is_leave', false)
-            ->get();
-
-        // Preload yesterday's and today's assignments
-        $yesterday = Carbon::parse($date)->subDay()->toDateString();
-        $assigned = SoldierDuty::where('duty_id', $duty->id)
-            ->whereIn('assigned_date', [$date, $yesterday])
-            ->get()
-            ->groupBy('soldier_id');
-
-        // Exclude yesterday's soldiers
-        $recent = SoldierDuty::where('duty_id', $duty->id)
-            ->where('assigned_date', $yesterday)
-            ->pluck('soldier_id')
-            ->toArray();
-
-        $eligible = $eligible->whereNotIn('id', $recent);
-
         foreach ($manpowerByRank as $rankId => $manpower) {
-            $rankEligible = $eligible->where('rank_id', $rankId)->shuffle();
+            $eligible = Soldier::availableForDuty()
+                ->where('rank_id', $rankId)
+                ->inRandomOrder()
+                ->take($manpower)
+                ->pluck('id');
 
-            foreach ($rankEligible->take($manpower) as $soldier) {
-                if ($this->hasOverlappingDutyInCollection($soldier, $duty, $date, $assigned)) {
-                    continue;
-                }
-                $this->createAssignment($soldier, $duty, $date);
+            if ($eligible->isEmpty()) {
+                Log::warning("No eligible soldiers for regular duty {$duty->id} on {$date->toDateString()} (rank {$rankId})");
+            }
+
+            foreach ($eligible as $soldierId) {
+                $this->createAssignment($duty, $soldierId, $date, $assigned);
             }
         }
     }
 
-
-
-
-    /** ✅ Regular duties */
-    protected function assignRegularDuty(Duty $duty, string $date)
+    private function createAssignment(Duty $duty, int $soldierId, Carbon $date, $assigned): void
     {
-        $rankIds = $duty->ranks->pluck('id');
-        $manpower = $duty->ranks->pluck('manpower');
-
-        $eligible = Soldier::whereIn('rank_id', $rankIds)
-            ->where('status', 'active')
-            ->where('is_sick', false)
-            ->get();
-
-        $eligible = $eligible->filter(
-            fn($s) =>
-            !$this->hasOverlappingDuty($s->id, $date, $duty->start_time, $duty->end_time)
-        );
-
-        $selected = $eligible->shuffle()->take($manpower);
-
-        foreach ($selected as $soldier) {
-            $this->createAssignment($soldier, $duty, $date);
+        if ($this->hasOverlappingDutyInCollection($soldierId, $duty, $date, $assigned)) {
+            Log::info("Skipped soldier {$soldierId} for duty {$duty->id} on {$date->toDateString()} due to overlap");
+            return;
         }
+
+        SoldierDuty::firstOrCreate([
+            'soldier_id'    => $soldierId,
+            'duty_id'       => $duty->id,
+            'assigned_date' => $date->toDateString(),
+        ], [
+            'start_time' => $duty->start_time,
+            'end_time'   => $duty->end_time,
+        ]);
+
+        $assigned[$soldierId] ??= collect();
+        $assigned[$soldierId]->push((object)[
+            'duty_id'     => $duty->id,
+            'start_time'  => $duty->start_time,
+            'end_time'    => $duty->end_time,
+        ]);
     }
 
-    /** 🚫 Overlap checker (handles overnight duties) */
-    protected function hasOverlappingDutyInCollection(Soldier $soldier, Duty $duty, string $date, $assignedCollection): bool
+    private function hasOverlappingDutyInCollection(int $soldierId, Duty $duty, Carbon $date, $assigned): bool
     {
-        $startDT = Carbon::parse($date . ' ' . $duty->start_time);
-        $endDT   = Carbon::parse($date . ' ' . $duty->end_time);
+        $start = Carbon::parse($date->toDateString() . ' ' . $duty->start_time);
+        $end   = Carbon::parse($date->toDateString() . ' ' . $duty->end_time);
 
-        $assignments = $assignedCollection->get($soldier->id, collect());
+        // Handle overnight duties (end < start)
+        if ($end->lessThanOrEqualTo($start)) {
+            $end->addDay();
+        }
 
-        foreach ($assignments as $existing) {
-            $exStart = Carbon::parse($existing->assigned_date . ' ' . $existing->start_time);
-            $exEnd   = Carbon::parse($existing->assigned_date . ' ' . $existing->end_time);
+        foreach ($assigned->get($soldierId, collect()) as $a) {
+            $aStart = Carbon::parse($date->toDateString() . ' ' . $a->start_time);
+            $aEnd   = Carbon::parse($date->toDateString() . ' ' . $a->end_time);
 
-            // Skip multi-day adjustment since not required
-            if ($exStart < $endDT && $exEnd > $startDT) {
+            if ($aEnd->lessThanOrEqualTo($aStart)) {
+                $aEnd->addDay();
+            }
+
+            if ($start->lt($aEnd) && $end->gt($aStart)) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    protected function createAssignment(Soldier $soldier, Duty $duty, string $date)
-    {
-        return SoldierDuty::firstOrCreate([
-            'soldier_id'    => $soldier->id,
-            'duty_id'       => $duty->id,
-            'assigned_date' => $date,
-        ], [
-            'start_time' => $duty->start_time,
-            'end_time'   => $duty->end_time,
-            'status'     => 'assigned',
-        ]);
     }
 }

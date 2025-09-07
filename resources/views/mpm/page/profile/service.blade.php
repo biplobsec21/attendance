@@ -39,7 +39,7 @@
             </div>
         </div>
         <div class="bg-white border rounded-lg p-8">
-            <form action="{{ route('profile.saveService', $profile->id) }}" method="POST">
+            <form action="{{ route('soldier.saveService', $profile->id) }}" method="POST">
                 @csrf
                 @php
                     $redirectAction = $profile->service_completed;

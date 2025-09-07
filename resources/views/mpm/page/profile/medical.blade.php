@@ -19,7 +19,7 @@
 
 
         <div class="bg-white border rounded-lg p-8 shadow-sm">
-            <form method="POST" action="{{ route('profile.saveMedical', $profile->id) }}">
+            <form method="POST" action="{{ route('soldier.saveMedical', $profile->id) }}">
                 @csrf
                 <input type="hidden" name="action_update" value="{{ $profile->medical_completed ?? false }}" />
                 {{-- Medical Section --}}

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder; // <-- Add this
 
 class Soldier extends Model
 {
@@ -46,7 +47,10 @@ class Soldier extends Model
         'num_boys' => 'integer',
         'num_girls' => 'integer',
     ];
-
+    public function scopeAvailableForDuty(Builder $query)
+    {
+        return $query->where('is_sick', false);
+    }
     // ✅ Relationship with district
     public function district()
     {

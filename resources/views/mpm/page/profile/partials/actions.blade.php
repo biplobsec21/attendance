@@ -1,5 +1,5 @@
-<a href="{{ route('profile.details', $profile->id) }}" class="btn btn-sm btn-primary">View</a>
-<a href="{{ route('profile.personalForm', $profile->id) }}" class="btn btn-sm btn-warning">Edit</a>
+<a href="{{ route('soldier.details', $profile->id) }}" class="btn btn-sm btn-primary">View</a>
+<a href="{{ route('soldier.personalForm', $profile->id) }}" class="btn btn-sm btn-warning">Edit</a>
 <form action="#" method="POST" class="inline-block">
     @csrf
 

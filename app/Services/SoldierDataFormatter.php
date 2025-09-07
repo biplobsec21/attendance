@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Soldier;
 use Illuminate\Support\Collection;
 
-class ProfileDataFormatter
+class SoldierDataFormatter
 {
     public function formatCollection(Collection $profiles): Collection
     {
