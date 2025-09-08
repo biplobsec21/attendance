@@ -19,7 +19,9 @@ use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\DutyController;
 use App\Http\Controllers\DutyAssignmentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Admin\UserController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -234,3 +236,23 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__ . '/auth.php';
+
+
+
+Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
+
+    Route::resource('users', UserController::class);
+    // Manage roles for a user
+    Route::get('users/{user}/roles', [UserController::class, 'editRoles'])->name('users.roles.edit');
+    Route::put('users/{user}/roles', [UserController::class, 'updateRoles'])->name('users.roles.update');
+
+    Route::resource('roles', RoleController::class);
+});
+
+Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index');
+
+    // Custom route to update permissions for a role
+    Route::put('permissions/role/{role}', [PermissionController::class, 'update'])
+        ->name('permissions.update');
+});
