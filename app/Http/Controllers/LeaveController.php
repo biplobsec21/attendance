@@ -39,6 +39,7 @@ class LeaveController extends Controller
             // Log the error for debugging (optional)
             \Log::error('Error saving personal profile: ' . $e->getMessage());
 
+            // dd($e->getMessage());
             // Redirect back with an error message
             return redirect()->back()
                 ->withInput()

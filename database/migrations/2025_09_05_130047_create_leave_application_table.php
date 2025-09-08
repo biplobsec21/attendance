@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedInteger('leave_type_id');
             $table->text('reason')->nullable();
             $table->text('reject_reason')->nullable();
-            $table->date('reject_status_date');
+            $table->date('reject_status_date')->nullable();
             $table->string('hard_copy')->nullable();
             $table->date('start_date');
             $table->date('end_date');
