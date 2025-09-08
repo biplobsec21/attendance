@@ -22,6 +22,8 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\SettingsController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -41,58 +43,7 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 
-// Company CRUD Routes
-Route::resource('companies', CompanyController::class);
-Route::patch('companies/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('companies.toggle-status');
 
-
-// Resource routes for Course CRUD
-Route::resource('courses', CourseController::class);
-
-// Additional route to toggle course status
-Route::patch('courses/{course}/toggle-status', [CourseController::class, 'toggleStatus'])
-    ->name('courses.toggle-status');
-
-
-
-Route::resource('cadres', CadreController::class);
-// Additional route to toggle course status
-Route::patch('cadres/{cadre}/toggle-status', [CadreController::class, 'toggleStatus'])
-    ->name('cadres.toggle-status');
-
-
-Route::resource('education', EducationController::class);
-// Additional route to toggle course status
-Route::patch('education/{education}/toggle-status', [EducationController::class, 'toggleStatus'])
-    ->name('education.toggle-status');
-
-Route::resource('skillcategory', SkillCategoryController::class);
-// Additional route to toggle course status
-Route::patch('skillcategory/{skillcategory}/toggle-status', [SkillCategoryController::class, 'toggleStatus'])
-    ->name('skillcategory.toggle-status');
-
-
-Route::resource('skill', SkillController::class);
-// Additional route to toggle course status
-Route::patch('skill/{skill}/toggle-status', [SkillController::class, 'toggleStatus'])
-    ->name('skill.toggle-status');
-
-
-
-Route::resource('eres', EresController::class);
-// Additional route to toggle course status
-Route::patch('eres/{ere}/toggle-status', [EresController::class, 'toggleStatus'])
-    ->name('eres.toggle-status');
-
-// For Leave Type
-// Using a prefix and group for better organization, similar to your other routes
-
-// Defines create, read, update, delete routes for leave types
-Route::resource('leave-types', LeaveTypeController::class);
-
-// Defines the route for toggling the active/inactive status
-Route::patch('leave-types/{leave_type}/toggle-status', [LeaveTypeController::class, 'toggleStatus'])
-    ->name('leave-types.toggle-status');
 
 Route::prefix('leave')->group(function () {
     Route::get('/', [LeaveController::class, 'index'])->name('leave.index');
@@ -105,13 +56,6 @@ Route::prefix('leave')->group(function () {
     Route::get('approval/', [LeaveController::class, 'approvalList'])->name('leave.approveList');
     Route::post('approval/{id}', [LeaveController::class, 'approvalAction'])->name('leave.approveAction');
 });
-
-
-
-Route::resource('atts', AttsController::class);
-// Additional route to toggle course status
-Route::patch('atts/{att}/toggle-status', [AttsController::class, 'toggleStatus'])
-    ->name('atts.toggle-status');
 
 Route::prefix('army')->group(function () {
     // Profile list
@@ -174,6 +118,8 @@ Route::prefix('duty')->group(function () {
     Route::delete('assign/{id}', [DutyController::class, 'deleteAssignment'])->name('duty.deleteAssignment');
 });
 Route::get('/soldiers/by-rank/{rank}', [ProfileController::class, 'getByRank'])->name('soldiers.byRank');
+Route::get('ranks-data', [RankController::class, 'getRanks'])->name('ranks.data');
+
 // Route to show the create form
 Route::prefix('assignments')->group(function () {
     Route::get('generate', [DutyAssignmentController::class, 'showForm'])
@@ -224,10 +170,7 @@ Route::get('filter', [ViewController::class, 'filter'])->name('filter');
 Route::get('filters', [ViewController::class, 'filters'])->name('filters');
 
 
-// Rank CRUD Routes
-Route::resource('ranks', RankController::class);
-Route::patch('ranks/{rank}/toggle-status', [RankController::class, 'toggleStatus'])->name('ranks.toggle-status');
-Route::get('ranks-data', [RankController::class, 'getRanks'])->name('ranks.data');
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -239,20 +182,80 @@ require __DIR__ . '/auth.php';
 
 
 
-Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
+Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {});
 
+Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {});
+
+
+Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/', [SettingsController::class, 'index'])
+        ->name('settings');
+
+    Route::resource('permissions', PermissionController::class);
+    // AJAX: Fetch permissions for a specific role
+    Route::get('permissions/role/{role}', [PermissionController::class, 'getRolePermissions'])
+        ->name('permissions.role.get');
+    Route::put('permissions/role/{role}', [PermissionController::class, 'updateRolePermissions'])
+        ->name('permissions.role.update');
+
+    // users //
     Route::resource('users', UserController::class);
     // Manage roles for a user
     Route::get('users/{user}/roles', [UserController::class, 'editRoles'])->name('users.roles.edit');
     Route::put('users/{user}/roles', [UserController::class, 'updateRoles'])->name('users.roles.update');
-
+    // role //
     Route::resource('roles', RoleController::class);
-});
 
-Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
-    Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index');
+    Route::resource('atts', AttsController::class);
+    // Additional route to toggle course status
+    Route::patch('atts/{att}/toggle-status', [AttsController::class, 'toggleStatus'])
+        ->name('atts.toggle-status');
+    Route::resource('eres', EresController::class);
+    // Additional route to toggle course status
+    Route::patch('eres/{ere}/toggle-status', [EresController::class, 'toggleStatus'])
+        ->name('eres.toggle-status');
 
-    // Custom route to update permissions for a role
-    Route::put('permissions/role/{role}', [PermissionController::class, 'update'])
-        ->name('permissions.update');
+    Route::resource('leave-types', LeaveTypeController::class);
+
+    Route::patch('leave-types/{leave_type}/toggle-status', [LeaveTypeController::class, 'toggleStatus'])
+        ->name('leave-types.toggle-status');
+    // Company CRUD Routes
+    Route::resource('companies', CompanyController::class);
+    Route::patch('companies/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('companies.toggle-status');
+
+
+    // Resource routes for Course CRUD
+    Route::resource('courses', CourseController::class);
+
+    // Additional route to toggle course status
+    Route::patch('courses/{course}/toggle-status', [CourseController::class, 'toggleStatus'])
+        ->name('courses.toggle-status');
+
+
+
+    Route::resource('cadres', CadreController::class);
+    // Additional route to toggle course status
+    Route::patch('cadres/{cadre}/toggle-status', [CadreController::class, 'toggleStatus'])
+        ->name('cadres.toggle-status');
+
+
+    Route::resource('education', EducationController::class);
+    // Additional route to toggle course status
+    Route::patch('education/{education}/toggle-status', [EducationController::class, 'toggleStatus'])
+        ->name('education.toggle-status');
+
+    Route::resource('skillcategory', SkillCategoryController::class);
+    // Additional route to toggle course status
+    Route::patch('skillcategory/{skillcategory}/toggle-status', [SkillCategoryController::class, 'toggleStatus'])
+        ->name('skillcategory.toggle-status');
+
+
+    Route::resource('skill', SkillController::class);
+    // Additional route to toggle course status
+    Route::patch('skill/{skill}/toggle-status', [SkillController::class, 'toggleStatus'])
+        ->name('skill.toggle-status');
+
+    // Rank CRUD Routes
+    Route::resource('ranks', RankController::class);
+    Route::patch('ranks/{rank}/toggle-status', [RankController::class, 'toggleStatus'])->name('ranks.toggle-status');
 });

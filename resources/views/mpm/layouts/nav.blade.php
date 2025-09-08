@@ -76,76 +76,12 @@
 
             <!-- Settings Dropdown -->
             <li class="relative">
-                <button id="settingsBtn" type="button"
-                    class="hover:text-orange-400 transition-colors flex items-center focus:outline-none">
+                <a id="settingsBtn" type="button" href="{{ route('settings') }}"
+                    class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'settings' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">
                     Settings
-                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
+                </a>
 
-                <ul id="settingsMenu" class="absolute left-0 mt-2 w-40 bg-white border rounded-lg shadow-lg hidden">
-                    <li>
-                        <a href="{{ route('duty.index') }}"
-                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
-                            Duty
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('ranks.index') }}"
-                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
-                            Rank
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('companies.index') }}"
-                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
-                            Company
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('courses.index') }}"
-                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
-                            Courses
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('cadres.index') }}"
-                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
-                            Cadre
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('skill.index') }}"
-                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
-                            Skill
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('skillcategory.index') }}"
-                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
-                            Skill Category
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('education.index') }}"
-                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
-                            Education
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('atts.index') }}"
-                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
-                            ATT
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('eres.index') }}"
-                            class="block px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 transition">
-                            ERE
-                        </a>
-                    </li>
-                </ul>
+
             </li>
 
             <li>

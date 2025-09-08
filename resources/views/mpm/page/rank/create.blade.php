@@ -5,6 +5,8 @@
 @section('content')
 
     <div class="container mx-auto p-4">
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
+
         <!-- Alert Messages -->
         @include('mpm.components.alerts')
 
