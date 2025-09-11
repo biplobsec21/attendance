@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             SoldierSeeder::class,
 
             DutyRankTableSeeder::class,
+            FilterSeeder::class,
 
         ]);
     }

@@ -1,0 +1,179 @@
+@extends('mpm.layouts.app')
+
+@section('content')
+    <div class="container mx-auto p-6" x-data="filterBuilder()">
+        <h1 class="text-2xl font-bold mb-4">Create Filter</h1>
+
+        <form action="{{ route('filters.store') }}" method="POST" class="space-y-6">
+            @csrf
+
+            <!-- Basic Info -->
+            <div class="bg-white shadow-md rounded-lg p-4 space-y-4">
+                <div>
+                    <label class="block font-semibold">Filter Name</label>
+                    <input type="text" name="name" class="w-full border rounded-lg p-2 focus:ring focus:ring-blue-200"
+                        required>
+                </div>
+                <div>
+                    <label class="block font-semibold">Description</label>
+                    <textarea name="description" class="w-full border rounded-lg p-2 focus:ring focus:ring-blue-200"></textarea>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-12 gap-4">
+                <!-- Palette -->
+                <div class="col-span-4 bg-gray-50 p-4 rounded-lg shadow">
+                    <h2 class="font-bold mb-2">Available Fields</h2>
+                    <div class="space-y-2">
+                        <template x-for="field in availableFields" :key="field.name">
+                            <div class="cursor-move bg-white border rounded-lg p-2 shadow-sm hover:bg-blue-50"
+                                draggable="true" @dragstart="dragField(field)">
+                                <span x-text="field.table + '.' + field.label"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Drop Zone -->
+                <div class="col-span-8 bg-white p-4 rounded-lg shadow min-h-[300px] border-dashed border-2 border-gray-300"
+                    @dragover.prevent @drop="dropField">
+                    <h2 class="font-bold mb-2">Filter Fields</h2>
+                    <template x-if="formFields.length === 0">
+                        <p class="text-gray-400">Drag fields here...</p>
+                    </template>
+
+                    <div class="space-y-4">
+                        <template x-for="(field, index) in formFields" :key="index">
+                            <div class="p-3 bg-gray-50 border rounded-lg">
+                                <!-- Hidden inputs for table_name, column_name, label -->
+                                <input type="hidden" :name="'fields[' + index + '][table_name]'" :value="field.table">
+                                <input type="hidden" :name="'fields[' + index + '][column_name]'" :value="field.name">
+                                <input type="hidden" :name="'fields[' + index + '][label]'" :value="field.label">
+
+                                <label class="block font-semibold" x-text="field.label"></label>
+
+                                <div class="flex flex-wrap gap-2 mt-1">
+                                    <!-- Operator -->
+                                    <select :name="'fields[' + index + '][operator]'" class="border rounded p-1">
+                                        <option value="=">=</option>
+                                        <option value="!=">≠</option>
+                                        <option value="LIKE">Contains</option>
+                                        <option value=">">></option>
+                                        <option value="<">
+                                            << /option>
+                                        <option value="BETWEEN">Between</option>
+                                    </select>
+
+                                    <!-- Value Type -->
+                                    <select :name="'fields[' + index + '][value_type]'" class="border rounded p-1">
+                                        <option value="string">String</option>
+                                        <option value="number">Number</option>
+                                        <option value="date">Date</option>
+                                        <option value="select">Select</option>
+                                    </select>
+
+                                    <!-- Options (for dropdowns, comma separated) -->
+                                    <input type="text" :name="'fields[' + index + '][options]'"
+                                        class="flex-1 border rounded p-1" placeholder="Options (comma separated)">
+                                </div>
+
+                                <button type="button" class="text-red-500 mt-2" @click="removeField(index)">✕
+                                    Remove</button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-lg shadow hover:bg-blue-700">
+                    Save Filter
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script>
+        function filterBuilder() {
+            return {
+                availableFields: [
+                    // Soldiers
+                    {
+                        table: 'soldiers',
+                        name: 'full_name',
+                        label: 'Full Name'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'army_no',
+                        label: 'Army No'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'gender',
+                        label: 'Gender'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'marital_status',
+                        label: 'Marital Status'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'joining_date',
+                        label: 'Joining Date'
+                    },
+
+                    // Courses
+                    {
+                        table: 'soldier_courses',
+                        name: 'course_status',
+                        label: 'Course Status'
+                    },
+                    {
+                        table: 'soldier_courses',
+                        name: 'completion_date',
+                        label: 'Course Completion Date'
+                    },
+
+                    // Educations
+                    {
+                        table: 'soldier_educations',
+                        name: 'passing_year',
+                        label: 'Passing Year'
+                    },
+                    {
+                        table: 'soldier_educations',
+                        name: 'result',
+                        label: 'Education Result'
+                    },
+
+                    // Medical
+                    {
+                        table: 'soldiers_medical',
+                        name: 'medical_category_id',
+                        label: 'Medical Category'
+                    },
+                ],
+                formFields: [],
+                draggedField: null,
+
+                dragField(field) {
+                    this.draggedField = field;
+                },
+                dropField() {
+                    if (this.draggedField) {
+                        this.formFields.push({
+                            ...this.draggedField
+                        });
+                        this.draggedField = null;
+                    }
+                },
+                removeField(index) {
+                    this.formFields.splice(index, 1);
+                }
+            }
+        }
+    </script>
+@endsection

@@ -22,7 +22,10 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\Admin\FilterController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -38,9 +41,10 @@ use App\Http\Controllers\SettingsController;
 Route::get('/', [AuthenticatedSessionController::class, 'create'])
     ->name('login');
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+
+// Route::prefix('/dashboard', function () {
+Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+// })->middleware(['auth', 'verified'])->name('dashboard');
 
 
 
@@ -166,8 +170,8 @@ Route::get('assignLeave/create', [ViewController::class, 'assignLeaveCreate'])->
 
 
 
-Route::get('filter', [ViewController::class, 'filter'])->name('filter');
-Route::get('filters', [ViewController::class, 'filters'])->name('filters');
+// Route::get('filter', [ViewController::class, 'filter'])->name('filter');
+// Route::get('filters', [ViewController::class, 'filters'])->name('filters');
 
 
 
@@ -258,4 +262,6 @@ Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function ()
     // Rank CRUD Routes
     Route::resource('ranks', RankController::class);
     Route::patch('ranks/{rank}/toggle-status', [RankController::class, 'toggleStatus'])->name('ranks.toggle-status');
+
+    Route::resource('filters', FilterController::class);
 });
