@@ -36,19 +36,20 @@ class BackupController extends Controller
                 })
                 ->addColumn('date_time', fn($log) => $log->created_at->format('d M Y, h:i A'))
                 ->addColumn('show', function ($log) {
-                    return "
-                        <a href='javascript:void(0);' onclick='showDetails({$log->id})'
-                            class='bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition duration-300 ease-in-out'>
-                            Show
-                        </a>";
+                    return '
+                        <button onclick="showDetails(' . $log->id . ')"
+                            class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" class="w-4 h-4 inline-block">
+                                <path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 157.1 0 224 0 256s48.6 98.9 95.4 143.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6C527.4 354.9 576 288 576 256s-48.6-98.9-95.4-143.4C433.5 68.8 368.8 32 288 32zm0 400c-106 0-192-86-192-192S182 64 288 64s192 86 192 192-86 192-192 192zm0-256c-35.3 0-64 28.7-64 64s28.7 64 64 64 64-28.7 64-64-28.7-64-64-64z"/>
+                            </svg>
+                        </button>
+                    ';
                 })
+
 
                 ->rawColumns(['action_badge', 'show', 'user'])
                 ->make(true);
         }
-
-        // Normal page load
-        return view('mpm.page.audit.index');
     }
 
     public function show($id)
