@@ -572,7 +572,7 @@ class SoldierController extends Controller
             return redirect()->route('soldier.medicalForm', $request->id)->with('success', 'Information updated successfully');
         }
 
-        return redirect()->route('soldier.complete', $request->id)
+        return redirect()->route('soldier.index', $request->id)
             ->with('success', 'Profile completed successfully!');
     }
     public function details($id)
