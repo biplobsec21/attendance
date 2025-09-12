@@ -19,10 +19,19 @@ class SoldierDataFormatter
         return [
             'id'        => $profile->id,
             'name'      => $profile->full_name,
+            'joining_date'      => $profile->joining_date,
+            'army_no'      => $profile->army_no,
             'rank'      => optional($profile->rank)->name,
             'unit'      => optional($profile->company)->name,
             'current'   => optional($current)->appointments_name ?? 'N/A',
             'previous'  => $previous->pluck('appointments_name')->implode(', '),
+            'personal_completed' => $profile->personal_completed,
+            'service_completed' => $profile->service_completed,
+            'qualifications_completed' => $profile->qualifications_completed,
+            'medical_completed' => $profile->medical_completed,
+            'is_leave' => $profile->is_leave,
+            'is_sick' => $profile->is_sick,
+            'status' => $profile->status,
 
             // Extended Details
             'educations'       => $this->formatEducations($profile),

@@ -69,6 +69,12 @@
                             <i class="fas fa-check-circle text-orange-500"></i> ERE
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('filters.index') }}"
+                            class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
+                            <i class="fas fa-filter text-orange-500"></i> Filters
+                        </a>
+                    </li>
                 </ul>
             </div>
 
@@ -131,6 +137,7 @@
                             <i class="fas fa-user text-purple-500"></i> User Create
                         </a>
                     </li>
+
                 </ul>
             </div>
 

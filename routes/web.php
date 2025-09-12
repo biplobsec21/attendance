@@ -43,7 +43,7 @@ Route::get('/', [AuthenticatedSessionController::class, 'create'])
 
 
 // Route::prefix('/dashboard', function () {
-Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 // })->middleware(['auth', 'verified'])->name('dashboard');
 
 
@@ -65,12 +65,15 @@ Route::prefix('army')->group(function () {
     // Profile list
     Route::get('/', [SoldierController::class, 'index'])->name('soldier.index');
 
+    // Filter options endpoint for AJAX calls
+    Route::get('/filter-options', [SoldierController::class, 'getFilterOptions'])
+        ->name('soldier.filterOptions');
+
     // Personal step (optional {profile} for first-time creation)
     Route::get('personal/{profile?}', [SoldierController::class, 'personalForm'])->name('soldier.personalForm');
     Route::post('personal', [SoldierController::class, 'savePersonal'])->name('soldier.savePersonal');
     Route::put('profile/{soldier}/personal', [SoldierController::class, 'updatePersonal'])
         ->name('soldier.updatePersonal');
-
 
     // Service step
     Route::get('{id}/service', [SoldierController::class, 'serviceForm'])->name('soldier.serviceForm');
@@ -85,10 +88,19 @@ Route::prefix('army')->group(function () {
     Route::post('{id}/medical', [SoldierController::class, 'saveMedical'])->name('soldier.saveMedical');
 
     Route::get('{id}/details', [SoldierController::class, 'details'])->name('soldier.details');
+
     // Complete
     Route::get('complete', function () {
         return view('soldier.complete');
     })->name('soldier.complete');
+
+    // Profile management endpoints
+    Route::delete('{soldier}', [SoldierController::class, 'destroy'])->name('soldier.destroy');
+    Route::get('export', [SoldierController::class, 'export'])->name('soldier.export');
+    Route::post('bulk-update-status', [SoldierController::class, 'bulkUpdateStatus'])->name('soldier.bulkUpdateStatus');
+    Route::post('bulk-delete', [SoldierController::class, 'bulkDelete'])->name('soldier.bulkDelete');
+    Route::get('{soldier}/profile', [SoldierController::class, 'getProfileData'])
+        ->name('soldier.profile');
 });
 
 

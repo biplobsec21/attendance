@@ -1,7 +1,11 @@
 @extends('mpm.layouts.app')
-
+@section('title', 'Create Filter')
 @section('content')
     <div class="container mx-auto p-6" x-data="filterBuilder()">
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
+
+        @include('mpm.components.alerts')
+
         <h1 class="text-2xl font-bold mb-4">Create Filter</h1>
 
         <form action="{{ route('filters.store') }}" method="POST" class="space-y-6">
@@ -25,7 +29,7 @@
                 <div class="col-span-4 bg-gray-50 p-4 rounded-lg shadow">
                     <h2 class="font-bold mb-2">Available Fields</h2>
                     <div class="space-y-2">
-                        <template x-for="field in availableFields" :key="field.name">
+                        <template x-for="field in availableFields" :key="field.table + '.' + field.name">
                             <div class="cursor-move bg-white border rounded-lg p-2 shadow-sm hover:bg-blue-50"
                                 draggable="true" @dragstart="dragField(field)">
                                 <span x-text="field.table + '.' + field.label"></span>
@@ -121,20 +125,31 @@
                     },
                     {
                         table: 'soldiers',
-                        name: 'joining_date',
-                        label: 'Joining Date'
+                        name: 'mobile',
+                        label: 'Mobile No'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'district',
+                        label: 'District'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'is_leave',
+                        label: 'Is Present'
                     },
 
                     // Courses
                     {
-                        table: 'soldier_courses',
-                        name: 'course_status',
-                        label: 'Course Status'
+                        table: 'ranks',
+                        name: 'name',
+                        label: 'Rank'
                     },
+                    // companies //
                     {
-                        table: 'soldier_courses',
-                        name: 'completion_date',
-                        label: 'Course Completion Date'
+                        table: 'companies',
+                        name: 'name',
+                        label: 'Company'
                     },
 
                     // Educations
@@ -148,13 +163,54 @@
                         name: 'result',
                         label: 'Education Result'
                     },
+                    {
+                        table: 'educations',
+                        name: 'name',
+                        label: 'Exam Name'
+                    },
+                    //Cadres
+                    {
+                        table: 'cadres',
+                        name: 'name',
+                        label: 'Cadre'
+                    },
+                    // service
+                    {
+                        table: 'soldier_services',
+                        name: 'name',
+                        label: 'Service Name'
+                    },
+                    // skill
+                    {
+                        table: 'skills',
+                        name: 'name',
+                        label: 'Skill Name'
+                    },
+                    // atts
+                    {
+                        table: 'atts',
+                        name: 'name',
+                        label: 'Att Name'
+                    },
+                    // ere
+                    {
+                        table: 'eres',
+                        name: 'name',
+                        label: 'ERE Name'
+                    },
+                    // Duty name
+                    {
+                        table: 'duties',
+                        name: 'duty_name',
+                        label: 'Duty Name'
+                    },
 
                     // Medical
                     {
-                        table: 'soldiers_medical',
-                        name: 'medical_category_id',
+                        table: 'medical_categories',
+                        name: 'name',
                         label: 'Medical Category'
-                    },
+                    }
                 ],
                 formFields: [],
                 draggedField: null,

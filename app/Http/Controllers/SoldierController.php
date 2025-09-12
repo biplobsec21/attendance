@@ -43,9 +43,15 @@ class SoldierController extends Controller
         // $profile = $query->paginate(20)->withQueryString();
         if ($request->ajax()) {
             $profiles = Soldier::with(['rank', 'company'])->get();
-            // dd($profiles);
+
             return response()->json([
-                'data' => $this->formatter->formatCollection($profiles)
+                'data' => $this->formatter->formatCollection($profiles),
+                'stats' => [
+                    'total' => $profiles->count(),
+                    'active' => $profiles->where('is_leave', false)->where('is_sick', false)->count(),
+                    'leave' => $profiles->where('is_leave', true)->count(),
+                    'medical' => $profiles->where('is_sick', true)->count()
+                ]
             ]);
         }
         return view('mpm.page.profile.index');
@@ -668,5 +674,230 @@ class SoldierController extends Controller
             ->get(['id', 'full_name', 'army_no']);
 
         return response()->json($soldiers);
+    }
+
+    /// updated code:
+    /**
+     * Delete a soldier profile
+     */
+    public function destroy(Soldier $soldier)
+    {
+        try {
+            // Delete associated image if exists
+            if ($soldier->image && \Storage::disk('public')->exists($soldier->image)) {
+                \Storage::disk('public')->delete($soldier->image);
+            }
+
+            $soldier->delete();
+
+            return response()->json(['success' => true, 'message' => 'Profile deleted successfully']);
+        } catch (\Exception $e) {
+            \Log::error('Error deleting soldier: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to delete profile'], 500);
+        }
+    }
+
+    /**
+     * Export soldiers data
+     */
+    public function export(Request $request)
+    {
+        $format = $request->get('format', 'excel');
+        $selectedIds = $request->get('selected') ? explode(',', $request->get('selected')) : [];
+
+        $query = Soldier::with(['rank', 'company']);
+
+        if (!empty($selectedIds)) {
+            $query->whereIn('id', $selectedIds);
+        }
+
+        // Apply filters
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('full_name', 'like', "%{$search}%")
+                    ->orWhere('army_no', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('rank')) {
+            $query->whereHas('rank', function ($q) use ($request) {
+                $q->where('name', $request->get('rank'));
+            });
+        }
+
+        if ($request->filled('company')) {
+            $query->whereHas('company', function ($q) use ($request) {
+                $q->where('name', $request->get('company'));
+            });
+        }
+
+        $soldiers = $query->get();
+
+        if ($format === 'excel') {
+            return $this->exportToExcel($soldiers);
+        } else {
+            return $this->exportToPdf($soldiers);
+        }
+    }
+
+    /**
+     * Bulk update soldier status
+     */
+    public function bulkUpdateStatus(Request $request)
+    {
+        $request->validate([
+            'soldier_ids' => 'required|array',
+            'soldier_ids.*' => 'exists:soldiers,id',
+            'status' => 'required|in:active,leave,medical,inactive'
+        ]);
+
+        try {
+            $soldierIds = $request->get('soldier_ids');
+            $status = $request->get('status');
+
+            // Update based on status
+            $updateData = ['status' => 'active'];
+
+            if ($status === 'leave') {
+                $updateData['is_leave'] = true;
+                $updateData['is_sick'] = false;
+            } elseif ($status === 'medical') {
+                $updateData['is_sick'] = true;
+                $updateData['is_leave'] = false;
+            } elseif ($status === 'inactive') {
+                $updateData['status'] = 'inactive';
+                $updateData['is_leave'] = false;
+                $updateData['is_sick'] = false;
+            } else {
+                $updateData['is_leave'] = false;
+                $updateData['is_sick'] = false;
+            }
+
+            Soldier::whereIn('id', $soldierIds)->update($updateData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status updated for ' . count($soldierIds) . ' soldiers'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Bulk update error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to update status'], 500);
+        }
+    }
+
+    /**
+     * Bulk delete soldiers
+     */
+    public function bulkDelete(Request $request)
+    {
+        //dd($request->all());
+        $request->validate([
+            'soldier_ids' => 'required|array',
+            'soldier_ids.*' => 'exists:soldiers,id'
+        ]);
+
+        try {
+            $soldierIds = $request->get('soldier_ids');
+            $soldiers = Soldier::whereIn('id', $soldierIds)->get();
+
+            // Delete images
+            foreach ($soldiers as $soldier) {
+                if ($soldier->image && \Storage::disk('public')->exists($soldier->image)) {
+                    \Storage::disk('public')->delete($soldier->image);
+                }
+            }
+
+            // Delete soldiers
+
+            Soldier::whereIn('id', $soldierIds)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => count($soldierIds) . ' profiles deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Bulk delete error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to delete profiles'], 500);
+        }
+    }
+
+    private function exportToExcel($soldiers)
+    {
+        // You'll need to install maatwebsite/excel for this
+        // composer require maatwebsite/excel
+
+        $filename = 'soldiers_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+        return response()->streamDownload(function () use ($soldiers) {
+            $file = fopen('php://output', 'w');
+
+            // Headers
+            fputcsv($file, [
+                'Army No',
+                'Full Name',
+                'Rank',
+                'Company',
+                'Status',
+                'Joining Date',
+                'Profile Completion',
+                'Phone',
+                'Email'
+            ]);
+
+            // Data
+            foreach ($soldiers as $soldier) {
+                $completion = $this->calculateProfileCompletion($soldier);
+                $status = $this->getStatusText($soldier);
+
+                fputcsv($file, [
+                    $soldier->army_no,
+                    $soldier->full_name,
+                    $soldier->rank->name ?? 'N/A',
+                    $soldier->company->name ?? 'N/A',
+                    $status,
+                    $soldier->joining_date ? $soldier->joining_date->format('Y-m-d') : 'N/A',
+                    $completion . '%',
+                    $soldier->phone ?? 'N/A',
+                    $soldier->email ?? 'N/A'
+                ]);
+            }
+
+            fclose($file);
+        }, $filename, ['Content-Type' => 'text/csv']);
+    }
+
+    private function exportToPdf($soldiers)
+    {
+        // You'll need to install a PDF library like dompdf
+        // For now, return CSV with PDF headers
+        return $this->exportToExcel($soldiers);
+    }
+
+    private function calculateProfileCompletion($soldier)
+    {
+        $completedSteps = collect([
+            $soldier->personal_completed,
+            $soldier->service_completed,
+            $soldier->qualifications_completed,
+            $soldier->medical_completed
+        ])->filter()->count();
+
+        return round(($completedSteps / 4) * 100);
+    }
+
+    private function getStatusText($soldier)
+    {
+        if ($soldier->is_leave) return 'On Leave';
+        if ($soldier->is_sick) return 'Medical';
+        if ($soldier->status === 'active') return 'Active';
+        return 'Inactive';
+    }
+    public function getProfileData(Soldier $soldier)
+    {
+        // Load relationships you need for the modal
+        $soldier->load(['rank', 'company']);
+
+        return response()->json($soldier);
     }
 }

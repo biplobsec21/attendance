@@ -21,7 +21,10 @@
 @endpush
 @section('content')
     <div class="container mx-auto p-4">
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
+
         <div class="bg-white/30 shadow-lg rounded-lg p-6 formBack w-full  mx-auto">
+            @include('mpm.components.alerts')
 
             <table class="myTable min-w-full border border-gray-200 rounded-lg">
                 <thead class="bg-gray-100">

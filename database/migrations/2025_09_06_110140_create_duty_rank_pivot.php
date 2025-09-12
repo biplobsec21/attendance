@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('remarks')->nullable();
             $table->tinyInteger('priority')->default(1); // 1=highest, larger=lower
             $table->integer('rotation_days')->nullable(); // e.g., 3 days rotation
-            $table->foreignId('fixed_soldier_id')->nullable()->constrained('soldiers'); // applicable when duty is fixed
+            $table->foreignId('fixed_soldier_id')->nullable()->constrained('soldiers')->onDelete('cascade'); // applicable when duty is fixed
 
             $table->integer('manpower');
             $table->timestamps();

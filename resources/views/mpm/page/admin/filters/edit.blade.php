@@ -1,111 +1,235 @@
 @extends('mpm.layouts.app')
-
+@section('title', 'Edit Filter')
 @section('content')
-    <div class="container mx-auto p-6">
-        <h1 class="text-xl font-bold mb-4">Edit Filter: {{ $filter->name }}</h1>
+    <div class="container mx-auto p-6" x-data="filterBuilder({{ $filter->items->toJson() }})">
 
-        @if (session('success'))
-            <div class="bg-green-100 text-green-700 p-2 rounded mb-3">{{ session('success') }}</div>
-        @endif
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
 
-        {{-- Update filter basic info --}}
-        <form action="{{ route('filters.update', $filter->id) }}" method="POST" class="mb-6 space-y-4">
-            @csrf @method('PUT')
-            <div>
-                <label class="block">Filter Name</label>
-                <input type="text" name="name" value="{{ $filter->name }}" class="w-full border rounded p-2" required>
-            </div>
-            <div>
-                <label class="block">Description</label>
-                <textarea name="description" class="w-full border rounded p-2">{{ $filter->description }}</textarea>
-            </div>
-            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Update</button>
-        </form>
+        @include('mpm.components.alerts')
 
-        {{-- Manage filter items --}}
-        <h2 class="text-lg font-semibold mb-3">Filter Items</h2>
+        <h1 class="text-2xl font-bold mb-4">Edit Filter</h1>
 
-        <table class="min-w-full bg-white shadow rounded mb-4">
-            <thead>
-                <tr class="bg-gray-100 text-left">
-                    <th class="p-3">Label</th>
-                    <th class="p-3">Table</th>
-                    <th class="p-3">Column</th>
-                    <th class="p-3">Operator</th>
-                    <th class="p-3">Type</th>
-                    <th class="p-3">Options</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($filter->items as $item)
-                    <tr class="border-t">
-                        <td class="p-3">{{ $item->label }}</td>
-                        <td class="p-3">{{ $item->table_name }}</td>
-                        <td class="p-3">{{ $item->column_name }}</td>
-                        <td class="p-3">{{ $item->operator }}</td>
-                        <td class="p-3">{{ $item->value_type }}</td>
-                        <td class="p-3">
-                            @if ($item->options)
-                                {{ implode(', ', $item->options) }}
-                            @endif
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
+        <form action="{{ route('filters.update', $filter->id) }}" method="POST" class="space-y-6">
+            @csrf
+            @method('PUT')
 
-        {{-- Add new filter item --}}
-        <form action="{{ route('filters.update', $filter->id) }}" method="POST" class="space-y-4">
-            @csrf @method('PUT')
-            <input type="hidden" name="add_item" value="1">
-            <div>
-                <label>Label</label>
-                <input type="text" name="label" class="border rounded p-2 w-full" required>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
+            <!-- Basic Info -->
+            <div class="bg-white shadow-md rounded-lg p-4 space-y-4">
                 <div>
-                    <label>Table</label>
-                    <select name="table_name" class="border rounded p-2 w-full">
-                        <option value="soldiers">Soldiers</option>
-                        <option value="soldier_courses">Courses</option>
-                        <option value="soldier_services">Services</option>
-                        <option value="soldier_cadres">Cadres</option>
-                        <option value="soldier_educations">Educations</option>
-                        <option value="soldier_skills">Skills</option>
-                        <option value="soldiers_medical">Medical</option>
-                    </select>
+                    <label class="block font-semibold">Filter Name</label>
+                    <input type="text" name="name" value="{{ $filter->name }}"
+                        class="w-full border rounded-lg p-2 focus:ring focus:ring-blue-200" required>
                 </div>
                 <div>
-                    <label>Column</label>
-                    <input type="text" name="column_name" class="border rounded p-2 w-full" required>
+                    <label class="block font-semibold">Description</label>
+                    <textarea name="description" class="w-full border rounded-lg p-2 focus:ring focus:ring-blue-200">{{ $filter->description }}</textarea>
                 </div>
             </div>
-            <div class="grid grid-cols-3 gap-4">
-                <div>
-                    <label>Operator</label>
-                    <select name="operator" class="border rounded p-2 w-full">
-                        <option value="=">=</option>
-                        <option value="!=">!=</option>
-                        <option value=">">&gt;</option>
-                        <option value="<">&lt;</option>
-                        <option value="like">LIKE</option>
-                    </select>
+
+            <div class="grid grid-cols-12 gap-4">
+                <!-- Palette -->
+                <div class="col-span-4 bg-gray-50 p-4 rounded-lg shadow">
+                    <h2 class="font-bold mb-2">Available Fields</h2>
+                    <div class="space-y-2">
+                        <template x-for="field in availableFields" :key="field.table + '.' + field.name">
+                            <div class="cursor-move bg-white border rounded-lg p-2 shadow-sm hover:bg-blue-50"
+                                draggable="true" @dragstart="dragField(field)">
+                                <span x-text="field.table + '.' + field.label"></span>
+                            </div>
+                        </template>
+                    </div>
                 </div>
-                <div>
-                    <label>Input Type</label>
-                    <select name="value_type" class="border rounded p-2 w-full">
-                        <option value="text">Text</option>
-                        <option value="number">Number</option>
-                        <option value="date">Date</option>
-                        <option value="select">Select</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Options (comma separated)</label>
-                    <input type="text" name="options" class="border rounded p-2 w-full">
+
+                <!-- Drop Zone -->
+                <div class="col-span-8 bg-white p-4 rounded-lg shadow min-h-[300px] border-dashed border-2 border-gray-300"
+                    @dragover.prevent @drop="dropField">
+                    <h2 class="font-bold mb-2">Filter Fields</h2>
+                    <template x-if="formFields.length === 0">
+                        <p class="text-gray-400">Drag fields here...</p>
+                    </template>
+
+                    <div class="space-y-4">
+                        <template x-for="(field, index) in formFields" :key="index">
+                            <div class="p-3 bg-gray-50 border rounded-lg">
+                                <!-- Hidden inputs -->
+                                <input type="hidden" :name="'fields[' + index + '][table_name]'" :value="field.table">
+                                <input type="hidden" :name="'fields[' + index + '][column_name]'" :value="field.name">
+                                <input type="hidden" :name="'fields[' + index + '][label]'" :value="field.label">
+
+                                <label class="block font-semibold" x-text="field.label"></label>
+
+                                <div class="flex flex-wrap gap-2 mt-1">
+                                    <!-- Operator -->
+                                    <select :name="'fields[' + index + '][operator]'" class="border rounded p-1"
+                                        x-model="field.operator">
+                                        <option value="=">=</option>
+                                        <option value="!=">≠</option>
+                                        <option value="LIKE">Contains</option>
+                                        <option value=">">></option>
+                                        <option value="<">
+                                            << /option>
+                                        <option value="BETWEEN">Between</option>
+                                    </select>
+
+                                    <!-- Value Type -->
+                                    <select :name="'fields[' + index + '][value_type]'" class="border rounded p-1"
+                                        x-model="field.value_type">
+                                        <option value="string">String</option>
+                                        <option value="number">Number</option>
+                                        <option value="date">Date</option>
+                                        <option value="select">Select</option>
+                                    </select>
+
+                                    <!-- Options -->
+                                    <input type="text" :name="'fields[' + index + '][options]'"
+                                        class="flex-1 border rounded p-1" placeholder="Options (comma separated)"
+                                        x-model="field.options">
+                                </div>
+
+                                <button type="button" class="text-red-500 mt-2" @click="removeField(index)">✕
+                                    Remove</button>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
-            <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">+ Add Item</button>
+
+            <div class="flex justify-end">
+                <button type="submit" class="bg-blue-600 text-white px-5 py-2 rounded-lg shadow hover:bg-blue-700">
+                    Update Filter
+                </button>
+            </div>
         </form>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script>
+        function filterBuilder(existingFields = []) {
+            return {
+                availableFields: [{
+                        table: 'soldiers',
+                        name: 'full_name',
+                        label: 'Full Name'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'army_no',
+                        label: 'Army No'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'gender',
+                        label: 'Gender'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'marital_status',
+                        label: 'Marital Status'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'mobile',
+                        label: 'Mobile No'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'district',
+                        label: 'District'
+                    },
+                    {
+                        table: 'soldiers',
+                        name: 'is_leave',
+                        label: 'Is Present'
+                    },
+                    {
+                        table: 'ranks',
+                        name: 'name',
+                        label: 'Rank'
+                    },
+                    {
+                        table: 'companies',
+                        name: 'name',
+                        label: 'Company'
+                    },
+                    {
+                        table: 'soldier_educations',
+                        name: 'passing_year',
+                        label: 'Passing Year'
+                    },
+                    {
+                        table: 'soldier_educations',
+                        name: 'result',
+                        label: 'Education Result'
+                    },
+                    {
+                        table: 'educations',
+                        name: 'name',
+                        label: 'Exam Name'
+                    },
+                    {
+                        table: 'cadres',
+                        name: 'name',
+                        label: 'Cadre'
+                    },
+                    {
+                        table: 'soldier_services',
+                        name: 'name',
+                        label: 'Service Name'
+                    },
+                    {
+                        table: 'skills',
+                        name: 'name',
+                        label: 'Skill Name'
+                    },
+                    {
+                        table: 'atts',
+                        name: 'name',
+                        label: 'Att Name'
+                    },
+                    {
+                        table: 'eres',
+                        name: 'name',
+                        label: 'ERE Name'
+                    },
+                    {
+                        table: 'duties',
+                        name: 'duty_name',
+                        label: 'Duty Name'
+                    },
+                    {
+                        table: 'medical_categories',
+                        name: 'name',
+                        label: 'Medical Category'
+                    }
+                ],
+                formFields: existingFields.length > 0 ? existingFields.map(f => ({
+                    table: f.table_name,
+                    name: f.column_name,
+                    label: f.label,
+                    operator: f.operator,
+                    value_type: f.value_type,
+                    options: f.options
+                })) : [],
+                draggedField: null,
+
+                dragField(field) {
+                    this.draggedField = field
+                },
+                dropField() {
+                    if (this.draggedField) {
+                        this.formFields.push({
+                            ...this.draggedField,
+                            operator: '=',
+                            value_type: 'string',
+                            options: ''
+                        });
+                        this.draggedField = null;
+                    }
+                },
+                removeField(index) {
+                    this.formFields.splice(index, 1)
+                }
+            }
+        }
+    </script>
 @endsection

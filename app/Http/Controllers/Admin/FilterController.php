@@ -11,8 +11,7 @@ class FilterController extends Controller
 {
     public function index()
     {
-        $filters = Filter::with('items')->paginate(10);
-        // dd($filters);
+        $filters = Filter::with('items')->paginate(20);
         return view('mpm.page.admin.filters.index', compact('filters'));
     }
 
@@ -27,20 +26,20 @@ class FilterController extends Controller
 
         if ($request->has('fields')) {
             foreach ($request->fields as $field) {
-                dd($field);
                 FilterItem::create([
-                    'filter_id'  => $filter->id,
-                    'table_name' => $field['table_name'],   // e.g., "soldiers"
-                    'field_name' => $field['field_name'],    // e.g., "gender"
-                    'operator'   => $field['operator'], // e.g., "="
-                    'value'      => $field['value'],   // e.g., "Male"
+                    'filter_id'   => $filter->id,
+                    'label'       => $field['label'],
+                    'table_name'  => $field['table_name'],
+                    'column_name' => $field['column_name'],
+                    'operator'    => $field['operator'] ?? '=',
+                    'value_type'  => $field['value_type'] ?? 'string',
+                    'options'     => $field['options'] ?? null,
                 ]);
             }
         }
 
         return redirect()->route('filters.index')->with('success', 'Filter created successfully');
     }
-
 
     public function edit(Filter $filter)
     {
@@ -50,24 +49,28 @@ class FilterController extends Controller
 
     public function update(Request $request, Filter $filter)
     {
-        if ($request->has('add_item')) {
-            $filter->items()->create([
-                'label'       => $request->label,
-                'table_name'  => $request->table_name,
-                'column_name' => $request->column_name,
-                'operator'    => $request->operator,
-                'value_type'  => $request->value_type,
-                'options'     => $request->options ? explode(',', $request->options) : null,
-            ]);
+        // Update filter basic info
+        $filter->update($request->only('name', 'description'));
 
-            return back()->with('success', 'Filter item added successfully.');
+        // Remove old items
+        $filter->items()->delete();
+
+        // Add new items from request
+        if ($request->has('fields')) {
+            foreach ($request->fields as $field) {
+                $filter->items()->create([
+                    'label'       => $field['label'],
+                    'table_name'  => $field['table_name'],
+                    'column_name' => $field['column_name'],
+                    'operator'    => $field['operator'] ?? '=',
+                    'value_type'  => $field['value_type'] ?? 'string',
+                    'options'     => $field['options'] ?? null,
+                ]);
+            }
         }
 
-        // Otherwise, update filter info
-        $filter->update($request->only('name', 'description'));
-        return back()->with('success', 'Filter updated successfully.');
+        return redirect()->route('filters.index')->with('success', 'Filter updated successfully');
     }
-
 
     public function destroy(Filter $filter)
     {
