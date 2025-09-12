@@ -63,7 +63,9 @@
     <div class="container mx-auto flex justify-between items-center">
         <a href="#" class="text-xl font-bold">Army Records</a>
         <ul class="flex gap-6 items-center">
-            <li><a href="#" class="hover:text-orange-400 transition-colors">Dashboard</a></li>
+            <li><a href="{{ route('dashboard.index') }}"
+                    class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'dashboard' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">Dashboard</a>
+            </li>
             <li><a href="#" class="hover:text-orange-400 transition-colors">Reports</a></li>
             <a href="{{ route('soldier.index') }}"
                 class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'army' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">
