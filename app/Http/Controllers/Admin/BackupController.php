@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Yajra\DataTables\DataTables;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Spatie\Activitylog\Models\Activity;
-use Yajra\DataTables\DataTables;
 
 class BackupController extends Controller
 {
@@ -67,13 +68,56 @@ class BackupController extends Controller
         $filename = now()->format('Y-m-d-H-i') . '.sql';
         $path = storage_path("app/{$filename}");
 
+        $pdo = DB::connection()->getPdo();
         $database = env('DB_DATABASE');
-        $username = env('DB_USERNAME');
-        $password = env('DB_PASSWORD');
-        $host = env('DB_HOST');
 
-        $command = "mysqldump -h {$host} -u {$username} -p{$password} {$database} > {$path}";
-        exec($command);
+        $sqlDump = "-- Database backup of {$database}\n";
+        $sqlDump .= "-- Generated on " . now()->toDateTimeString() . "\n\n";
+        $sqlDump .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
+
+        // Get all tables
+        $tables = $pdo->query("SHOW TABLES")->fetchAll(\PDO::FETCH_COLUMN);
+
+        foreach ($tables as $table) {
+            // Drop + Create table
+            $createTableStmt = $pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(\PDO::FETCH_ASSOC);
+            $createSQL = $createTableStmt['Create Table'] ?? null;
+
+            if ($createSQL) {
+                $sqlDump .= "-- -----------------------------\n";
+                $sqlDump .= "-- Table structure for `{$table}`\n";
+                $sqlDump .= "-- -----------------------------\n";
+                $sqlDump .= "DROP TABLE IF EXISTS `{$table}`;\n";
+                $sqlDump .= $createSQL . ";\n\n";
+            }
+
+            // Dump data
+            $rows = $pdo->query("SELECT * FROM `{$table}`", \PDO::FETCH_ASSOC);
+
+            if ($rows) {
+                $sqlDump .= "-- -----------------------------\n";
+                $sqlDump .= "-- Dumping data for table `{$table}`\n";
+                $sqlDump .= "-- -----------------------------\n";
+
+                foreach ($rows as $row) {
+                    $values = array_map(function ($value) use ($pdo) {
+                        if (is_null($value)) {
+                            return "NULL";
+                        }
+                        return $pdo->quote($value);
+                    }, array_values($row));
+
+                    $sqlDump .= "INSERT INTO `{$table}` VALUES (" . implode(', ', $values) . ");\n";
+                }
+                $sqlDump .= "\n";
+            }
+        }
+
+        $sqlDump .= "SET FOREIGN_KEY_CHECKS=1;\n";
+
+        // Save file
+        file_put_contents($path, $sqlDump);
+
         return response()->download($path)->deleteFileAfterSend(true);
     }
 
