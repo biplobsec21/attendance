@@ -83,10 +83,28 @@
 
 
             </li>
+            <li>
+                <a id="settingsBtn" type="button" href="{{ route('assignments.generateForm') }}"
+                    class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'assignments' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">
+                    Assignments
+                </a>
+            </li>
 
             <li>
-                <a href="#"
-                    class="hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors">Logout</a>
+
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <a onclick="event.preventDefault();
+                                            this.closest('form').submit();"
+                        class="hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors cursor-pointer"
+                        onclick="event.preventDefault();
+                                            this.closest('form').submit();">
+                        Logout
+                    </a>
+
+
+
+                </form>
             </li>
         </ul>
     </div>
