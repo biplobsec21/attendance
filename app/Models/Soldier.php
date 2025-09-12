@@ -2,16 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Carbon\Carbon;
+use App\Traits\LogsAllActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder; // <-- Add this
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Soldier extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsAllActivity;
     protected $table = 'soldiers';
 
     protected $fillable = [

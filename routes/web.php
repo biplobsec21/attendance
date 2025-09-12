@@ -1,30 +1,33 @@
 <?php
 
-use App\Http\Controllers\AttsController;
-use App\Http\Controllers\LeaveTypeController;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ViewController;
-use App\Http\Controllers\CompanyController;
-use App\Http\Controllers\CourseController;
-use App\Http\Controllers\CadreController;
-use App\Http\Controllers\EducationController;
+use App\Http\Controllers\AttsController;
+use App\Http\Controllers\DutyController;
 use App\Http\Controllers\EresController;
 use App\Http\Controllers\RankController;
-use App\Http\Controllers\SkillCategoryController;
-use App\Http\Controllers\SkillController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\SoldierController;
-
+use App\Http\Controllers\ViewController;
+use App\Http\Controllers\CadreController;
 use App\Http\Controllers\LeaveController;
-use App\Http\Controllers\DutyController;
-use App\Http\Controllers\DutyAssignmentController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Admin\RoleController;
-use App\Http\Controllers\Admin\PermissionController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SkillController;
+use App\Http\Controllers\CourseController;
+use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\ProfileController;
+
+use App\Http\Controllers\SoldierController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EducationController;
+use App\Http\Controllers\LeaveTypeController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\FilterController;
+use App\Http\Controllers\SkillCategoryController;
+use App\Http\Controllers\DutyAssignmentController;
+use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 
 /*
@@ -276,4 +279,12 @@ Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function ()
     Route::patch('ranks/{rank}/toggle-status', [RankController::class, 'toggleStatus'])->name('ranks.toggle-status');
 
     Route::resource('filters', FilterController::class);
+});
+
+
+Route::group(['middleware' => ['auth']], function () {
+    Route::get('/audit-trail', [BackupController::class, 'index'])->name('audit-trail.index');
+    Route::get('/audit-trail/{id}', [BackupController::class, 'show'])->name('audit-trail.view');
+    Route::get('/users/{userId}', [BackupController::class, 'showUserProfile'])->name('users.show');
+    Route::get('/download-database', [BackupController::class, 'downloadDatabase'])->name('database.download');
 });

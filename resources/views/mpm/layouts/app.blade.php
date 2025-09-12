@@ -37,10 +37,74 @@
         .formBack {
             background-color: transparent;
         }
+
+        /* loader css */
+        #ajaxLoaderOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.442);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loader-container {
+            display: flex;
+            gap: 15px;
+        }
+
+        .dot {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background-color: #003d76;
+            animation: bounce 1.2s infinite ease-in-out;
+        }
+
+        .dot1 {
+            animation-delay: 0s;
+        }
+
+        .dot2 {
+            animation-delay: 0.2s;
+        }
+
+        .dot3 {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+
+            40% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        /* end loader css */
     </style>
 </head>
 
 <body class="bg-gray-200">
+    <!-- Global AJAX Loader -->
+    <div id="ajaxLoaderOverlay" style="display: none;">
+        <div class="loader-container">
+            <div class="dot dot1"></div>
+            <div class="dot dot2"></div>
+            <div class="dot dot3"></div>
+        </div>
+    </div>
 
     @include('mpm/layouts/nav')
 
