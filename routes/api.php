@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FilterController;
+use App\Http\Controllers\API\SoldierAPIController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,3 +21,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 Route::get('/filters', [FilterController::class, 'index']);
 Route::post('/filters/apply', [FilterController::class, 'apply']);
+Route::get('/soldier/data', [SoldierAPIController::class, 'index'])->name('soldier.getAllData');

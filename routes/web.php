@@ -28,6 +28,8 @@ use App\Http\Controllers\SkillCategoryController;
 use App\Http\Controllers\DutyAssignmentController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\SoldierExportController;
+
 
 
 /*
@@ -99,7 +101,9 @@ Route::prefix('army')->group(function () {
 
     // Profile management endpoints
     Route::delete('{soldier}', [SoldierController::class, 'destroy'])->name('soldier.destroy');
-    Route::get('export', [SoldierController::class, 'export'])->name('soldier.export');
+    // Route::get('export', [SoldierController::class, 'export'])->name('soldier.export');
+    Route::get('export', [SoldierExportController::class, 'export'])
+        ->name('soldier.export');
     Route::post('bulk-update-status', [SoldierController::class, 'bulkUpdateStatus'])->name('soldier.bulkUpdateStatus');
     Route::post('bulk-delete', [SoldierController::class, 'bulkDelete'])->name('soldier.bulkDelete');
     Route::get('{soldier}/profile', [SoldierController::class, 'getProfileData'])
