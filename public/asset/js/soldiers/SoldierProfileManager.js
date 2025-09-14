@@ -7,7 +7,7 @@ import { showToast } from "./soldierHelpers.js";
 
 export default class SoldierProfileManager {
     constructor() {
-        this.filters = { search: "", rank: "", company: "", status: "" };
+        this.filters = { search: "", rank: "", company: "", status: "", skill: "", course: "", cadre: "" };
         this.selectedRows = new Set();
         this.soldiers = [];
         this.bulkActions = new SoldierBulkActions(this);
@@ -78,10 +78,33 @@ export default class SoldierProfileManager {
     generateFiltersFromData() {
         const ranks = new Set();
         const companies = new Set();
+        const skills = new Set();
+        const courses = new Set();
+        const cadres = new Set();
 
         this.soldiers.forEach(s => {
             if (s.rank) ranks.add(s.rank);
             if (s.unit) companies.add(s.unit);
+
+            //skill
+            if (Array.isArray(s.cocurricular)) {
+                s.cocurricular.forEach(skill => {
+                    if (skill.name) skills.add(skill.name);
+                });
+            }
+            // courses
+            if (Array.isArray(s.courses)) {
+                s.courses.forEach(course => {
+                    if (course.name) courses.add(course.name);
+                });
+            }
+            //cadres
+            if (Array.isArray(s.cadres)) {
+                s.cadres.forEach(cadre => {
+                    if (cadre.name) cadres.add(cadre.name);
+                });
+            }
+
         });
 
         const rankSelect = document.getElementById('rank-filter');
@@ -106,6 +129,40 @@ export default class SoldierProfileManager {
                 companySelect.appendChild(option);
             });
         }
+        // Skill filter
+        const skillSelect = document.getElementById('skill-filter');
+        if (skillSelect) {
+            skillSelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
+            skills.forEach(skill => {
+                const option = document.createElement('option');
+                option.value = skill;
+                option.textContent = skill;
+                skillSelect.appendChild(option);
+            });
+        }
+
+        // Course filter
+        const courseSelect = document.getElementById('course-filter');
+        if (courseSelect) {
+            courseSelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
+            courses.forEach(course => {
+                const option = document.createElement('option');
+                option.value = course;
+                option.textContent = course;
+                courseSelect.appendChild(option);
+            });
+        }
+        // Cadre filter
+        const cadreSelect = document.getElementById('cadre-filter');
+        if (cadreSelect) {
+            cadreSelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
+            cadres.forEach(cadre => {
+                const option = document.createElement('option');
+                option.value = cadre;
+                option.textContent = cadre;
+                cadreSelect.appendChild(option);
+            });
+        }
     }
 
     filterAndRender() {
@@ -125,6 +182,7 @@ export default class SoldierProfileManager {
 
         if (this.filters.company) {
             filtered = filtered.filter(s => s.unit === this.filters.company);
+            console.log(filtered);
         }
 
         if (this.filters.status) {
@@ -134,13 +192,38 @@ export default class SoldierProfileManager {
             });
         }
 
+        if (this.filters.skill) {
+            filtered = filtered.filter(soldier =>
+                soldier.cocurricular?.some(skill => skill.name === this.filters.skill)
+            );
+        }
+
+        if (this.filters.course) {
+            console.log('filters: ', this.filters.course);
+            const filterValue = this.filters.course.toLowerCase().trim();
+            filtered = filtered.filter(soldier =>
+                soldier.courses?.some(course =>
+                    course.name.toLowerCase().trim() === filterValue
+                )
+            );
+        }
+
+        if (this.filters.cadre) {
+            const filterValue = this.filters.cadre.toLowerCase().trim();
+            filtered = filtered.filter(soldier =>
+                soldier.cadres?.some(cadre =>
+                    cadre.name.toLowerCase().trim() === filterValue
+                )
+            );
+        }
+
         const emptyState = document.getElementById('empty-state');
         if (filtered.length === 0) {
             emptyState.classList.remove('hidden');
         } else {
             emptyState.classList.add('hidden');
         }
-
+        console.log(filtered);
         this.renderData(filtered);
     }
 
@@ -195,17 +278,23 @@ export default class SoldierProfileManager {
     }
 
     clearFilters() {
-        this.filters = { search: "", rank: "", company: "", status: "" };
+        this.filters = { search: "", rank: "", company: "", status: "", skill: "" };
 
         const searchInput = document.getElementById('search-input');
         const rankSelect = document.getElementById('rank-filter');
         const companySelect = document.getElementById('company-filter');
         const statusSelect = document.getElementById('status-filter');
+        const skillSelect = document.getElementById('skill-filter');
+        const courseSelect = document.getElementById('course-filter');
+        const cadreSelect = document.getElementById('cadre-filter');
 
         if (searchInput) searchInput.value = '';
         if (rankSelect) rankSelect.value = '';
         if (companySelect) companySelect.value = '';
         if (statusSelect) statusSelect.value = '';
+        if (skillSelect) skillSelect.value = '';
+        if (courseSelect) courseSelect.value = '';
+        if (cadreSelect) cadreSelect.value = '';
 
         this.filterAndRender();
     }

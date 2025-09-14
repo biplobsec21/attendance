@@ -10,10 +10,13 @@ export function initFilters(manager) {
         }, 300);
     });
 
-    ['rank-filter', 'company-filter', 'status-filter'].forEach(id => {
+    ['rank-filter', 'company-filter', 'status-filter', 'skill-filter', 'course-filter', 'cadre-filter'].forEach(id => {
         document.getElementById(id).addEventListener('change', (e) => {
             const filterType = id.replace('-filter', '');
             manager.filters[filterType] = e.target.value;
+
+            console.log(manager.filters[filterType]);
+
             manager.filterAndRender();
         });
     });

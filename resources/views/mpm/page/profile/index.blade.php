@@ -118,6 +118,30 @@
                                 {{-- <option value="inactive">Inactive</option> --}}
                             </select>
                         </div>
+                        {{-- Skill --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Skills</label>
+                            <select id="skill-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">All Skills</option>
+                            </select>
+                        </div>
+                        {{-- Courses --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Courses</label>
+                            <select id="course-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">All Courses</option>
+                            </select>
+                        </div>
+                        {{-- Cadres --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Cadres</label>
+                            <select id="cadre-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">All Caders</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Action Buttons -->

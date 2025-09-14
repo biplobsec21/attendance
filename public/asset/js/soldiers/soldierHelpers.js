@@ -46,6 +46,13 @@ export function getEducations(arr) {
         })
         .join(" | "); // separate multiple educations by " | "
 }
+
+export function highlightText(text, term) {
+    if (!term) return text; // no search term, return original text
+    const regex = new RegExp(`(${term})`, "gi"); // case-insensitive match
+    return text.replace(regex, '<span class="bg-yellow-200">$1</span>');
+}
+
 export function getCourseAndCadres(courses = [], cadres = []) {
     // Helper function to format array into comma-separated string
     const formatArray = (arr) => {

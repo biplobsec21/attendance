@@ -1,5 +1,5 @@
 // public/js/soldiers/soldierUI.js
-import { getStatusFromSoldier, calculateProgress, getStatusBadge, formatDate, getLeaveBadge, getSkill, getEducations, getCourseAndCadres } from "./soldierHelpers.js";
+import { getStatusFromSoldier, calculateProgress, getStatusBadge, formatDate, getLeaveBadge, getSkill, getEducations, getCourseAndCadres, highlightText } from "./soldierHelpers.js";
 
 export function renderTableRow(soldier) {
     const status = getStatusFromSoldier(soldier);
@@ -11,6 +11,7 @@ export function renderTableRow(soldier) {
     const courseAndCadres = getCourseAndCadres(soldier.courses, soldier.cadres);
     // console.log(soldier.is_leave);
     const defaultAvatar = "/images/default-avatar.png";
+
 
     return `
         <tr class="hover:bg-gray-50 transition-colors duration-150" data-soldier-id="${soldier.id}">
