@@ -15,12 +15,12 @@ class SoldierFactory extends Factory
     public function definition(): array
     {
         return [
-            'image' => $this->faker->imageUrl(200, 200, 'people', true, 'soldier'),
+            'image' => 'images/default-avatar.png',
             'full_name' => $this->faker->name(),
             'army_no' => strtoupper($this->faker->bothify('ARMY-###??')),
             'company_id' => Company::factory(),
             'rank_id' => Rank::inRandomOrder()->first()->id ?? Rank::factory(),
-
+            'is_leave' => fake()->boolean(),
             'mobile' => $this->faker->optional()->phoneNumber(),
             'gender' => $this->faker->randomElement(['Male', 'Female']),
             'blood_group' => $this->faker->randomElement(['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']),

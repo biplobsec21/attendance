@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Soldier;
 use Illuminate\Support\Collection;
+use Carbon\Carbon;
 
 class SoldierDataFormatter
 {
@@ -32,6 +33,12 @@ class SoldierDataFormatter
             'is_leave' => $profile->is_leave,
             'is_sick' => $profile->is_sick,
             'status' => $profile->status,
+            'mobile' => $profile->mobile,
+            'blood_group' => $profile->blood_group,
+            'image' => $profile->image ?? asset('/images/default-avatar.png'),
+            'service_duration' => $this->duration($profile->joining_date),
+            'marital_status' => $this->maritalinfo($profile->marital_status, $profile->num_boys, $profile->num_girls),
+            'address' => $this->addressInfo($profile->district->name, $profile->permanent_address),
 
             // Extended Details
             'educations'       => $this->formatEducations($profile),
@@ -47,6 +54,62 @@ class SoldierDataFormatter
 
             'actions'   => view('mpm.page.profile.partials.actions', compact('profile'))->render(),
         ];
+    }
+    public function addressInfo($district, $address)
+    {
+        $fullAddress = trim("{$address}, {$district}", ', ');
+
+        if (empty($fullAddress)) {
+            return '<span class="text-gray-500"><i class="fas fa-map-marker-alt fa-fw text-gray-400"></i> N/A</span>';
+        }
+
+        return '<span class="text-gray-700">
+                <i class="fas fa-map-marker-alt fa-fw text-green-200"></i>
+                ' . e($fullAddress) . '
+            </span>';
+    }
+
+    public function maritalinfo($status, $boys = 0, $girls = 0)
+    {
+        // Base marital status
+        $info = $status;
+
+        // If married/divorced/widowed, include children info
+        if (in_array($status, ['Married', 'Divorced', 'Widowed'])) {
+            $children = [];
+
+            if ($boys > 0) {
+                $children[] = "{$boys} boy" . ($boys > 1 ? 's' : '');
+            }
+
+            if ($girls > 0) {
+                $children[] = "{$girls} girl" . ($girls > 1 ? 's' : '');
+            }
+
+            if (!empty($children)) {
+                $info .= ' (' . implode(', ', $children) . ')';
+            }
+        }
+
+        return $info;
+    }
+
+
+    public function duration($joining_date)
+    {
+        if (!$joining_date) {
+            return 'N/A';
+        }
+
+        // Parse the date
+        $joinDate = Carbon::parse($joining_date);
+        $now = Carbon::now();
+
+        // Calculate the difference
+        $diff = $joinDate->diff($now);
+
+        // Return formatted duration
+        return "{$diff->y} years, {$diff->m} months, {$diff->d} days";
     }
     public function formatEducations(Soldier $profile)
     {

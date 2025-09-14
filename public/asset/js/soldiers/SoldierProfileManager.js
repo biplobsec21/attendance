@@ -154,8 +154,10 @@ export default class SoldierProfileManager {
         tbody.querySelectorAll(".view-btn").forEach((btn) => {
             btn.addEventListener("click", () => {
                 const id = btn.dataset.id;
-                const soldier = soldiers.find((s) => s.id == id);
-                if (soldier) openProfileModal(soldier);
+                // const soldier = soldiers.find((s) => s.id == id);
+                const url = routes.view.replace(':id', id);
+                window.open(url, "_blank"); // opens in a new tab
+                //if (soldier) openProfileModal(soldier);
             });
         });
 
@@ -170,7 +172,8 @@ export default class SoldierProfileManager {
         tbody.querySelectorAll(".edit-btn").forEach((btn) => {
             btn.addEventListener("click", () => {
                 const id = btn.dataset.id;
-                window.location.href = routes.edit.replace(':id', id);
+                const url = routes.edit.replace(':id', id);
+                window.open(url, "_blank"); // opens in a new tab
             });
         });
 

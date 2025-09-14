@@ -159,19 +159,15 @@
                                         Soldier</th>
                                     <th
                                         class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Rank/Company</th>
+                                        Key info.</th>
                                     <th
                                         class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Status</th>
+                                        Skills</th>
+
+
                                     <th
                                         class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Joining Date</th>
-                                    <th
-                                        class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Progress</th>
-                                    <th
-                                        class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions</th>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200" id="soldiers-tbody">
@@ -233,7 +229,9 @@
             getAllSoldiers: "{{ route('soldier.getAllData') }}",
             delete: "{{ route('soldier.destroy', ['soldier' => ':id']) }}", // placeholder
             edit: "{{ route('soldier.personalForm', ['profile' => ':id']) }}",
-            bulkDelete: "{{ route('soldier.bulkDelete') }}"
+            bulkDelete: "{{ route('soldier.bulkDelete') }}",
+            view: "{{ route('soldier.details', ['id' => ':id']) }}",
+
         };
     </script>
     <script type="module" src="{{ asset('asset/js/soldiers/init.js') }}"></script>

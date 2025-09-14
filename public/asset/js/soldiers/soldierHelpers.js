@@ -14,6 +14,58 @@ export function getStatusFromSoldier(soldier) {
     if (soldier.status === true) return 'active';
     return 'inactive';
 }
+export function getSkill(skillArray) {
+    if (!Array.isArray(skillArray) || skillArray.length === 0) {
+        return "N/A";
+    }
+
+    return skillArray
+        .map(skill => {
+            const name = skill.name || "Unknown";
+            const result = skill.result !== null && skill.result !== undefined
+                ? `(${skill.result})`
+                : "";
+            return `${name} ${result}`.trim();
+        })
+        .join(", ");
+}
+export function getEducations(arr) {
+    if (!Array.isArray(arr) || arr.length === 0) {
+        return "No education data available";
+    }
+
+    return arr
+        .map(edu => {
+            const name = edu.name || "Unknown";
+            const status = edu.status ? `(${edu.status})` : "";
+            const year = edu.year ? `Year: ${edu.year}` : "";
+            const remark = edu.remark ? `Remark: ${edu.remark}` : "";
+
+            // Join only non-empty parts with comma
+            return [name, status, year, remark].filter(Boolean).join(", ");
+        })
+        .join(" | "); // separate multiple educations by " | "
+}
+export function getCourseAndCadres(courses = [], cadres = []) {
+    // Helper function to format array into comma-separated string
+    const formatArray = (arr) => {
+        if (!Array.isArray(arr) || arr.length === 0) return "N/A";
+        return arr
+            .map(item => {
+                const name = item.name || "Unknown";
+                const result = item.result ? ` (${item.result})` : "";
+                return `${name}${result}`;
+            })
+            .join(", ");
+    };
+
+    const coursesText = formatArray(courses);
+    const cadresText = formatArray(cadres);
+
+    return `<p><strong>Courses:</strong> ${coursesText}</p>
+            <p><strong>Cadres:</strong> ${cadresText}</p>`;
+}
+
 
 export function calculateProgress(soldier) {
     const completedSteps = [
@@ -34,7 +86,7 @@ export function calculateProgress(soldier) {
 
 export function getLeaveBadge(status) {
     const badges = {
-        active: '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">OK</span>',
+        active: '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-check"></i></span>',
         inactive: '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-gray-800">On Leave</span>'
     };
 
