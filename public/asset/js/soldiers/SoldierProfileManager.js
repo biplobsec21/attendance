@@ -233,6 +233,14 @@ export default class SoldierProfileManager {
 
         tbody.innerHTML = soldiers.map((s) => renderTableRow(s)).join("");
 
+
+        tbody.querySelectorAll(".btn-leave").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const id = btn.dataset.id;
+                const soldier = soldiers.find((s) => s.id == id);
+                if (soldier) openProfileModal(soldier, "Leave details");
+            });
+        });
         // Attach event listeners
         tbody.querySelectorAll(".view-btn").forEach((btn) => {
             btn.addEventListener("click", () => {

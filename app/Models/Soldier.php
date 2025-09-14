@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder; // <-- Add this
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Soldier extends Model
 {
@@ -48,6 +49,8 @@ class Soldier extends Model
         'num_boys' => 'integer',
         'num_girls' => 'integer',
     ];
+    // Add computed attribute automatically
+    protected $appends = ['is_on_leave', 'current_leave_details'];
     public function scopeAvailableForDuty(Builder $query)
     {
         return $query->where('is_sick', false);
@@ -175,5 +178,53 @@ class Soldier extends Model
         $diff = $joiningDate->diff(Carbon::now());
 
         return sprintf('%dY %dM %dD', $diff->y, $diff->m, $diff->d);
+    }
+
+    public function leaveApplications(): HasMany
+    {
+        return $this->hasMany(LeaveApplication::class);
+    }
+
+    public function currentLeaveApplications(): HasMany
+    {
+        $today = Carbon::today()->toDateString();
+        return $this->leaveApplications()
+            ->where('application_current_status', 'approved')
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today);
+    }
+
+    // Computed attributes
+    public function getIsOnLeaveAttribute(): bool
+    {
+        if ($this->relationLoaded('current_leave_applications_count')) {
+            return $this->current_leave_applications_count > 0;
+        }
+
+        return $this->currentLeaveApplications()->exists();
+    }
+
+    public function getCurrentLeaveDetailsAttribute(): ?array
+    {
+        $leave = $this->currentLeaveApplications()->with('leaveType')->first();
+
+        if (!$leave) return null;
+
+        return [
+            'leave_type' => optional($leave->leaveType)->name,
+            'reason'     => $leave->reason,
+            'start_date' => $leave->start_date->toDateString(),
+            'end_date'   => $leave->end_date->toDateString(),
+        ];
+    }
+    // Scopes
+    public function scopeOnLeave($query)
+    {
+        return $query->whereHas('currentLeaveApplications');
+    }
+
+    public function scopeNotOnLeave($query)
+    {
+        return $query->whereDoesntHave('currentLeaveApplications');
     }
 }

@@ -578,7 +578,12 @@ class SoldierController extends Controller
     public function details($id)
     {
         $profile = Soldier::findOrFail($id);
+        // $soldier = Soldier::with(['rank', 'company', 'currentLeaveApplications.leaveType'])
+        //     ->withCount(['currentLeaveApplications as current_leave_applications_count'])
+        //     ->find(1);
+        // dd($soldier->current_leave_details);
 
+        // dd($soldier->is_on_leave);
         // Separate current and previous appointments
         $current  = $profile->services->where('appointment_type', 'current')->last();
         $previous = $profile->services->where('appointment_type', 'previous');

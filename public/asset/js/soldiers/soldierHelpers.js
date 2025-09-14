@@ -94,7 +94,7 @@ export function calculateProgress(soldier) {
 export function getLeaveBadge(status) {
     const badges = {
         active: '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-check"></i></span>',
-        inactive: '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-gray-800">On Leave</span>'
+        inactive: '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">On Leave</span>'
     };
 
     return status ? badges.inactive : badges.active;

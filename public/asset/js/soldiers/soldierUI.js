@@ -21,7 +21,9 @@ export function renderTableRow(soldier) {
             </td>
             <td class="px-6 py-4">
                 <div class="flex items-center relative">
-                    <div class="absolute -top-5">${isleave}</div>
+                    <div class="absolute -top-5">
+                        <button class="btn-leave" data-id="${soldier.id}">${isleave}</button>
+                    </div>
                    <div class="flex flex-col items-center">
                     <!-- Image -->
                     <img class="h-40 w-32 rounded-lg object-cover border-2 border-gray-200"

@@ -20,15 +20,16 @@ class SoldierAPIController extends Controller
     public function index(Request $request)
     {
 
-
-        $profiles = Soldier::with(['rank', 'company'])->get();
+        $profiles = Soldier::with(['rank', 'company', 'currentLeaveApplications.leaveType'])
+            ->withCount(['currentLeaveApplications as current_leave_applications_count'])
+            ->get();
 
         return response()->json([
             'data' => $this->formatter->formatCollection($profiles),
             'stats' => [
                 'total' => $profiles->count(),
-                'active' => $profiles->where('is_leave', false)->where('is_sick', false)->count(),
-                'leave' => $profiles->where('is_leave', true)->count(),
+                'active' => $profiles->where('is_on_leave', false)->where('is_sick', false)->count(), // is_on_leave is appends data
+                'leave' => $profiles->where('is_on_leave', true)->count(), // is_on_leave is appends data
                 'medical' => $profiles->where('is_sick', true)->count()
             ]
         ]);

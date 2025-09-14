@@ -24,7 +24,10 @@ class LeaveApplication extends Model
         'end_date',
         'application_current_status',
     ];
-
+    protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
+    ];
     /**
      * Relationships
      */
@@ -39,5 +42,18 @@ class LeaveApplication extends Model
     public function leaveType()
     {
         return $this->belongsTo(LeaveType::class);
+    }
+    // Scopes
+    public function scopeApproved($query)
+    {
+        return $query->where('application_current_status', 'approved');
+    }
+
+    public function scopeCurrent($query)
+    {
+        $today = now()->toDateString();
+        return $query->approved()
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today);
     }
 }

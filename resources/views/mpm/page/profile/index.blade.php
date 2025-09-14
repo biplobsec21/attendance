@@ -226,7 +226,7 @@
             </div>
         </div>
     </div>
-    <!-- Profile Quick View Modal -->
+    <!-- Profile Quick View Modal //  make it as a common modal //-->
     <div id="profile-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
@@ -234,7 +234,7 @@
                 class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-white px-6 pt-6 pb-4">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-medium text-gray-900">Profile Quick View</h3>
+                        <h3 class="text-lg font-medium text-gray-900" id="modal-title">Profile Quick View</h3>
                         <button id="close-modal" class="text-gray-400 hover:text-gray-600">
                             <i class="fas fa-times text-xl"></i>
                         </button>
@@ -246,6 +246,8 @@
             </div>
         </div>
     </div>
+
+
 @endsection
 @push('scripts')
     <script>

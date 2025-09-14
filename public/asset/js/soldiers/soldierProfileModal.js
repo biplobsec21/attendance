@@ -18,27 +18,29 @@ export function generateProfileModalContent(soldier) {
 
             <div class="mt-4 grid grid-cols-2 gap-4">
                 <div>
-                    <h4 class="text-sm font-medium text-gray-500">Army Number</h4>
-                    <p class="mt-1">${soldier.army_no || 'N/A'}</p>
+                    <h4 class="text-sm font-medium text-gray-500">Leave Reason</h4>
+                    <p class="mt-1">${soldier.current_leave_details ? soldier.current_leave_details.reason : 'N/A'}</p>
                 </div>
                 <div>
-                    <h4 class="text-sm font-medium text-gray-500">Joining Date</h4>
-                    <p class="mt-1">${formatDate(soldier.joining_date)}</p>
+                    <h4 class="text-sm font-medium text-gray-500">Leave Type</h4>
+                    <p class="mt-1">${soldier.current_leave_details ? soldier.current_leave_details.leave_type : 'N/A'}</p>
                 </div>
                 <div>
-                    <h4 class="text-sm font-medium text-gray-500">Blood Group</h4>
-                    <p class="mt-1">${soldier.blood_group || 'N/A'}</p>
+                    <h4 class="text-sm font-medium text-gray-500">Leave Start Date</h4>
+                    <p class="mt-1">${soldier.current_leave_details ? formatDate(soldier.current_leave_details.start_date) : 'N/A'}</p>
                 </div>
-                <div>
-                    <h4 class="text-sm font-medium text-gray-500">Phone</h4>
-                    <p class="mt-1">${soldier.phone || 'N/A'}</p>
+               <div>
+                    <h4 class="text-sm font-medium text-gray-500">Leave End Date</h4>
+                    <p class="mt-1">${soldier.current_leave_details ? formatDate(soldier.current_leave_details.end_date) : 'N/A'}</p>
                 </div>
             </div>
         </div>
     `;
 }
 
-export function openProfileModal(soldier) {
+export function openProfileModal(soldier, text) {
+
+    const title = document.getElementById('modal-title');
     const modal = document.getElementById('profile-modal');
     const content = document.getElementById('modal-content');
 
@@ -47,6 +49,7 @@ export function openProfileModal(soldier) {
         return;
     }
 
+    title.innerHTML = text;
     content.innerHTML = generateProfileModalContent(soldier);
     modal.classList.remove('hidden');
 }
