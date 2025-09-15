@@ -28,6 +28,8 @@ use App\Http\Controllers\SkillCategoryController;
 use App\Http\Controllers\DutyAssignmentController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\ExportController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SoldierExportController;
 
 
@@ -291,4 +293,12 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/audit-trail/{id}', [BackupController::class, 'show'])->name('audit-trail.view');
     Route::get('/users/{userId}', [BackupController::class, 'showUserProfile'])->name('users.show');
     Route::get('/download-database', [BackupController::class, 'downloadDatabase'])->name('database.download');
+
+    route::get('/report', [ReportController::class, 'index'])->name('report.index');
+    Route::get('/report/duties/{date}', [ReportController::class, 'getDutiesByDate'])->name('duties.stats');
+
+    Route::prefix('export')->group(function () {
+        Route::get('/duties/{type?}', [ExportController::class, 'exportDuties'])
+            ->name('export.duties');
+    });
 });

@@ -66,7 +66,9 @@
             <li><a href="{{ route('dashboard.index') }}"
                     class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'dashboard' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">Dashboard</a>
             </li>
-            <li><a href="#" class="hover:text-orange-400 transition-colors">Reports</a></li>
+            <li><a href="{{ route('report.index') }}"
+                    class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'report' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">Report</a>
+            </li>
             <a href="{{ route('soldier.index') }}"
                 class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'army' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">
                 Profile
