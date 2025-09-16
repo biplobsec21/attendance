@@ -91,7 +91,7 @@
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition">
                             <i class="fas fa-tasks text-blue-500"></i> Duty
                         </a></li>
-                    <li><a href="{{ route('ranks.index') }}"
+                    <li><a href="{{ route('duty.assign') }}"
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition">
                             <i class="fas fa-layer-group text-blue-500"></i> Assign to Rank
                         </a></li>
