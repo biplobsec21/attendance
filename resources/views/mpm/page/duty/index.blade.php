@@ -4,6 +4,7 @@
 
 @section('content')
     <div class="container mx-auto p-4">
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
         <div class="bg-white/30 shadow-lg rounded-lg p-4 sm:p-6 formBack">
             {{-- Session Success Message --}}
             @if (session('success'))

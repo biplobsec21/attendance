@@ -4,6 +4,7 @@
 
 @section('content')
     <div class="container mx-auto p-4">
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
         <div class="bg-white/30 shadow-lg rounded-lg p-6 formBack w-full max-w-lg mx-auto">
             <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">Edit skillcategory</h1>
 

@@ -1,7 +1,9 @@
 @extends('mpm.layouts.app')
 
 @section('content')
+
     <div class="container mx-auto px-4 py-6">
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
         <div class="max-w-2xl mx-auto bg-white shadow-md rounded-lg p-6">
             <h1 class="text-2xl font-bold text-gray-800 mb-6">Edit User: {{ $user->name }}</h1>
 

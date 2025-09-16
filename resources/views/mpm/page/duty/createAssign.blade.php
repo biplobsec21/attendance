@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="container mx-auto p-4">
-
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
         {{-- Display Validation Errors --}}
         @if ($errors->any())
             <div class="alert alert-danger mb-4">

@@ -2,6 +2,7 @@
 
 @section('content')
     <div class="container mx-auto">
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
         <h2 class="text-xl font-bold mb-4">Manage Roles for {{ $user->name }}</h2>
 
         <form action="{{ route('users.roles.update', $user->id) }}" method="POST">

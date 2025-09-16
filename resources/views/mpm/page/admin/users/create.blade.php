@@ -1,31 +1,69 @@
 @extends('mpm.layouts.app')
 
 @section('content')
-    <div class="container">
-        <h1>Create User</h1>
-        <form action="{{ route('users.store') }}" method="POST">
-            @csrf
-            <div class="mb-3">
-                <label>Name</label>
-                <input type="text" name="name" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label>Email</label>
-                <input type="email" name="email" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label>Password</label>
-                <input type="password" name="password" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label>Role</label>
-                <select name="role_id" class="form-control" required>
-                    @foreach ($roles as $id => $role)
-                        <option value="{{ $id }}">{{ $role }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <button class="btn btn-success">Create</button>
-        </form>
+    <div class="container mx-auto px-4 py-6">
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
+        <div class="max-w-2xl mx-auto bg-white shadow-md rounded-lg p-6">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">Create New User</h1>
+
+            @if ($errors->any())
+                <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                    <ul class="mb-0 list-disc list-inside">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <form action="{{ route('users.store') }}" method="POST" class="space-y-4">
+                @csrf
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <input type="text" name="name"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value="{{ old('name') }}" required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" name="email"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value="{{ old('email') }}" required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" name="password"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                    <select name="role_id"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required>
+                        @foreach ($roles as $id => $role)
+                            <option value="{{ $id }}" {{ old('role_id') == $id ? 'selected' : '' }}>
+                                {{ ucfirst($role) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="flex space-x-3 mt-4">
+                    <button type="submit"
+                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition">
+                        Create User
+                    </button>
+                    <a href="{{ route('users.index') }}"
+                        class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg transition">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 @endsection
