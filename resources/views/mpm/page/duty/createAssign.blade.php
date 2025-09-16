@@ -143,7 +143,7 @@
 
                 {{-- Buttons --}}
                 <div class="flex items-center justify-between mt-6">
-                    <a href="{{ route('duty.assign') }}"
+                    <a href="{{ route('duty.assigntorank') }}"
                         class="bg-transparent text-black font-semibold py-2 px-4 border border-black rounded-lg hover:bg-black hover:text-white transition-colors no-underline">
                         Back
                     </a>

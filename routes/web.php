@@ -129,7 +129,7 @@ Route::middleware('auth')->group(function () {
 
         // Store/save the assignments
 
-        Route::get('assignlist', [DutyController::class, 'assignList'])->name('duty.assign');
+        Route::get('assignlist', [DutyController::class, 'assignList'])->name('duty.assigntorank');
         Route::post('assign', [DutyController::class, 'storeAssignments'])->name('duty.storeAssignment');
         Route::get('assign', [DutyController::class, 'createAssignments'])->name('duty.createAssignment');
 

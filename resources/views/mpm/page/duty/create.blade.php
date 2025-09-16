@@ -138,7 +138,7 @@
 
                 {{-- Action Buttons --}}
                 <div class="flex items-center justify-between mt-6">
-                    <a href="{{ url('duty/index') }}"
+                    <a href="{{ route('duty.index') }}"
                         class="bg-transparent text-black font-semibold py-2 px-4 border border-black rounded-lg hover:bg-black hover:text-white transition-colors no-underline">
                         Back to List
                     </a>
