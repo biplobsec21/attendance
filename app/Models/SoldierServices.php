@@ -15,7 +15,7 @@ class SoldierServices extends Model
         'soldier_id',
         'appointments_name',
         'appointment_type',
-
+        'appointment_id',
         'appointments_from_date',
         'appointments_to_date',
     ];
@@ -25,5 +25,9 @@ class SoldierServices extends Model
     public function soldier()
     {
         return $this->belongsTo(Soldier::class, 'soldier_id');
+    }
+    public function appointments()
+    {
+        return $this->belongsTo(Appointment::class, 'appointment_id');
     }
 }

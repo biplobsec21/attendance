@@ -27,7 +27,9 @@ use App\Http\Controllers\Admin\FilterController;
 use App\Http\Controllers\SkillCategoryController;
 use App\Http\Controllers\DutyAssignmentController;
 use App\Http\Controllers\Admin\PermissionController;
+use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\CommissionsController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SoldierExportController;
@@ -206,7 +208,6 @@ require __DIR__ . '/auth.php';
 
 Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {});
 
-Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {});
 
 
 Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function () {
@@ -260,6 +261,9 @@ Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function ()
     Route::patch('cadres/{cadre}/toggle-status', [CadreController::class, 'toggleStatus'])
         ->name('cadres.toggle-status');
 
+    Route::resource('appointments', AppointmentController::class);
+    Route::patch('appointments/{appointment}/toggle-status', [AppointmentController::class, 'toggleStatus'])
+        ->name('appointments.toggle-status');
 
     Route::resource('education', EducationController::class);
     // Additional route to toggle course status
@@ -299,3 +303,5 @@ Route::group(['middleware' => ['auth']], function () {
             ->name('export.duties');
     });
 });
+
+Route::get('/test', [CommissionsController::class, 'testCommission'])->name('test');
