@@ -13,8 +13,8 @@ return new class extends Migration
             $table->unsignedBigInteger('soldier_id');
             $table->string('appointments_name', 400)->nullable();
             $table->string('appointment_type', 20); // type could be currnent or previous
-            $table->string('appointments_from_date', 20);
-            $table->string('appointments_to_date', 20)->nullable();
+            $table->date('appointments_from_date')->nullable();
+            $table->date('appointments_to_date',)->nullable();
 
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();

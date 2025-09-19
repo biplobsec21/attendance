@@ -42,3 +42,38 @@ if (!function_exists('generateBreadcrumbs')) {
         return $breadcrumbs;
     }
 }
+if (!function_exists('generateBreadcrumbs_auto')) {
+    function generateBreadcrumbs_auto()
+    {
+        $routeName = Route::currentRouteName(); // e.g. "appointmanager.create"
+        $params    = Route::current()->parameters();
+
+        $parts = explode('.', $routeName);
+
+        $breadcrumbs = [];
+        $url = '';
+
+        foreach ($parts as $i => $part) {
+            // Build the route progressively: "appointmanager.index", "appointmanager.create"
+            $routeKey = implode('.', array_slice($parts, 0, $i + 1));
+
+            // If the route exists, generate a link
+            $url = $i < count($parts) - 1 && Route::has($routeKey)
+                ? route($routeKey, $params)
+                : '';
+
+            // Convert part name to readable label
+            $label = match ($part) {
+                'index'  => 'List',
+                'create' => 'Create',
+                'edit'   => 'Edit',
+                'show'   => 'View',
+                default  => ucfirst($part),
+            };
+
+            $breadcrumbs[] = ['label' => $label, 'url' => $url];
+        }
+
+        return $breadcrumbs;
+    }
+}

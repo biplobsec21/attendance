@@ -52,7 +52,7 @@ class AppointmentController extends Controller
     {
         Appointment::create($request->validated());
 
-        return redirect()->route('appointments.index')->with('success', 'Cadre created successfully.');
+        return redirect()->route('appointments.index')->with('success', 'appointment created successfully.');
     }
 
     /**
@@ -87,7 +87,7 @@ class AppointmentController extends Controller
      */
     public function destroy(Appointment $appointment): RedirectResponse
     {
-        // Check if any soldiers are assigned to this cadre
+        // Check if any soldiers are assigned to this appointment
         $appointments = $appointment->appoinmentsAssign()->count();
 
         if ($appointments > 0) {
@@ -101,7 +101,7 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Toggle status of the cadre.
+     * Toggle status of the appointment.
      */
     public function toggleStatus(Appointment $appointment): RedirectResponse
     {

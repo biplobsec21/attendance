@@ -28,6 +28,7 @@ use App\Http\Controllers\SkillCategoryController;
 use App\Http\Controllers\DutyAssignmentController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\AppointmentManagerController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CommissionsController;
 use App\Http\Controllers\ExportController;
@@ -111,7 +112,15 @@ Route::middleware('auth')->group(function () {
             ->name('soldier.profile');
     });
 
-
+    Route::prefix('appointmanager')->name('appointmanager.')->group(function () {
+        Route::get('/', [AppointmentManagerController::class, 'index'])->name('index');
+        Route::get('/create', [AppointmentManagerController::class, 'create'])->name('create');
+        Route::post('/', [AppointmentManagerController::class, 'store'])->name('store');
+        Route::get('/{id}', [AppointmentManagerController::class, 'show'])->name('show');
+        Route::put('/{id}', [AppointmentManagerController::class, 'update'])->name('update');
+        Route::put('/{id}/release', [AppointmentManagerController::class, 'release'])->name('release');
+        Route::delete('/{id}', [AppointmentManagerController::class, 'destroy'])->name('destroy');
+    });
     // routes/web.php
 
     Route::prefix('duty')->group(function () {
