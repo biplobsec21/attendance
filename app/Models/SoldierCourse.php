@@ -7,15 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class SoldierCadre extends Model
+class SoldierCourse extends Model
 {
     use HasFactory, LogsAllActivity;
 
-    protected $table = 'soldier_cadres';
+    protected $table = 'soldier_courses';
 
     protected $fillable = [
         'soldier_id',
-        'cadre_id',
+        'course_id',
         'remarks',
         'result',
         'completion_date',
@@ -35,7 +35,7 @@ class SoldierCadre extends Model
     /**
      * Get the cadre that owns the soldier cadre relationship.
      */
-    public function cadre(): BelongsTo
+    public function course(): BelongsTo
     {
         return $this->belongsTo(Cadre::class);
     }

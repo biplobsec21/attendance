@@ -93,7 +93,7 @@ class Soldier extends Model
     public function courses(): BelongsToMany
     {
         return $this->belongsToMany(Course::class, 'soldier_courses')
-            ->withPivot(['completion_date', 'start_date', 'end_date', 'remarks', 'course_status'])
+            ->withPivot(['completion_date', 'start_date', 'end_date', 'remarks', 'course_status', 'result'])
             ->withTimestamps();
     }
 
@@ -107,7 +107,7 @@ class Soldier extends Model
     public function cadres(): BelongsToMany
     {
         return $this->belongsToMany(Cadre::class, 'soldier_cadres')
-            ->withPivot(['completion_date', 'start_date', 'end_date', 'remarks', 'course_status'])
+            ->withPivot(['completion_date', 'start_date', 'end_date', 'remarks', 'course_status', 'result'])
 
             ->withTimestamps();
     }

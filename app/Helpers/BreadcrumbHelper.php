@@ -51,27 +51,34 @@ if (!function_exists('generateBreadcrumbs_auto')) {
         $parts = explode('.', $routeName);
 
         $breadcrumbs = [];
-        $url = '';
 
         foreach ($parts as $i => $part) {
-            // Build the route progressively: "appointmanager.index", "appointmanager.create"
-            $routeKey = implode('.', array_slice($parts, 0, $i + 1));
+            $isLast = $i === count($parts) - 1;
 
-            // If the route exists, generate a link
-            $url = $i < count($parts) - 1 && Route::has($routeKey)
-                ? route($routeKey, $params)
-                : '';
+            // Try to build index route for first/main part
+            if ($i === 0) {
+                $baseRoute = $parts[0] . '.index'; // e.g. appointmanager.index
+                $url = Route::has($baseRoute) ? route($baseRoute, $params) : '';
+                $label = ucfirst($parts[0]);
+            } else {
+                // Use human-friendly labels
+                $label = match ($part) {
+                    'index'  => 'List',
+                    'create' => 'Create',
+                    'edit'   => 'Edit',
+                    'show'   => 'View',
+                    default  => ucfirst($part),
+                };
 
-            // Convert part name to readable label
-            $label = match ($part) {
-                'index'  => 'List',
-                'create' => 'Create',
-                'edit'   => 'Edit',
-                'show'   => 'View',
-                default  => ucfirst($part),
-            };
+                // Only make link if it's NOT the last part and route exists
+                $routeKey = implode('.', array_slice($parts, 0, $i + 1));
+                $url = (!$isLast && Route::has($routeKey)) ? route($routeKey, $params) : '';
+            }
 
-            $breadcrumbs[] = ['label' => $label, 'url' => $url];
+            $breadcrumbs[] = [
+                'label' => $label,
+                'url'   => $isLast ? '' : $url, // last item should not be clickable
+            ];
         }
 
         return $breadcrumbs;

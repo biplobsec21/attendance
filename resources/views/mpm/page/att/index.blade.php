@@ -8,6 +8,15 @@
         <!-- Alert Messages -->
         @include('mpm.components.alerts')
 
+        @if ($errors->any())
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <ul class="list-disc pl-5">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <div class="bg-white/30 shadow-lg rounded-lg p-4 sm:p-6 formBack">
             <h1 class="text-2xl font-bold text-gray-800 mb-4 pb-2">ATT List</h1>
 

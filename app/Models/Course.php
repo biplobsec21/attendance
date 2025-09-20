@@ -43,7 +43,7 @@ class Course extends Model
     public function soldiers(): BelongsToMany
     {
         return $this->belongsToMany(Soldier::class, 'soldier_courses')
-            ->withPivot(['completion_date', 'remarks'])
+            ->withPivot(['completion_date', 'remarks', 'start_date', 'end_date', 'result'])
             ->withTimestamps();
     }
 }

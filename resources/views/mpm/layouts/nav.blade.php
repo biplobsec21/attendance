@@ -69,6 +69,16 @@
             <li><a href="{{ route('report.index') }}"
                     class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'report' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">Report</a>
             </li>
+            <li><a href="{{ route('coursecadremanager.index') }}"
+                    class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'coursecadremanager' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">Course/Cadre
+                </a>
+            </li>
+            <li><a href="{{ route('appointmanager.index') }}"
+                    class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'appointmanager' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">Appoint
+                    Manager
+                </a>
+            </li>
+
             <a href="{{ route('soldier.index') }}"
                 class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'army' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">
                 Profile

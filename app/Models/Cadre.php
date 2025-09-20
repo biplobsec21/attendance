@@ -43,7 +43,7 @@ class Cadre extends Model
     public function soldiers(): BelongsToMany
     {
         return $this->belongsToMany(Soldier::class, 'soldier_cadres')
-            ->withPivot(['remarks', 'result'])
+            ->withPivot(['completion_date', 'remarks', 'start_date', 'end_date', 'result'])
             ->withTimestamps();
     }
 }

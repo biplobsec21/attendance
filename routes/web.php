@@ -34,6 +34,7 @@ use App\Http\Controllers\CommissionsController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SoldierExportController;
+use App\Http\Controllers\CourseCadreManagerController;
 
 
 
@@ -122,6 +123,14 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{id}', [AppointmentManagerController::class, 'destroy'])->name('destroy');
     });
     // routes/web.php
+    Route::get('/coursecadremanager', [CourseCadreManagerController::class, 'index'])->name('coursecadremanager.index');
+    Route::get('/coursecadremanager/create', [CourseCadreManagerController::class, 'create'])->name('coursecadremanager.create');
+    Route::post('/coursecadremanager', [CourseCadreManagerController::class, 'store'])->name('coursecadremanager.store');
+    Route::put('/coursecadremanager/course/{id}/complete', [CourseCadreManagerController::class, 'completeCourse'])->name('coursecadremanager.course.complete');
+    Route::put('/coursecadremanager/cadre/{id}/complete', [CourseCadreManagerController::class, 'completeCadre'])->name('coursecadremanager.cadre.complete');
+    Route::delete('/coursecadremanager/{type}/{id}', [CourseCadreManagerController::class, 'destroy'])->name('coursecadremanager.destroy');
+    Route::put('/coursecadremanager/courses/bulk-complete', [CourseCadreManagerController::class, 'bulkCompleteCourses'])->name('coursecadremanager.courses.bulk-complete');
+    Route::put('/coursecadremanager/cadres/bulk-complete', [CourseCadreManagerController::class, 'bulkCompleteCadres'])->name('coursecadremanager.cadres.bulk-complete');
 
     Route::prefix('duty')->group(function () {
 
