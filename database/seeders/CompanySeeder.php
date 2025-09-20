@@ -10,12 +10,12 @@ class CompanySeeder extends Seeder
     public function run()
     {
         $companies = [
-            'Alpha Company',
-            'Bravo Company',
-            'Charlie Company',
-            'Delta Company',
-            'Echo Company',
-            'Foxtrot Company',
+            'A',
+            'B',
+            'C',
+            'D',
+            'Shadar',
+            'Joined',
         ];
 
         foreach ($companies as $company) {
@@ -23,10 +23,3 @@ class CompanySeeder extends Seeder
         }
     }
 }
-
-
-
-
-
-
-

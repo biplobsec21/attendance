@@ -36,6 +36,10 @@
                         <label class="block text-gray-700 text-sm font-bold mb-2">Rank Name</label>
                         <p class="text-gray-900 text-lg font-medium">{{ $rank->name }}</p>
                     </div>
+                    <div class="bg-white/50 p-4 rounded-lg">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Rank Type</label>
+                        <p class="text-gray-900 text-lg font-medium">{{ $rank->type }}</p>
+                    </div>
 
                     <div class="bg-white/50 p-4 rounded-lg">
                         <label class="block text-gray-700 text-sm font-bold mb-2">Status</label>

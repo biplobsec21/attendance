@@ -28,7 +28,19 @@
                         <p class="text-red-500 text-xs italic mt-1">{{ $message }}</p>
                     @enderror
                 </div>
-
+                <select id="type" name="type"
+                    class="shadow-sm border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 @error('category_id') border-red-500 @enderror"
+                    required>
+                    <option value="">-- Select Rank Category --</option>
+                    <option value="OFFICER"{{ old('type', $rank->type ? 'OFFICER' : '') == 'OFFICER' ? 'selected' : '' }}>
+                        OFFICER</option>
+                    <option value="JCO" {{ old('type', $rank->type ? 'JCO' : '') == 'JCO' ? 'selected' : '' }}>J C O
+                    </option>
+                    <option value="RCO"{{ old('type', $rank->type ? 'RCO' : '') == 'RCO' ? 'selected' : '' }}>R C O
+                    </option>
+                    <option value="OR"{{ old('type', $rank->type ? 'OR' : '') == 'OR' ? 'selected' : '' }}>O R
+                    </option>
+                </select>
                 <div class="mb-6">
                     <label for="status" class="block text-gray-700 text-sm font-bold mb-2">
                         Status <span class="text-red-600">*</span>

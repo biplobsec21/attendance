@@ -22,6 +22,10 @@ class RankController extends Controller
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
         }
+        // filter functionality
+        if ($request->filled('type')) {
+            $query->where('type', 'like', '%' . $request->type . '%');
+        }
 
         // Status filter
         if ($request->filled('status')) {
@@ -29,16 +33,17 @@ class RankController extends Controller
         }
 
         // Sorting
-        $sortBy = $request->get('sort_by', 'name');
+        // This is the corrected line to set 'id' as the default.
+        $sortBy = $request->get('sort_by', 'id');
         $sortDirection = $request->get('sort_direction', 'asc');
 
-        if (in_array($sortBy, ['name', 'status', 'created_at'])) {
+        if (in_array($sortBy, ['id', 'name', 'status', 'created_at', 'type'])) {
             $query->orderBy($sortBy, $sortDirection);
         } else {
-            $query->orderBy('name', 'asc');
+            $query->orderBy('id', 'asc');
         }
 
-        $ranks = $query->paginate(10)->withQueryString();
+        $ranks = $query->paginate(20)->withQueryString();
 
         return view('mpm.page.rank.index', compact('ranks'));
     }
@@ -58,12 +63,12 @@ class RankController extends Controller
     {
         try {
             $validatedData = $request->validated();
-            
+
             // Debug: Log the validated data
             \Log::info('Creating rank with data:', $validatedData);
-            
+
             $rank = Rank::create($validatedData);
-            
+
             \Log::info('Rank created successfully:', ['id' => $rank->id, 'name' => $rank->name]);
 
             return redirect()
@@ -75,7 +80,7 @@ class RankController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'data' => $request->all()
             ]);
-            
+
             return redirect()
                 ->back()
                 ->withInput()
@@ -105,8 +110,8 @@ class RankController extends Controller
     public function update(UpdateRankRequest $request, Rank $rank): RedirectResponse
     {
         try {
+            $request->validated();
             $rank->update($request->validated());
-
             return redirect()
                 ->route('ranks.index')
                 ->with('success', 'Rank updated successfully.');
@@ -166,6 +171,9 @@ class RankController extends Controller
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
         }
+        if ($request->filled('type')) {
+            $query->where('type', 'like', '%' . $request->type . '%');
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->status === 'active');
@@ -179,6 +187,7 @@ class RankController extends Controller
                 return [
                     'id' => $rank->id,
                     'name' => $rank->name,
+                    'type' => $rank->type,
                     'status' => $rank->status_text,
                     'status_badge_class' => $rank->status_badge_class,
                     'created_at' => $rank->created_at->format('M d, Y'),

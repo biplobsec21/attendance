@@ -17,13 +17,12 @@
                     <button data-tab="duty"
                         class="tab-btn flex-1 py-3 px-4 text-sm font-medium rounded-md bg-blue-600 text-white">
                         <i class="fas fa-clipboard-list mr-2"></i>
-                        Duty Assignment
+                        Duty Report
                     </button>
                     <button data-tab="leave"
                         class="tab-btn flex-1 py-3 px-4 text-sm font-medium rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-50">
                         <i class="fas fa-calendar-times mr-2"></i>
-                        Leave Management
-                    </button>
+                        Parade Report</button>
                     <button data-tab="profile"
                         class="tab-btn flex-1 py-3 px-4 text-sm font-medium rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-50">
                         <i class="fas fa-users mr-2"></i>

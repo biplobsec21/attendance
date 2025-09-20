@@ -29,6 +29,11 @@ class UpdateRankRequest extends FormRequest
                 'max:450',
                 Rule::unique('ranks', 'name')->ignore($this->route('rank'))
             ],
+            'type' => [
+                'required',
+                'string',
+                'max:40',
+            ],
             'status' => [
                 'required',
                 'boolean'

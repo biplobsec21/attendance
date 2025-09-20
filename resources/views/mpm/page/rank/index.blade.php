@@ -51,7 +51,7 @@
                                 <a href="{{ route('ranks.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_direction' => request('sort_direction') === 'asc' ? 'desc' : 'asc'])) }}"
                                     class="no-underline text-gray-500">
                                     #ID
-                                    @if (request('sort_by') === 'id')
+                                    @if (!request()->has('sort_by') || request('sort_by') === 'id')
                                         <span class="ml-1">{{ request('sort_direction') === 'asc' ? '↑' : '↓' }}</span>
                                     @endif
                                 </a>
@@ -61,6 +61,15 @@
                                     class="no-underline text-gray-500">
                                     Rank Name
                                     @if (request('sort_by') === 'name')
+                                        <span class="ml-1">{{ request('sort_direction') === 'asc' ? '↑' : '↓' }}</span>
+                                    @endif
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="{{ route('ranks.index', array_merge(request()->query(), ['sort_by' => 'type', 'sort_direction' => request('sort_direction') === 'asc' ? 'desc' : 'asc'])) }}"
+                                    class="no-underline text-gray-500">
+                                    Rank TYPE
+                                    @if (request('sort_by') === 'type')
                                         <span class="ml-1">{{ request('sort_direction') === 'asc' ? '↑' : '↓' }}</span>
                                     @endif
                                 </a>
@@ -92,6 +101,7 @@
                             <tr>
                                 <td class="px-6 py-4 whitespace-nowrap">{{ $rank->id }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap font-medium">{{ $rank->name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap font-medium">{{ $rank->type }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <form method="POST" action="{{ route('ranks.toggle-status', $rank) }}" class="inline">
                                         @csrf

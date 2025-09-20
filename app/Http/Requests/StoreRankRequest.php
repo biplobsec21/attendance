@@ -28,6 +28,11 @@ class StoreRankRequest extends FormRequest
                 'max:450',
                 'unique:ranks,name'
             ],
+            'type' => [
+                'required',
+                'string',
+                'max:40',
+            ],
             'status' => [
                 'required',
                 'boolean'

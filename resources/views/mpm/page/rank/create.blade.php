@@ -28,6 +28,24 @@
                         <p class="text-red-500 text-xs italic mt-1">{{ $message }}</p>
                     @enderror
                 </div>
+                {{-- Skill Category --}}
+                <div class="mb-4">
+                    <label for="type" class="block text-gray-700 text-sm font-bold mb-2">
+                        RANK TYPE <span class="text-red-600">*</span>
+                    </label>
+                    <select id="type" name="type"
+                        class="shadow-sm border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 @error('category_id') border-red-500 @enderror"
+                        required>
+                        <option value="">-- Select Rank Category --</option>
+                        <option value="OFFICER">OFFICER</option>
+                        <option value="JCO">J C O</option>
+                        <option value="RCO">R C O</option>
+                        <option value="OR">O R</option>
+                    </select>
+                    @error('type')
+                        <p class="text-red-500 text-xs italic mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
 
                 <div class="mb-6">
                     <label for="status" class="block text-gray-700 text-sm font-bold mb-2">

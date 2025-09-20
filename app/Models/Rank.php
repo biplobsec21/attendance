@@ -18,6 +18,7 @@ class Rank extends Model
     protected $fillable = [
         'name',
         'status',
+        'type'
     ];
 
     /**

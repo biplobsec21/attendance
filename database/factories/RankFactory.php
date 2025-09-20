@@ -12,27 +12,32 @@ class RankFactory extends Factory
     public function definition(): array
     {
         $ranks = [
-            // Commissioned Officers
-            'Second Lieutenant' => 'Commissioned Officers',
-            'Lieutenant'        => 'Commissioned Officers',
-            'Captain'           => 'Commissioned Officers',
-            'Major'             => 'Commissioned Officers',
-            'Lieutenant Colonel' => 'Commissioned Officers',
-            'Colonel'           => 'Commissioned Officers',
-            'Brigadier General' => 'Commissioned Officers',
-            'Major General'     => 'Commissioned Officers',
-            'Lieutenant General' => 'Commissioned Officers',
-            'General'           => 'Commissioned Officers',
-            'Field Marshal'     => 'Commissioned Officers',
+            // Officer Ranks
+            'Cadet'              => 'OFFICER',
+            'Second Lieutenant'  => 'OFFICER',
+            'Lieutenant'         => 'OFFICER',
+            'Captain'            => 'OFFICER',
+            'Major'              => 'OFFICER',
+            'Lieutenant Colonel' => 'OFFICER',
+            'Colonel'            => 'OFFICER',
+            'Brigadier General'  => 'OFFICER',
+            'Major General'      => 'OFFICER',
+            'Lieutenant General' => 'OFFICER',
+            'General'            => 'OFFICER',
 
-            // JCOs & NCOs
-            'Master Warrant Officer' => 'JCOs & NCOs',
-            'Senior Warrant Officer' => 'JCOs & NCOs',
-            'Warrant Officer'        => 'JCOs & NCOs',
-            'Sergeant'               => 'JCOs & NCOs',
-            'Corporal'               => 'JCOs & NCOs',
-            'Lance Corporal'         => 'JCOs & NCOs',
-            'Sainik'                 => 'JCOs & NCOs',
+            // Junior Commissioned Officer (JCO) Ranks
+            'Warrant Officer'        => 'JCO',
+            'Senior Warrant Officer' => 'JCO',
+            'Master Warrant Officer' => 'JCO',
+
+            // Other Ranks (OR)
+            'Sainik'                 => 'OR',
+            'Lance Corporal'         => 'OR',
+            'Corporal'               => 'OR',
+            'Sergeant'               => 'OR',
+
+            // Religious Commissioned Officer (RCO) - a specific officer type
+            'Religious Teacher'      => 'RCO',
         ];
 
         $name = $this->faker->unique()->randomElement(array_keys($ranks));
