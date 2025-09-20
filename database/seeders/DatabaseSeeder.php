@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            CompanySeeder::class,
             AppointmentSeeder::class,
             AdminUserSeeder::class,
             DutiesTableSeeder::class,
@@ -25,13 +26,11 @@ class DatabaseSeeder extends Seeder
             CadreSeeder::class,
             MedicalCategorySeeder::class,
             PermanentSicknessSeeder::class,
-            CompanySeeder::class,
             DesignationSeeder::class,
             SkillCategorySeeder::class,
             SkillSeeder::class,
             CourseSeeder::class,
             SoldierSeeder::class,
-
             DutyRankTableSeeder::class,
             FilterSeeder::class,
 

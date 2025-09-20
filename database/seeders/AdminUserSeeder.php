@@ -15,10 +15,10 @@ class AdminUserSeeder extends Seeder
 
         // Create the admin user
         $admin = User::firstOrCreate(
-            ['email' => 'arnobsec21@gmail.com'], // email to identify
+            ['email' => 'admin@gmail.com'], // email to identify
             [
                 'name' => 'Biplob Hossain',
-                'password' => bcrypt('kilban13'), // default password
+                'password' => bcrypt('admin'), // default password
             ]
         );
 

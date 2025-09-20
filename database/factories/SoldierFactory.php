@@ -18,7 +18,7 @@ class SoldierFactory extends Factory
             'image' => 'images/default-avatar.png',
             'full_name' => $this->faker->name(),
             'army_no' => strtoupper($this->faker->bothify('ARMY-###??')),
-            'company_id' => Company::factory(),
+            'company_id' => Company::inRandomOrder()->first()->id ?? Company::factory(),
             'rank_id' => Rank::inRandomOrder()->first()->id ?? Rank::factory(),
             'is_leave' => fake()->boolean(),
             'mobile' => $this->faker->optional()->phoneNumber(),
