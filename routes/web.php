@@ -321,6 +321,7 @@ Route::group(['middleware' => ['auth']], function () {
             ->name('export.duties');
     });
     Route::get('/export/parade/{type}', [ExportController::class, 'exportParade'])->name('export.parade');
+    // Route::get('/report/parade/{date}', [ReportController::class, 'paradeReport'])->name('report.parade');
 });
 
 Route::get('/test', [CommissionsController::class, 'testCommission'])->name('test');

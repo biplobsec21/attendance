@@ -131,6 +131,7 @@
 
             <!-- In the parade report tab (leave-tab) -->
             <!-- In the parade report tab (leave-tab) -->
+            <!-- In the parade report tab (leave-tab) -->
             <div id="leave-tab" class="tab-content hidden">
                 <div class="bg-white rounded-lg shadow-sm">
                     <div class="p-6 border-b border-gray-200">
@@ -152,7 +153,13 @@
 
                     <div class="p-6">
                         <p class="text-gray-600">Select a date and click "Download Report" to generate the parade report.
-                            Only past or current dates can be selected.</p>
+                            The report will include two sections:</p>
+                        <ul class="list-disc pl-5 mt-2 text-gray-600">
+                            <li>Company and Rank Summary: Shows total soldiers, appointed soldiers, and final totals by
+                                company and rank</li>
+                            <li>Appointment Distribution: Shows the distribution of appointments across companies</li>
+                        </ul>
+                        <p class="mt-2 text-gray-600">Only past or current dates can be selected.</p>
                     </div>
                 </div>
             </div>
@@ -315,9 +322,15 @@
                     // Check if the date is in the future
                     const selectedDate = new Date(date);
                     const today = new Date();
+
+                    // Normalize both dates to midnight for a day-to-day comparison
+                    selectedDate.setHours(0, 0, 0, 0);
                     today.setHours(0, 0, 0, 0);
 
+                    console.log(selectedDate, today);
+
                     if (selectedDate > today) {
+                        // Note: It's better to use a modal or message box instead of alert()
                         alert('Future dates cannot be selected');
                         return;
                     }

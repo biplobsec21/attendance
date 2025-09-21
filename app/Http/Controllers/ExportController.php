@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\DutyExport;
-use App\Exports\ParadeExport;
+use App\Exports\CombinedSingleSheetExport;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
@@ -58,6 +58,6 @@ class ExportController extends Controller
 
         $fileName = 'parade_report_' . now()->format('Ymd_His') . '.' . ($type === 'excel' ? 'xlsx' : $type);
 
-        return Excel::download(new ParadeExport($date), $fileName);
+        return Excel::download(new CombinedSingleSheetExport($date), $fileName);
     }
 }
