@@ -257,6 +257,32 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
 
+                // Insert a new row at the top for the main title
+                $sheet->insertNewRowBefore(1, 1);
+
+                // Format the date for the title
+                $formattedDate = date('d M Y', strtotime($this->date));
+
+                // Set the main title
+                $sheet->setCellValue('A1', "Parade Report 21EB Date: {$formattedDate}");
+
+                // Get the highest column for the first report
+                $highestColumn = $sheet->getHighestColumn();
+
+                // Merge the title cells
+                $sheet->mergeCells("A1:{$highestColumn}1");
+
+                // Style the main title
+                $sheet->getStyle('A1')
+                    ->getFont()
+                    ->setBold(true)
+                    ->setSize(16);
+
+                // Center the title
+                $sheet->getStyle('A1')
+                    ->getAlignment()
+                    ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
                 // Find the header row for the second report
                 $highestRow = $sheet->getHighestRow();
                 $headerRow = null;
@@ -275,7 +301,7 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
                         ->getFont()->setBold(true);
 
                     // Add a title for the second report
-                    $sheet->setCellValue('A' . ($headerRow - 1), 'Parade Report');
+                    $sheet->setCellValue('A' . ($headerRow - 1), 'Apointment Report');
                     $sheet->getStyle('A' . ($headerRow - 1))
                         ->getFont()
                         ->setBold(true)
