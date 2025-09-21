@@ -320,6 +320,7 @@ Route::group(['middleware' => ['auth']], function () {
         Route::get('/duties/{type?}', [ExportController::class, 'exportDuties'])
             ->name('export.duties');
     });
+    Route::get('/export/parade/{type}', [ExportController::class, 'exportParade'])->name('export.parade');
 });
 
 Route::get('/test', [CommissionsController::class, 'testCommission'])->name('test');

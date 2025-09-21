@@ -31,7 +31,7 @@
                 </nav>
             </div>
 
-            <!-- Duty Assignment Tab -->
+            <!-- Parade report -->
             <div id="duty-tab" class="tab-content block">
                 <div class="bg-white rounded-lg shadow-sm">
                     <!-- Controls -->
@@ -129,55 +129,30 @@
                 </div>
             </div>
 
-            <!-- Leave Management Tab -->
+            <!-- In the parade report tab (leave-tab) -->
+            <!-- In the parade report tab (leave-tab) -->
             <div id="leave-tab" class="tab-content hidden">
                 <div class="bg-white rounded-lg shadow-sm">
-                    <div class="p-6 border-b border-gray-200 flex items-center justify-between">
-                        <h2 class="text-xl font-semibold text-gray-900">Leave Management Reports</h2>
-                        <div class="flex space-x-2">
-                            <button onclick="downloadData('leave', 'excel')"
-                                class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700">
-                                <i class="fas fa-file-excel mr-2"></i> Excel
-                            </button>
-                            <button onclick="downloadData('leave', 'csv')"
-                                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
-                                <i class="fas fa-file-csv mr-2"></i> CSV
+                    <div class="p-6 border-b border-gray-200">
+                        <h2 class="text-xl font-semibold text-gray-900 mb-4">Parade Management Reports</h2>
+
+                        <div
+                            class="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-4">
+                            <div class="flex items-center space-x-2">
+                                <label for="parade-date" class="text-sm font-medium text-gray-700">Date:</label>
+                                <input type="date" id="parade-date" name="date" max="{{ date('Y-m-d') }}"
+                                    class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <button id="download-parade-report"
+                                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+                                <i class="fas fa-download mr-2"></i> Download Report
                             </button>
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee ID
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee
-                                        Name</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Date
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Date
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Days</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">EMP001</td>
-                                    <td class="px-6 py-4 text-sm text-gray-900">John Smith</td>
-                                    <td class="px-6 py-4 text-sm text-gray-900">Annual Leave</td>
-                                    <td class="px-6 py-4 text-sm text-gray-900">2024-03-20</td>
-                                    <td class="px-6 py-4 text-sm text-gray-900">2024-03-25</td>
-                                    <td class="px-6 py-4 text-sm text-gray-900">5</td>
-                                    <td class="px-6 py-4">
-                                        <span
-                                            class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Approved</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+
+                    <div class="p-6">
+                        <p class="text-gray-600">Select a date and click "Download Report" to generate the parade report.
+                            Only past or current dates can be selected.</p>
                     </div>
                 </div>
             </div>
@@ -325,6 +300,44 @@
                 closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) modal.classList.add('hidden');
+                });
+
+                // Update the JavaScript for the parade report download
+                // Update the JavaScript for the parade report download
+                document.getElementById('download-parade-report').addEventListener('click', function() {
+                    const date = document.getElementById('parade-date').value;
+
+                    if (!date) {
+                        alert('Please select a date');
+                        return;
+                    }
+
+                    // Check if the date is in the future
+                    const selectedDate = new Date(date);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    if (selectedDate > today) {
+                        alert('Future dates cannot be selected');
+                        return;
+                    }
+
+                    // Create a temporary form to submit the request
+                    const form = document.createElement('form');
+                    form.method = 'GET';
+                    form.action = '{{ route('export.parade', ['type' => 'excel']) }}';
+
+                    // Add date
+                    const dateInput = document.createElement('input');
+                    dateInput.type = 'hidden';
+                    dateInput.name = 'date';
+                    dateInput.value = date;
+                    form.appendChild(dateInput);
+
+                    // Submit the form
+                    document.body.appendChild(form);
+                    form.submit();
+                    document.body.removeChild(form);
                 });
             });
 

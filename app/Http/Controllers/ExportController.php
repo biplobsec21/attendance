@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Exports\DutyExport;
+use App\Exports\ParadeExport;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
+use Carbon\Carbon;
 
 class ExportController extends Controller
 {
@@ -26,5 +28,36 @@ class ExportController extends Controller
         $fileName = 'duties_' . now()->format('Ymd_His') . '.' . ($type === 'excel' ? 'xlsx' : $type);
 
         return Excel::download(new DutyExport($startDate, $endDate), $fileName);
+    }
+
+    /**
+     * Export parade report as CSV or Excel, filtered by a specific date.
+     */
+    public function exportParade(Request $request, $type = 'csv')
+    {
+        $allowedTypes = ['csv', 'excel', 'xlsx'];
+        $type = strtolower($type);
+
+        if (!in_array($type, $allowedTypes)) {
+            abort(400, 'Invalid export type');
+        }
+
+        $date = $request->query('date');
+
+        if (!$date) {
+            return redirect()->back()->with('error', 'Date is required');
+        }
+
+        // Validate that the date is not in the future
+        $inputDate = Carbon::parse($date);
+        $today = Carbon::today();
+
+        if ($inputDate->gt($today)) {
+            return redirect()->back()->with('error', 'Future dates cannot be selected');
+        }
+
+        $fileName = 'parade_report_' . now()->format('Ymd_His') . '.' . ($type === 'excel' ? 'xlsx' : $type);
+
+        return Excel::download(new ParadeExport($date), $fileName);
     }
 }
