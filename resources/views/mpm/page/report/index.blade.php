@@ -132,6 +132,7 @@
             <!-- In the parade report tab (leave-tab) -->
             <!-- In the parade report tab (leave-tab) -->
             <!-- In the parade report tab (leave-tab) -->
+            <!-- In the parade report tab (leave-tab) -->
             <div id="leave-tab" class="tab-content hidden">
                 <div class="bg-white rounded-lg shadow-sm">
                     <div class="p-6 border-b border-gray-200">
@@ -144,22 +145,22 @@
                                 <input type="date" id="parade-date" name="date" max="{{ date('Y-m-d') }}"
                                     class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
-                            <button id="download-parade-report"
-                                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
-                                <i class="fas fa-download mr-2"></i> Download Report
-                            </button>
+                            <div class="flex space-x-2">
+                                <button id="download-parade-report-excel"
+                                    class="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700">
+                                    <i class="fas fa-file-excel mr-2"></i> Excel
+                                </button>
+                                <button id="download-parade-report-pdf"
+                                    class="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700">
+                                    <i class="fas fa-file-pdf mr-2"></i> PDF
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <div class="p-6">
                         <p class="text-gray-600">Select a date and click "Download Report" to generate the parade report.
-                            The report will include two sections:</p>
-                        <ul class="list-disc pl-5 mt-2 text-gray-600">
-                            <li>Company and Rank Summary: Shows total soldiers, appointed soldiers, and final totals by
-                                company and rank</li>
-                            <li>Appointment Distribution: Shows the distribution of appointments across companies</li>
-                        </ul>
-                        <p class="mt-2 text-gray-600">Only past or current dates can be selected.</p>
+                            Only past or current dates can be selected.</p>
                     </div>
                 </div>
             </div>
@@ -311,7 +312,16 @@
 
                 // Update the JavaScript for the parade report download
                 // Update the JavaScript for the parade report download
-                document.getElementById('download-parade-report').addEventListener('click', function() {
+                // Update the JavaScript for the parade report download
+                document.getElementById('download-parade-report-excel').addEventListener('click', function() {
+                    downloadReport('excel');
+                });
+
+                document.getElementById('download-parade-report-pdf').addEventListener('click', function() {
+                    downloadReport('pdf');
+                });
+
+                function downloadReport(type) {
                     const date = document.getElementById('parade-date').value;
 
                     if (!date) {
@@ -338,7 +348,7 @@
                     // Create a temporary form to submit the request
                     const form = document.createElement('form');
                     form.method = 'GET';
-                    form.action = '{{ route('export.parade', ['type' => 'excel']) }}';
+                    form.action = '{{ route('export.parade', ['type' => 'excel']) }}'.replace('excel', type);
 
                     // Add date
                     const dateInput = document.createElement('input');
@@ -351,7 +361,7 @@
                     document.body.appendChild(form);
                     form.submit();
                     document.body.removeChild(form);
-                });
+                }
             });
 
             let sortDirection = {};

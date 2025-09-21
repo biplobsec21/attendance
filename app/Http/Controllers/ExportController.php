@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Exports\DutyExport;
 use App\Exports\CombinedSingleSheetExport;
+use App\Exports\ParadePdfExport;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
+use PDF;
 
 class ExportController extends Controller
 {
@@ -33,9 +35,9 @@ class ExportController extends Controller
     /**
      * Export parade report as CSV or Excel, filtered by a specific date.
      */
-    public function exportParade(Request $request, $type = 'csv')
+    public function exportParade(Request $request, $type = 'excel')
     {
-        $allowedTypes = ['csv', 'excel', 'xlsx'];
+        $allowedTypes = ['excel', 'xlsx', 'pdf'];
         $type = strtolower($type);
 
         if (!in_array($type, $allowedTypes)) {
@@ -56,8 +58,24 @@ class ExportController extends Controller
             return redirect()->back()->with('error', 'Future dates cannot be selected');
         }
 
-        $fileName = 'parade_report_' . now()->format('Ymd_His') . '.' . ($type === 'excel' ? 'xlsx' : $type);
+        if ($type === 'pdf') {
+            $fileName = 'parade_report_' . now()->format('Ymd_His') . '.pdf';
+            $pdf = PDF::loadView('exports.parade_report', [
+                'companyRankData' => (new ParadePdfExport($date))->view()->getData()['companyRankData'],
+                'paradeData' => (new ParadePdfExport($date))->view()->getData()['paradeData'],
+                'rankTypes' => (new ParadePdfExport($date))->view()->getData()['rankTypes'],
+                'companies' => (new ParadePdfExport($date))->view()->getData()['companies'],
+                'formattedDate' => (new ParadePdfExport($date))->view()->getData()['formattedDate'],
+                'date' => $date
+            ]);
 
-        return Excel::download(new CombinedSingleSheetExport($date), $fileName);
+            // Set paper size to legal
+            $pdf->setPaper('legal', 'portrait');
+
+            return $pdf->download($fileName);
+        } else {
+            $fileName = 'parade_report_' . now()->format('Ymd_His') . '.' . ($type === 'excel' ? 'xlsx' : $type);
+            return Excel::download(new CombinedSingleSheetExport($date), $fileName);
+        }
     }
 }
