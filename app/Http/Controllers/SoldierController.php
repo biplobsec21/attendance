@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateProfilePersonalRequest;
 use App\Http\Requests\SoldierServiceRequest;
 use App\Http\Requests\StoreMedicalRequest;
 use App\Http\Requests\StoreQualificationRequest;
+use App\Models\Appointment;
 use App\Models\Atts;
 use App\Models\Cadre;
 use App\Models\Company;
@@ -137,74 +138,107 @@ class SoldierController extends Controller
     {
         // Eager load all services in a single query
         $profile = Soldier::with('services')->findOrFail($id);
-
+        $appointments = Appointment::active()->get();
         // Separate current and previous appointments from the loaded services
         $current = $profile->services->where('appointment_type', 'current')->last();
         $previous = $profile->services->where('appointment_type', 'previous');
 
         $profileSteps = $this->getProfileSteps($profile);
 
-        return view('mpm.page.profile.service', compact('profileSteps', 'profile', 'current', 'previous'));
+        return view('mpm.page.profile.service', compact('profileSteps', 'profile', 'current', 'previous', 'appointments'));
     }
 
     public function saveService(SoldierServiceRequest $request)
     {
-
         $profile = Soldier::findOrFail($request->id);
 
-        DB::transaction(function () use ($request) {
-            // === Delete old records first ===
-            SoldierServices::where('soldier_id', $request->id)
-                ->whereIn('appointment_type', ['previous', 'current'])
-                ->delete();
+        try {
+            DB::transaction(function () use ($request, $profile) {
+                // === Delete old records first ===
+                $profile->services()
+                    ->whereIn('appointment_type', ['previous', 'current'])
+                    ->delete();
 
-            $insertData = [];
+                // Collect all appointment IDs for efficient querying
+                $appointmentIds = [];
 
-            // === Previous Appointments ===
-            if ($request->has('previous_appointments')) {
-
-                foreach ($request->previous_appointments as $prev) {
-                    if (!empty($prev['name'])) {
-                        $insertData[] = [
-                            'appointments_name'      => $prev['name'],
-                            'appointment_type'       => 'previous',
-                            'soldier_id'             => $request->id,
-                            'appointments_from_date' => $prev['from_date'] ?? null,
-                            'appointments_to_date'   => $prev['to_date'] ?? null,
-                        ];
+                // Collect IDs from previous appointments
+                if ($request->has('previous_appointments')) {
+                    foreach ($request->previous_appointments as $prev) {
+                        if (!empty($prev['id'])) {
+                            $appointmentIds[] = $prev['id'];
+                        }
                     }
                 }
+
+                // Add current appointment ID if exists
+                if ($request->filled('current_appointment_id')) {
+                    $appointmentIds[] = $request->current_appointment_id;
+                }
+
+                // Fetch all appointments in one query
+                $appointments = Appointment::whereIn('id', $appointmentIds)->get()->keyBy('id');
+
+                $insertData = [];
+
+                // === Previous Appointments ===
+                if ($request->has('previous_appointments')) {
+                    foreach ($request->previous_appointments as $prev) {
+                        if (!empty($prev['id']) && isset($appointments[$prev['id']])) {
+                            $appointment = $appointments[$prev['id']];
+                            $insertData[] = [
+                                'appointment_id'         => $prev['id'],
+                                'appointments_name'      => $appointment->name,
+                                'appointment_type'       => 'previous',
+                                'soldier_id'             => $profile->id,
+                                'appointments_from_date' => $prev['from_date'] ?? null,
+                                'appointments_to_date'   => $prev['to_date'] ?? null,
+                                'created_at'             => now(),
+                                'updated_at'             => now(),
+                            ];
+                        }
+                    }
+                }
+
+                // === Current Appointments ===
+                if ($request->filled('current_appointment_id') && isset($appointments[$request->current_appointment_id])) {
+                    $appointment = $appointments[$request->current_appointment_id];
+                    $insertData[] = [
+                        'appointment_id'         => $request->current_appointment_id,
+                        'appointments_name'      => $appointment->name,
+                        'appointment_type'       => 'current',
+                        'soldier_id'             => $profile->id,
+                        'appointments_from_date' => $request->current_appointment_from_date,
+                        'appointments_to_date'   => null,
+                        'created_at'             => now(),
+                        'updated_at'             => now(),
+                    ];
+                }
+
+                // === Insert fresh data using relationship ===
+                if (!empty($insertData)) {
+                    $profile->services()->createMany($insertData);
+                }
+            });
+
+            // Update soldier
+            $profile->update([
+                'service_completed' => 1,
+                'joining_date' => $request->joining_date,
+            ]);
+
+            if ($request->redirect) {
+                return redirect()->back()->with('success', 'Service information updated successfully');
+            } else {
+                return redirect()->route('soldier.qualificationsForm', $profile->id);
             }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error saving service information: ' . $e->getMessage());
 
-            // === Current Appointments ===
-
-            if ($request->filled('current_appointment_name')) {
-                $insertData[] = [
-                    'appointments_name' => $request->current_appointment_name,
-                    'appointment_type' => 'current',
-                    'soldier_id' => $request->id,
-                    'appointments_from_date' => $request->current_appointment_from_date,
-                    'appointments_to_date' => null,
-                ];
-            }
-
-            // === Insert fresh data ===
-            if (!empty($insertData)) {
-                SoldierServices::insert($insertData);
-            }
-        });
-
-
-
-        // Update soldier
-        $profile->update([
-            'service_completed' => 1,
-            'joining_date' => $request->joining_date,
-        ]);
-        if ($request->redirect) {
-            return redirect()->back()->with('success', 'Service information updated successfully');
-        } else {
-            return redirect()->route('soldier.qualificationsForm', $request->id);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to save service information. Please try again.');
         }
     }
     // <end>*************************Profile service information<end>

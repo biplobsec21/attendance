@@ -167,7 +167,7 @@ class DutyController extends Controller
 
         DutyRank::create($request->all());
 
-        return redirect()->route('duty.assign')->with('success', 'Duty assigned successfully.');
+        return redirect()->route('duty.assigntorank')->with('success', 'Duty assigned successfully.');
     }
 
     public function editAssignment($id)

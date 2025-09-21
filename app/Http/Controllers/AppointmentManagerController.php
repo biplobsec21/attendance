@@ -34,16 +34,22 @@ class AppointmentManagerController extends Controller
 
     public function create()
     {
-        $appointments = Appointment::active()->get();   // Only active appointments
-        $soldiers     = Soldier::where('status', true)->with(['rank', 'company'])->get();
-        $ranks        = Rank::all();
-        $companies    = Company::all();
+        $appointments = Appointment::active()->get();
+        $soldiers = Soldier::where('status', true)->with(['rank', 'company'])->get();
+        $ranks = Rank::all();
+        $companies = Company::all();
+
+        // Get soldiers with current appointments
+        $assignedSoldierIds = SoldierServices::where('appointment_type', 'current')
+            ->pluck('soldier_id')
+            ->toArray();
 
         return view('mpm.page.appointment.create', compact(
             'appointments',
             'soldiers',
             'ranks',
-            'companies'
+            'companies',
+            'assignedSoldierIds' // Pass to view
         ));
     }
 

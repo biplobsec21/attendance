@@ -107,7 +107,7 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
 
         // Fill the data structure
         foreach ($appointments as $appId => $appName) {
-            $row = ['appointment_name' => $appName];
+            $row = ['name' => $appName];
 
             foreach ($companies as $companyId => $companyName) {
                 // Count soldiers with this appointment and company who were active on the given date
@@ -130,7 +130,7 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
         }
 
         // Add total row
-        $totalRow = ['appointment_name' => 'Total'];
+        $totalRow = ['name' => 'Total'];
         foreach ($companies as $companyId => $companyName) {
             $total = 0;
             foreach ($paradeData as $row) {
@@ -232,7 +232,7 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
         // Get all companies
         $companies = Company::orderBy('name')->pluck('name')->toArray();
 
-        $mapped = [$row['appointment_name']];
+        $mapped = [$row['name']];
 
         foreach ($companies as $company) {
             $mapped[] = $row[$company] ?? 0;

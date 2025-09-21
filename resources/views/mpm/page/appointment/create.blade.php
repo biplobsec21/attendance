@@ -54,25 +54,38 @@
                         </select>
                     </div>
 
-                    {{-- Soldiers List --}}
                     <div id="soldier-repo"
                         class="border rounded-lg p-3 h-64 overflow-y-auto bg-white shadow-inner grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                         @foreach ($soldiers as $soldier)
+                            @php
+                                $isAssigned = in_array($soldier->id, $assignedSoldierIds ?? []);
+                            @endphp
+
                             <label
-                                class="flex items-center space-x-2 p-2 rounded-lg border hover:bg-indigo-50 cursor-pointer">
+                                class="flex items-center space-x-2 p-2 rounded-lg border
+                                {{ $isAssigned ? 'bg-gray-100 opacity-70 cursor-not-allowed' : 'hover:bg-indigo-50 cursor-pointer' }}">
                                 <input type="checkbox" name="soldier_ids[]" value="{{ $soldier->id }}"
                                     data-rank-id="{{ $soldier->rank_id }}" data-company-id="{{ $soldier->company_id }}"
                                     data-army-no="{{ strtolower(str_replace(' ', '', $soldier->army_no ?? '')) }}"
                                     data-full-name="{{ strtolower($soldier->full_name ?? '') }}"
-                                    class="form-checkbox h-5 w-5 text-indigo-600">
+                                    class="form-checkbox h-5 w-5 text-indigo-600" {{ $isAssigned ? 'disabled' : '' }}>
                                 <div>
-                                    <p class="text-sm font-medium text-gray-900">{{ $soldier->full_name }}</p>
-                                    <p class="text-xs text-gray-500">Army No: {{ $soldier->army_no }} |
-                                        {{ $soldier->rank->name }} | {{ $soldier->company->name }}</p>
+                                    <p class="text-sm font-medium {{ $isAssigned ? 'text-gray-500' : 'text-gray-900' }}">
+                                        {{ $soldier->full_name }}
+                                    </p>
+                                    <p class="text-xs {{ $isAssigned ? 'text-gray-400' : 'text-gray-500' }}">
+                                        Army No: {{ $soldier->army_no }} |
+                                        {{ $soldier->rank->name }} |
+                                        {{ $soldier->company->name }}
+                                    </p>
+                                    @if ($isAssigned)
+                                        <p class="text-xs text-red-500 font-medium mt-1">
+                                            Currently assigned to appointment
+                                        </p>
+                                    @endif
                                 </div>
                             </label>
                         @endforeach
-
                     </div>
                 </div>
 
@@ -110,20 +123,24 @@
             function filter() {
                 const armyRaw = armyInput.value.trim();
                 const army = normalize(armyRaw);
-                const rank = rankSelect.value; // ID as string or ""
-                const company = companySelect.value; // ID as string or ""
+                const rank = rankSelect.value;
+                const company = companySelect.value;
 
                 soldierCards.forEach(card => {
                     const checkbox = card.querySelector('input[type="checkbox"]');
+
+                    // Skip disabled soldiers in filtering
+                    if (checkbox.disabled) {
+                        card.style.display = "flex";
+                        return;
+                    }
+
                     const cardArmy = normalize(checkbox.dataset.armyNo || '');
                     const cardName = normalize(checkbox.dataset.fullName || '');
                     const cardRank = String(checkbox.dataset.rankId || '');
                     const cardCompany = String(checkbox.dataset.companyId || '');
 
-                    // Army filter matches army number or full name substring
                     const matchesArmy = !army || cardArmy.includes(army) || cardName.includes(army);
-
-                    // Rank/company compare IDs (exact match)
                     const matchesRank = !rank || cardRank === rank;
                     const matchesCompany = !company || cardCompany === company;
 
