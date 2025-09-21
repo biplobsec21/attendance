@@ -5,6 +5,37 @@
 @section('content')
     <div class="container mx-auto p-4">
         <x-breadcrumb :breadcrumbs="generateBreadcrumbs_auto()" />
+
+        <!-- Enhanced error display -->
+        @if ($errors->any())
+            <div class="mb-4">
+                <div class="bg-red-50 border-l-4 border-red-500 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">
+                                There were errors with your submission:
+                            </h3>
+                            <div class="mt-2 text-sm text-red-700">
+                                <ul class="list-disc pl-5 space-y-1">
+                                    @foreach ($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         @include('mpm.components.alerts')
 
         <div class="bg-white/30 shadow-lg rounded-lg p-4 sm:p-6 formBack">
@@ -461,7 +492,7 @@
                                                         viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round"
                                                             stroke-width="2"
-                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 2 0 00-1 1v3M4 7h16">
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
                                                         </path>
                                                     </svg>
                                                 </button>
@@ -744,6 +775,45 @@
         </div>
     </div>
 
+    <!-- Error Modal -->
+    <div id="errorModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-lg bg-white">
+            <div class="mt-3">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Error</h3>
+                    <button onclick="closeErrorModal()" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Content -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-center text-gray-700 mb-4" id="errorMessage">
+                        An error occurred while processing your request.
+                    </p>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeErrorModal()"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Get the active tab from localStorage or default to 'current-courses'
@@ -812,6 +882,7 @@
                     });
                 }
             });
+
             // Course selection handling
             const selectAllCoursesCheckbox = document.getElementById('selectAllCourses');
             const courseCheckboxes = document.querySelectorAll('.course-checkbox');
@@ -914,6 +985,23 @@
         }
 
         function closeCompleteCourseModal() {
+            // Reset modal title
+            document.querySelector('#completeCourseModal h3').textContent = 'Complete Course';
+
+            // Reset modal message
+            document.querySelector('#completeCourseModal .text-gray-700').innerHTML =
+                'Are you sure you want to mark <span id="soldierNameCompleteCourse" class="font-semibold"></span>\'s course as completed?';
+
+            // Reset completion note
+            document.getElementById('completeCourseNote').value = '';
+
+            // Remove any course_ids input
+            const existingInput = document.querySelector('input[name="course_ids"]');
+            if (existingInput) {
+                existingInput.remove();
+            }
+
+            // Hide modal
             document.getElementById('completeCourseModal').classList.add('hidden');
         }
 
@@ -936,6 +1024,23 @@
         }
 
         function closeCompleteCadreModal() {
+            // Reset modal title
+            document.querySelector('#completeCadreModal h3').textContent = 'Complete Cadre';
+
+            // Reset modal message
+            document.querySelector('#completeCadreModal .text-gray-700').innerHTML =
+                'Are you sure you want to mark <span id="soldierNameCompleteCadre" class="font-semibold"></span>\'s cadre as completed?';
+
+            // Reset completion note
+            document.getElementById('completeCadreNote').value = '';
+
+            // Remove any cadre_ids input
+            const existingInput = document.querySelector('input[name="cadre_ids"]');
+            if (existingInput) {
+                existingInput.remove();
+            }
+
+            // Hide modal
             document.getElementById('completeCadreModal').classList.add('hidden');
         }
 
@@ -971,12 +1076,16 @@
         window.onclick = function(event) {
             const completeCourseModal = document.getElementById('completeCourseModal');
             const completeCadreModal = document.getElementById('completeCadreModal');
+            const errorModal = document.getElementById('errorModal');
 
             if (event.target === completeCourseModal) {
                 closeCompleteCourseModal();
             }
             if (event.target === completeCadreModal) {
                 closeCompleteCadreModal();
+            }
+            if (event.target === errorModal) {
+                closeErrorModal();
             }
         }
 
@@ -992,12 +1101,13 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Completing...';
         });
+
         // Function to complete selected courses
         function completeSelectedCourses() {
             const checkedBoxes = document.querySelectorAll('.course-checkbox:checked');
 
             if (checkedBoxes.length === 0) {
-                alert('Please select at least one course to complete.');
+                showError('Please select at least one course to complete.');
                 return;
             }
 
@@ -1041,7 +1151,7 @@
             const checkedBoxes = document.querySelectorAll('.cadre-checkbox:checked');
 
             if (checkedBoxes.length === 0) {
-                alert('Please select at least one cadre to complete.');
+                showError('Please select at least one cadre to complete.');
                 return;
             }
 
@@ -1080,47 +1190,14 @@
             document.getElementById('completeCadreModal').classList.remove('hidden');
         }
 
-        // Modify the close modal functions to reset the form
-        function closeCompleteCourseModal() {
-            // Reset modal title
-            document.querySelector('#completeCourseModal h3').textContent = 'Complete Course';
-
-            // Reset modal message
-            document.querySelector('#completeCourseModal .text-gray-700').innerHTML =
-                'Are you sure you want to mark <span id="soldierNameCompleteCourse" class="font-semibold"></span>\'s course as completed?';
-
-            // Reset completion note
-            document.getElementById('completeCourseNote').value = '';
-
-            // Remove any course_ids input
-            const existingInput = document.querySelector('input[name="course_ids"]');
-            if (existingInput) {
-                existingInput.remove();
-            }
-
-            // Hide modal
-            document.getElementById('completeCourseModal').classList.add('hidden');
+        // Error modal functions
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorModal').classList.remove('hidden');
         }
 
-        function closeCompleteCadreModal() {
-            // Reset modal title
-            document.querySelector('#completeCadreModal h3').textContent = 'Complete Cadre';
-
-            // Reset modal message
-            document.querySelector('#completeCadreModal .text-gray-700').innerHTML =
-                'Are you sure you want to mark <span id="soldierNameCompleteCadre" class="font-semibold"></span>\'s cadre as completed?';
-
-            // Reset completion note
-            document.getElementById('completeCadreNote').value = '';
-
-            // Remove any cadre_ids input
-            const existingInput = document.querySelector('input[name="cadre_ids"]');
-            if (existingInput) {
-                existingInput.remove();
-            }
-
-            // Hide modal
-            document.getElementById('completeCadreModal').classList.add('hidden');
+        function closeErrorModal() {
+            document.getElementById('errorModal').classList.add('hidden');
         }
     </script>
 @endsection

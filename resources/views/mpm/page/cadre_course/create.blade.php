@@ -13,7 +13,7 @@
                 <p class="text-gray-600">Assign soldiers to courses or cadres</p>
             </div>
 
-            <form action="{{ route('coursecadremanager.store') }}" method="POST" class="space-y-6">
+            <form action="{{ route('coursecadremanager.store') }}" method="POST" class="space-y-6" id="assignmentForm">
                 @csrf
 
                 {{-- 1. Assignment Type Selection --}}
@@ -27,7 +27,7 @@
                     </select>
                 </div>
 
-                {{-- 2. Course/Cadre Selection --}}
+                {{-- 2. Course Selection --}}
                 <div id="courseSelection" class="hidden">
                     <label for="course_id" class="block text-sm font-medium text-gray-700">Select Course</label>
                     <select name="course_id" id="course_id"
@@ -39,6 +39,7 @@
                     </select>
                 </div>
 
+                {{-- 3. Cadre Selection --}}
                 <div id="cadreSelection" class="hidden">
                     <label for="cadre_id" class="block text-sm font-medium text-gray-700">Select Cadre</label>
                     <select name="cadre_id" id="cadre_id"
@@ -50,7 +51,7 @@
                     </select>
                 </div>
 
-                {{-- 3. Soldiers Repository with Filters --}}
+                {{-- 4. Soldiers Repository with Filters --}}
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Select Soldiers</label>
 
@@ -98,7 +99,7 @@
                     </div>
                 </div>
 
-                {{-- 4. Text Field --}}
+                {{-- 5. Text Field --}}
                 <div>
                     <label for="note" class="block text-sm font-medium text-gray-700">Notes</label>
                     <textarea name="note" id="note" rows="3"
@@ -168,6 +169,7 @@
             const cadreSelection = document.getElementById('cadreSelection');
             const courseIdSelect = document.getElementById('course_id');
             const cadreIdSelect = document.getElementById('cadre_id');
+            const assignmentForm = document.getElementById('assignmentForm');
 
             typeSelect.addEventListener('change', function() {
                 const type = this.value;
@@ -176,17 +178,56 @@
                 courseSelection.classList.add('hidden');
                 cadreSelection.classList.add('hidden');
 
-                // Reset required attributes
+                // Remove both fields from form submission
                 courseIdSelect.removeAttribute('required');
                 cadreIdSelect.removeAttribute('required');
+                courseIdSelect.setAttribute('disabled', 'disabled');
+                cadreIdSelect.setAttribute('disabled', 'disabled');
 
                 // Show the appropriate selection based on type
                 if (type === 'course') {
                     courseSelection.classList.remove('hidden');
                     courseIdSelect.setAttribute('required', 'required');
+                    courseIdSelect.removeAttribute('disabled');
+                    // Clear cadre value to prevent it from being sent
+                    cadreIdSelect.value = '';
                 } else if (type === 'cadre') {
                     cadreSelection.classList.remove('hidden');
                     cadreIdSelect.setAttribute('required', 'required');
+                    cadreIdSelect.removeAttribute('disabled');
+                    // Clear course value to prevent it from being sent
+                    courseIdSelect.value = '';
+                }
+            });
+
+            // Form submission handler to ensure proper validation
+            assignmentForm.addEventListener('submit', function(e) {
+                const type = typeSelect.value;
+
+                if (!type) {
+                    e.preventDefault();
+                    alert('Please select an assignment type.');
+                    return;
+                }
+
+                if (type === 'course' && !courseIdSelect.value) {
+                    e.preventDefault();
+                    alert('Please select a course.');
+                    return;
+                }
+
+                if (type === 'cadre' && !cadreIdSelect.value) {
+                    e.preventDefault();
+                    alert('Please select a cadre.');
+                    return;
+                }
+
+                // Check if at least one soldier is selected
+                const selectedSoldiers = document.querySelectorAll('input[name="soldier_ids[]"]:checked');
+                if (selectedSoldiers.length === 0) {
+                    e.preventDefault();
+                    alert('Please select at least one soldier.');
+                    return;
                 }
             });
         });
