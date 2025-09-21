@@ -51,12 +51,12 @@
             </div>
 
             <div class="flex items-center justify-between mt-6">
-                @if (Route::has('password.request'))
+                {{-- @if (Route::has('password.request'))
                     <a href="{{ route('password.request') }}"
                         class="text-sm text-indigo-600 hover:text-indigo-900 underline">
                         Forgot your password?
                     </a>
-                @endif
+                @endif --}}
 
                 <button type="submit"
                     class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
