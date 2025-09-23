@@ -86,7 +86,7 @@
                 </a>
             </li>
             <li><a href="{{ route('coursecadremanager.index') }}"
-                    class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'coursecadremanager' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">Course/Cadre
+                    class="px-4 py-2 rounded-lg {{ Request::segment(1) === 'coursecadremanager' ? 'bg-orange-500 text-white' : 'hover:text-orange-400 transition-colors' }}">Training
                 </a>
             </li>
             <!-- Settings Dropdown -->

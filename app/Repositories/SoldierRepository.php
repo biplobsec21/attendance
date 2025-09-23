@@ -35,7 +35,7 @@ class SoldierRepository
                 $q->where('name', $request->get('company'));
             });
         }
-
+        
         return $query->get();
     }
 }

@@ -92,6 +92,7 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
                         ->orWhereNull('appointments_to_date');
                 });
         })->count();
+        
         $totalRow['appointed'] = $grandAppointedSoldiers;
 
         $grandFinalTotal = $grandTotalSoldiers - $grandAppointedSoldiers;

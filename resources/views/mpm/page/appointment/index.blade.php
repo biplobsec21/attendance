@@ -47,7 +47,7 @@
                         <button
                             class="tab-button border-b-2 border-transparent py-2 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
                             data-tab="previous">
-                            Previous Appointments
+                            Completed Appointments
                             <span class="ml-2 bg-gray-100 text-gray-800 py-0.5 px-2 rounded-full text-xs">
                                 {{ $previousServices->count() }}
                             </span>
@@ -77,7 +77,7 @@
                                     </th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        appointed Date
+                                        Date
                                     </th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -129,11 +129,20 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             {{ $service->appointments_from_date ? \Carbon\Carbon::parse($service->appointments_from_date)->format('M d, Y') : 'N/A' }}
+                                            <=>
+                                                @if ($service->appointments_to_date)
+                                                    {{ $service->appointments_to_date->format('M j, Y') }}
+                                                @else
+                                                    <span class="text-gray-500">Ongoing</span>
+                                                @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                Active
+                                                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                @if ($service->status === 'active') bg-green-100 text-green-800
+                @elseif($service->status === 'scheduled') bg-yellow-100 text-yellow-800
+                @else bg-gray-100 text-gray-800 @endif">
+                                                {{ ucfirst($service->status) }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
