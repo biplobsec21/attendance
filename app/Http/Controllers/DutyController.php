@@ -20,7 +20,7 @@ class DutyController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = Duty::query();
+        $query = Duty::with(['dutyRanks.rank']); // Eager load the dutyRanks with their rank relationship
 
         // Server-side search functionality
         if ($request->filled('search')) {
@@ -41,10 +41,13 @@ class DutyController extends Controller
             $query->orderBy($sortBy, $sortDirection);
         }
 
-        // Paginate the results and append query strings to pagination links
-        $duties = $query->paginate(10)->withQueryString();
+        // Get all duties without pagination
+        $duties = $query->get();
 
-        return view('mpm.page.duty.index', compact('duties'));
+        // Get all ranks for the filter dropdown
+        $ranks = \App\Models\Rank::orderBy('name')->get();
+
+        return view('mpm.page.duty.index', compact('duties', 'ranks'));
     }
 
     /**
@@ -52,7 +55,8 @@ class DutyController extends Controller
      */
     public function create(): View
     {
-        return view('mpm.page.duty.create');
+        $ranks = Rank::all();
+        return view('mpm.page.duty.create', compact('ranks'));
     }
 
     /**
@@ -60,8 +64,23 @@ class DutyController extends Controller
      */
     public function store(StoreDutyRequest $request): RedirectResponse
     {
-        // Validation is handled by StoreDutyRequest
-        Duty::create($request->validated());
+        // Create the duty record
+        $duty = Duty::create($request->validated());
+
+        // Get the rank_manpower data from the request
+        $rankManpower = $request->input('rank_manpower', []);
+
+        // Create duty_rank records for each selected rank with its specific manpower
+        foreach ($rankManpower as $rankData) {
+            DutyRank::create([
+                'duty_id' => $duty->id,
+                'rank_id' => $rankData['rank_id'],
+                'duty_type' => 'roster',
+                'manpower' => $rankData['manpower'],
+                'start_time' => $request->input('start_time'),
+                'end_time' => $request->input('end_time'),
+            ]);
+        }
 
         return redirect()->route('duty.index')->with('success', 'Duty record created successfully.');
     }
@@ -79,7 +98,9 @@ class DutyController extends Controller
      */
     public function edit(Duty $duty): View
     {
-        return view('mpm.page.duty.edit', compact('duty'));
+        $ranks = Rank::all();
+        $selectedRanks = $duty->dutyRanks()->pluck('rank_id')->toArray();
+        return view('mpm.page.duty.edit', compact('duty', 'ranks', 'selectedRanks'));
     }
 
     /**
@@ -87,8 +108,26 @@ class DutyController extends Controller
      */
     public function update(UpdateDutyRequest $request, Duty $duty): RedirectResponse
     {
-        // Validation is handled by UpdateDutyRequest
+        // Update the duty record
         $duty->update($request->validated());
+
+        // Get the rank_manpower data from the request
+        $rankManpower = $request->input('rank_manpower', []);
+
+        // Delete existing duty_rank records for this duty
+        DutyRank::where('duty_id', $duty->id)->delete();
+
+        // Create new duty_rank records for each selected rank with its specific manpower
+        foreach ($rankManpower as $rankData) {
+            DutyRank::create([
+                'duty_id' => $duty->id,
+                'rank_id' => $rankData['rank_id'],
+                'duty_type' => 'roster',
+                'manpower' => $rankData['manpower'],
+                'start_time' => $request->input('start_time'),
+                'end_time' => $request->input('end_time'),
+            ]);
+        }
 
         return redirect()->route('duty.index')->with('success', 'Duty record updated successfully.');
     }

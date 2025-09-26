@@ -39,9 +39,44 @@ class StoreDutyRequest extends FormRequest
                 },
             ],
 
-            // 'manpower' => 'required|integer|min:1',
             'remark'   => 'nullable|string',
             'status'   => 'required|in:Active,Inactive',
+
+            // Validate the rank_manpower array
+            'rank_manpower' => 'required|array|min:1',
+            'rank_manpower.*.rank_id' => 'required|exists:ranks,id',
+            'rank_manpower.*.manpower' => 'required|integer|min:1',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'duty_name.required' => 'Duty name is required.',
+            'duty_name.string' => 'Duty name must be text.',
+            'duty_name.max' => 'Duty name may not be greater than 255 characters.',
+
+            'start_time.required' => 'Start time is required.',
+            'start_time.regex' => 'Start time must be in HH:MM format (e.g., 08:30, 17:30).',
+
+            'end_time.required' => 'End time is required.',
+            'end_time.regex' => 'End time must be in HH:MM format (e.g., 10:00, 22:00).',
+
+            'remark.string' => 'Remark must be text.',
+
+            'status.required' => 'Status is required.',
+            'status.in' => 'Status must be either Active or Inactive.',
+
+            'rank_manpower.required' => 'At least one rank must be selected with manpower.',
+            'rank_manpower.array' => 'Rank data must be an array.',
+            'rank_manpower.min' => 'At least one rank must be selected with manpower.',
+
+            'rank_manpower.*.rank_id.required' => 'Rank ID is required.',
+            'rank_manpower.*.rank_id.exists' => 'Selected rank does not exist.',
+
+            'rank_manpower.*.manpower.required' => 'Manpower is required for each rank.',
+            'rank_manpower.*.manpower.integer' => 'Manpower must be a whole number.',
+            'rank_manpower.*.manpower.min' => 'Manpower must be at least 1.',
         ];
     }
 }

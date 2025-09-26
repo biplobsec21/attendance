@@ -7,7 +7,7 @@ use App\Traits\LogsAllActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Builder; // <-- Add this
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -38,8 +38,8 @@ class Soldier extends Model
         'service_completed',
         'qualifications_completed',
         'medical_completed',
-
     ];
+
     protected $casts = [
         'status' => 'boolean',
         'personal_completed' => 'boolean',
@@ -49,12 +49,15 @@ class Soldier extends Model
         'num_boys' => 'integer',
         'num_girls' => 'integer',
     ];
+
     // Add computed attribute automatically
     protected $appends = ['is_on_leave', 'current_leave_details'];
+
     public function scopeAvailableForDuty(Builder $query)
     {
         return $query->where('is_sick', false);
     }
+
     // ✅ Relationship with district
     public function district()
     {
@@ -76,14 +79,11 @@ class Soldier extends Model
     {
         return $this->belongsTo(Company::class);
     }
+
     public function rank(): BelongsTo
     {
         return $this->belongsTo(Rank::class);
     }
-    // public function district(): BelongsTo
-    // {
-    //     return $this->belongsTo(District::class);
-    // }
 
     public function designation(): BelongsTo
     {
@@ -94,6 +94,15 @@ class Soldier extends Model
     {
         return $this->belongsToMany(Course::class, 'soldier_courses')
             ->withPivot(['completion_date', 'start_date', 'end_date', 'remarks', 'course_status', 'result'])
+            ->withTimestamps();
+    }
+
+    // New relationship for active courses
+    public function activeCourses(): BelongsToMany
+    {
+        return $this->belongsToMany(Course::class, 'soldier_courses')
+            ->withPivot(['completion_date', 'start_date', 'end_date', 'remarks', 'course_status', 'result', 'status'])
+            ->wherePivotIn('status', ['active', 'scheduled'])
             ->withTimestamps();
     }
 
@@ -108,13 +117,23 @@ class Soldier extends Model
     {
         return $this->belongsToMany(Cadre::class, 'soldier_cadres')
             ->withPivot(['completion_date', 'start_date', 'end_date', 'remarks', 'course_status', 'result'])
-
             ->withTimestamps();
     }
+
+    // New relationship for active cadres
+    public function activeCadres(): BelongsToMany
+    {
+        return $this->belongsToMany(Cadre::class, 'soldier_cadres')
+            ->withPivot(['completion_date', 'start_date', 'end_date', 'remarks', 'course_status', 'result', 'status'])
+            ->wherePivotIn('status', ['active', 'scheduled'])
+            ->withTimestamps();
+    }
+
     public function services()
     {
         return $this->hasMany(SoldierServices::class, 'soldier_id');
     }
+
     public function educationsData()
     {
         return $this->hasMany(SoldierEducation::class, 'soldier_id');
@@ -122,9 +141,8 @@ class Soldier extends Model
 
     public function educations(): BelongsToMany
     {
-
         return $this->belongsToMany(Education::class, 'soldier_educations')
-            ->withPivot(['remarks', 'result', 'passing_year']) // add passing_year if needed
+            ->withPivot(['remarks', 'result', 'passing_year'])
             ->withTimestamps();
     }
 
@@ -134,6 +152,7 @@ class Soldier extends Model
             ->withPivot(['start_date', 'end_date', 'remarks'])
             ->withTimestamps();
     }
+
     public function att(): BelongsToMany
     {
         return $this->belongsToMany(Atts::class, 'soldiers_att')
@@ -147,16 +166,19 @@ class Soldier extends Model
             ->withPivot(['remarks', 'start_date', 'end_date', 'medical_category_id'])
             ->withTimestamps();
     }
+
     public function sickness(): BelongsToMany
     {
         return $this->belongsToMany(PermanentSickness::class, 'soldier_permanent_sickness')
             ->withPivot(['remarks', 'start_date', 'end_date'])
             ->withTimestamps();
     }
+
     public function discipline()
     {
         return $this->hasMany(SoldierDiscipline::class, 'soldier_id');
     }
+
     public function goodDiscipline()
     {
         return $this->hasMany(SoldierDiscipline::class, 'soldier_id')
@@ -168,6 +190,7 @@ class Soldier extends Model
         return $this->hasMany(SoldierDiscipline::class, 'soldier_id')
             ->where('discipline_type', 'punishment');
     }
+
     public function getServiceDurationAttribute()
     {
         if (!$this->joining_date) {
@@ -217,6 +240,7 @@ class Soldier extends Model
             'end_date'   => $leave->end_date->toDateString(),
         ];
     }
+
     // Scopes
     public function scopeOnLeave($query)
     {
@@ -226,5 +250,59 @@ class Soldier extends Model
     public function scopeNotOnLeave($query)
     {
         return $query->whereDoesntHave('currentLeaveApplications');
+    }
+
+    // New method to check if soldier has active assignments
+    public function hasActiveAssignments(): bool
+    {
+        return $this->activeCourses()->exists() || $this->activeCadres()->exists();
+    }
+
+    // New method to get all active assignments
+    public function getActiveAssignments(): array
+    {
+        $assignments = [];
+
+        // Get active courses
+        $activeCourses = $this->activeCourses()->get();
+        foreach ($activeCourses as $course) {
+            $assignments[] = [
+                'type' => 'course',
+                'name' => $course->name,
+                'start_date' => $course->pivot->start_date,
+                'end_date' => $course->pivot->end_date,
+                'status' => $course->pivot->status,
+            ];
+        }
+
+        // Get active cadres
+        $activeCadres = $this->activeCadres()->get();
+        foreach ($activeCadres as $cadre) {
+            $assignments[] = [
+                'type' => 'cadre',
+                'name' => $cadre->name,
+                'start_date' => $cadre->pivot->start_date,
+                'end_date' => $cadre->pivot->end_date,
+                'status' => $cadre->pivot->status,
+            ];
+        }
+
+        return $assignments;
+    }
+    public function hasCompletedAssignmentsToday(): bool
+    {
+        $today = Carbon::today();
+
+        // Check courses completed today
+        $coursesCompletedToday = $this->courses()
+            ->wherePivot('end_date', $today)
+            ->exists();
+
+        // Check cadres completed today
+        $cadresCompletedToday = $this->cadres()
+            ->wherePivot('end_date', $today)
+            ->exists();
+
+        return $coursesCompletedToday || $cadresCompletedToday;
     }
 }

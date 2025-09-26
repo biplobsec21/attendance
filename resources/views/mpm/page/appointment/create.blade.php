@@ -272,6 +272,7 @@
             const rankSelect = document.getElementById("filter-rank");
             const companySelect = document.getElementById("filter-company");
             const repo = document.getElementById("soldier-repo");
+            // Select the actual soldier cards (labels inside the grid)
             const soldierCards = Array.from(repo.querySelectorAll("label"));
 
             function normalize(str = '') {
@@ -281,30 +282,28 @@
             function filter() {
                 const armyRaw = armyInput.value.trim();
                 const army = normalize(armyRaw);
-                const rank = rankSelect.value;
-                const company = companySelect.value;
+                const rank = rankSelect.value; // ID as string or ""
+                const company = companySelect.value; // ID as string or ""
 
                 let visibleCount = 0;
 
                 soldierCards.forEach(card => {
                     const checkbox = card.querySelector('input[type="checkbox"]');
-
-                    // Skip disabled soldiers in filtering
-                    if (checkbox.disabled) {
-                        card.style.display = "block";
-                        visibleCount++;
-                        return;
-                    }
+                    const isAssigned = checkbox.disabled;
 
                     const cardArmy = normalize(checkbox.dataset.armyNo || '');
                     const cardName = normalize(checkbox.dataset.fullName || '');
                     const cardRank = String(checkbox.dataset.rankId || '');
                     const cardCompany = String(checkbox.dataset.companyId || '');
 
+                    // Army filter matches army number or full name substring
                     const matchesArmy = !army || cardArmy.includes(army) || cardName.includes(army);
+
+                    // Rank/company compare IDs (exact match)
                     const matchesRank = !rank || cardRank === rank;
                     const matchesCompany = !company || cardCompany === company;
 
+                    // Apply filter to all soldiers (both assigned and unassigned)
                     if (matchesArmy && matchesRank && matchesCompany) {
                         card.style.display = "block";
                         visibleCount++;
@@ -318,20 +317,21 @@
             }
 
             function updateEmptyState(visibleCount) {
-                let emptyState = repo.querySelector('.empty-state');
+                const grid = repo.querySelector('.grid');
+                let emptyState = grid.querySelector('.empty-state');
 
                 if (visibleCount === 0 && !emptyState) {
                     emptyState = document.createElement('div');
                     emptyState.className =
                         'empty-state col-span-full flex flex-col items-center justify-center py-12 text-gray-500';
                     emptyState.innerHTML = `
-                        <svg class="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                        <p class="text-lg font-medium mb-2">No personnel found</p>
-                        <p class="text-sm">Try adjusting your search filters</p>
-                    `;
-                    repo.querySelector('.grid').appendChild(emptyState);
+                <svg class="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <p class="text-lg font-medium mb-2">No personnel found</p>
+                <p class="text-sm">Try adjusting your search filters</p>
+            `;
+                    grid.appendChild(emptyState);
                 } else if (visibleCount > 0 && emptyState) {
                     emptyState.remove();
                 }

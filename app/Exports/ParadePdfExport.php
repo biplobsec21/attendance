@@ -15,26 +15,28 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 class ParadePdfExport implements FromView, WithTitle
 {
     protected $date;
+    protected $companies;
+    protected $rankTypes;
+    protected $appointments;
 
     public function __construct($date)
     {
         $this->date = $date;
+        $this->companies = Company::orderBy('name')->pluck('name', 'id');
+        $this->rankTypes = Rank::distinct()->pluck('type')->sort();
+        $this->appointments = Appointment::orderBy('name')->pluck('name', 'id');
     }
 
     public function view(): View
     {
-        // Get Company and Rank data
-        $companies = Company::orderBy('name')->pluck('name', 'id');
-        $rankTypes = Rank::distinct()->pluck('type')->sort();
-
         $companyRankData = [];
 
         // Fill the data structure for each company and rank type
-        foreach ($companies as $companyId => $companyName) {
+        foreach ($this->companies as $companyId => $companyName) {
             $row = ['company_name' => $companyName];
 
             // For each rank type, get the count of soldiers
-            foreach ($rankTypes as $rankType) {
+            foreach ($this->rankTypes as $rankType) {
                 // Count total soldiers in this company and rank type
                 $totalSoldiers = Soldier::where('company_id', $companyId)
                     ->whereHas('rank', function ($query) use ($rankType) {
@@ -70,7 +72,7 @@ class ParadePdfExport implements FromView, WithTitle
 
         // Add a total row (summing all companies)
         $totalRow = ['company_name' => 'Total'];
-        foreach ($rankTypes as $rankType) {
+        foreach ($this->rankTypes as $rankType) {
             $rankTotal = Soldier::whereHas('rank', function ($query) use ($rankType) {
                 $query->where('type', $rankType);
             })->count();
@@ -95,16 +97,13 @@ class ParadePdfExport implements FromView, WithTitle
         $companyRankData[] = $totalRow;
 
         // Get Parade data
-        $appointments = Appointment::orderBy('name')->pluck('name', 'id');
-        $companies = Company::orderBy('name')->pluck('name', 'id');
-
         $paradeData = [];
 
         // Fill the data structure
-        foreach ($appointments as $appId => $appName) {
+        foreach ($this->appointments as $appId => $appName) {
             $row = ['appointment_name' => $appName];
 
-            foreach ($companies as $companyId => $companyName) {
+            foreach ($this->companies as $companyId => $companyName) {
                 // Count soldiers with this appointment and company who were active on the given date
                 $count = Soldier::whereHas('services', function ($query) use ($appId) {
                     $query->where('appointment_id', $appId)
@@ -118,22 +117,33 @@ class ParadePdfExport implements FromView, WithTitle
                 $row[$companyName] = $count;
             }
 
-            // Calculate total for this appointment
-            $row['total'] = array_sum(array_slice($row, 1, -1));
+            // Calculate total for this appointment - FIXED
+            $appointmentTotal = 0;
+            foreach ($this->companies as $companyName) {
+                $appointmentTotal += $row[$companyName] ?? 0;
+            }
+            $row['total'] = $appointmentTotal;
 
             $paradeData[] = $row;
         }
 
-        // Add total row
+        // Add total row - FIXED
         $totalRow = ['appointment_name' => 'Total'];
-        foreach ($companies as $companyId => $companyName) {
-            $total = 0;
+        foreach ($this->companies as $companyId => $companyName) {
+            $companyTotal = 0;
             foreach ($paradeData as $row) {
-                $total += $row[$companyName] ?? 0;
+                $companyTotal += $row[$companyName] ?? 0;
             }
-            $totalRow[$companyName] = $total;
+            $totalRow[$companyName] = $companyTotal;
         }
-        $totalRow['total'] = array_sum(array_slice($totalRow, 1, -1));
+
+        // Calculate grand total for the appointment report - FIXED
+        $grandTotal = 0;
+        foreach ($this->companies as $companyName) {
+            $grandTotal += $totalRow[$companyName] ?? 0;
+        }
+        $totalRow['total'] = $grandTotal;
+
         $paradeData[] = $totalRow;
 
         // Format the date for the title
@@ -142,8 +152,8 @@ class ParadePdfExport implements FromView, WithTitle
         return view('exports.parade_report', [
             'companyRankData' => $companyRankData,
             'paradeData' => $paradeData,
-            'rankTypes' => $rankTypes,
-            'companies' => $companies,
+            'rankTypes' => $this->rankTypes,
+            'companies' => $this->companies->values(), // Use values() to get just the company names
             'formattedDate' => $formattedDate,
             'date' => $this->date
         ]);

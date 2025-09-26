@@ -1,6 +1,6 @@
 @extends('mpm.layouts.app')
 
-@section('title', 'Course/Cadre Manager')
+@section('title', 'Course/Cadre Lists Manager')
 
 @section('content')
     <div class="container mx-auto p-4">
@@ -191,16 +191,36 @@
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $assignment->from_date ? \Carbon\Carbon::parse($assignment->from_date)->format('M d, Y') : 'N/A' }}
+                                            {{ $assignment->start_date ? \Carbon\Carbon::parse($assignment->start_date)->format('M d, Y') : 'N/A' }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                Active
-                                            </span>
+                                            @if ($assignment->status === 'active')
+                                                <span
+                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    Active
+                                                </span>
+                                            @elseif ($assignment->status === 'scheduled')
+                                                <span
+                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    Scheduled
+                                                </span>
+                                            @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div class="flex items-center space-x-2">
+                                                <!-- Edit Button -->
+                                                <button onclick="openEditModal('course', {{ $assignment->id }})"
+                                                    class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200"
+                                                    title="Edit Assignment">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                        </path>
+                                                    </svg>
+                                                </button>
+
                                                 <!-- Complete Button -->
                                                 <button
                                                     onclick="completeCourse({{ $assignment->id }}, '{{ $assignment->soldier->full_name ?? 'N/A' }}')"
@@ -318,12 +338,12 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <div>
                                                 <div class="text-xs text-gray-500">From:</div>
-                                                {{ $assignment->from_date ? \Carbon\Carbon::parse($assignment->from_date)->format('M d, Y') : 'N/A' }}
+                                                {{ $assignment->start_date ? \Carbon\Carbon::parse($assignment->start_date)->format('M d, Y') : 'N/A' }}
                                             </div>
-                                            @if ($assignment->to_date)
+                                            @if ($assignment->end_date)
                                                 <div class="mt-1">
                                                     <div class="text-xs text-gray-500">To:</div>
-                                                    {{ \Carbon\Carbon::parse($assignment->to_date)->format('M d, Y') }}
+                                                    {{ \Carbon\Carbon::parse($assignment->end_date)->format('M d, Y') }}
                                                 </div>
                                             @endif
                                         </td>
@@ -453,10 +473,10 @@
                                             <div class="text-sm font-medium text-gray-900">
                                                 {{ $assignment->cadre->name ?? 'N/A' }}
                                             </div>
-                                            @if ($assignment->note)
+                                            @if ($assignment->remarks)
                                                 <div class="text-sm text-gray-500 truncate max-w-xs"
-                                                    title="{{ $assignment->note }}">
-                                                    {{ Str::limit($assignment->note, 30) }}
+                                                    title="{{ $assignment->remarks }}">
+                                                    {{ Str::limit($assignment->remarks, 30) }}
                                                 </div>
                                             @endif
                                         </td>
@@ -471,6 +491,18 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div class="flex items-center space-x-2">
+                                                <!-- Edit Button -->
+                                                <button onclick="openEditModal('cadre', {{ $assignment->id }})"
+                                                    class="text-indigo-600 hover:text-indigo-900 transition-colors duration-200"
+                                                    title="Edit Assignment">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                        </path>
+                                                    </svg>
+                                                </button>
                                                 <!-- Complete Button -->
                                                 <button
                                                     onclick="completeCadre({{ $assignment->id }}, '{{ $assignment->soldier->full_name ?? 'N/A' }}')"
@@ -578,22 +610,22 @@
                                             <div class="text-sm font-medium text-gray-900">
                                                 {{ $assignment->cadre->name ?? 'N/A' }}
                                             </div>
-                                            @if ($assignment->note)
+                                            @if ($assignment->remarks)
                                                 <div class="text-sm text-gray-500 truncate max-w-xs"
-                                                    title="{{ $assignment->note }}">
-                                                    {{ Str::limit($assignment->note, 30) }}
+                                                    title="{{ $assignment->remarks }}">
+                                                    {{ Str::limit($assignment->remarks, 30) }}
                                                 </div>
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <div>
                                                 <div class="text-xs text-gray-500">From:</div>
-                                                {{ $assignment->from_date ? \Carbon\Carbon::parse($assignment->from_date)->format('M d, Y') : 'N/A' }}
+                                                {{ $assignment->start_date ? \Carbon\Carbon::parse($assignment->start_date)->format('M d, Y') : 'N/A' }}
                                             </div>
-                                            @if ($assignment->to_date)
+                                            @if ($assignment->end_date)
                                                 <div class="mt-1">
                                                     <div class="text-xs text-gray-500">To:</div>
-                                                    {{ \Carbon\Carbon::parse($assignment->to_date)->format('M d, Y') }}
+                                                    {{ \Carbon\Carbon::parse($assignment->end_date)->format('M d, Y') }}
                                                 </div>
                                             @endif
                                         </td>
@@ -813,7 +845,121 @@
             </div>
         </div>
     </div>
+    <!-- Edit Assignment Modal -->
+    <div id="editAssignmentModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-lg bg-white">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-lg font-medium text-gray-900" id="editModalTitle">Edit Assignment</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
 
+            <!-- Modal Content -->
+            <div class="mb-6">
+                <form id="editAssignmentForm" method="POST" class="space-y-6">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" id="editAssignmentId" name="assignment_id">
+                    <input type="hidden" id="editAssignmentType" name="type">
+
+                    <!-- Assignment Type Display -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Assignment Type</label>
+                        <div id="editAssignmentTypeDisplay"
+                            class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 font-medium">
+                        </div>
+                    </div>
+
+                    <!-- Date Selection -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Start Date -->
+                        <div>
+                            <label for="editStartDate" class="block text-sm font-medium text-gray-700 mb-2">Start
+                                Date</label>
+                            <input type="date" id="editStartDate" name="start_date" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+
+                        <!-- End Date -->
+                        <div>
+                            <label for="editEndDate" class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                            <input type="date" id="editEndDate" name="end_date"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                    </div>
+
+                    <!-- Course Selection (shown only for courses) -->
+                    <!-- Course Selection (shown only for courses) -->
+                    <div id="editCourseSection" class="hidden">
+                        <label for="editCourseId" class="block text-sm font-medium text-gray-700 mb-2">Course</label>
+                        <select id="editCourseId" name="course_id"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <!-- Options will be loaded dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Cadre Selection (shown only for cadres) -->
+                    <!-- Cadre Selection (shown only for cadres) -->
+                    <div id="editCadreSection" class="hidden">
+                        <label for="editCadreId" class="block text-sm font-medium text-gray-700 mb-2">Cadre</label>
+                        <select id="editCadreId" name="cadre_id"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <!-- Options will be loaded dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Soldier Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Soldier</label>
+                        <select id="editSoldierId" name="soldier_id" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <!-- Options will be loaded dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Notes Section -->
+                    <div>
+                        <label for="editNote" class="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                        <textarea id="editNote" name="note" rows="3"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                    </div>
+
+                    <!-- Date Adjustment Warning -->
+                    <div id="editDateAdjustmentWarning" class="hidden p-3 bg-amber-50 rounded-lg border border-amber-200">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-amber-500 mt-0.5 mr-2" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                                </path>
+                            </svg>
+                            <p class="text-sm text-amber-700">
+                                The start date will be adjusted to tomorrow if the soldier has completed assignments today.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex justify-end space-x-3 pt-4 border-t">
+                        <button type="button" onclick="closeEditModal()"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors duration-200">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Get the active tab from localStorage or default to 'current-courses'
@@ -1198,6 +1344,291 @@
 
         function closeErrorModal() {
             document.getElementById('errorModal').classList.add('hidden');
+        }
+
+        // Edit Assignment Modal Functions
+        function openEditModal(type, id) {
+            // Store the current active tab before showing modal
+            const activeTab = document.querySelector('.tab-button.active').getAttribute('data-tab');
+            localStorage.setItem('activeCourseCadreTab', activeTab);
+
+            // Set form action
+            document.getElementById('editAssignmentForm').action = `/coursecadremanager/${type}/${id}`;
+
+            // Set hidden fields
+            document.getElementById('editAssignmentId').value = id;
+            document.getElementById('editAssignmentType').value = type;
+
+            // Set modal title
+            document.getElementById('editModalTitle').textContent =
+                `Edit ${type === 'course' ? 'Course' : 'Cadre'} Assignment`;
+
+            // Show appropriate sections based on type and handle required attributes
+            const courseSection = document.getElementById('editCourseSection');
+            const cadreSection = document.getElementById('editCadreSection');
+            const courseSelect = document.getElementById('editCourseId');
+            const cadreSelect = document.getElementById('editCadreId');
+
+            if (type === 'course') {
+                courseSection.classList.remove('hidden');
+                cadreSection.classList.add('hidden');
+
+                // Make course required and cadre not required
+                courseSelect.setAttribute('required', 'required');
+                cadreSelect.removeAttribute('required');
+            } else {
+                courseSection.classList.add('hidden');
+                cadreSection.classList.remove('hidden');
+
+                // Make cadre required and course not required
+                courseSelect.removeAttribute('required');
+                cadreSelect.setAttribute('required', 'required');
+            }
+
+            // Show loading state
+            document.getElementById('editAssignmentTypeDisplay').textContent = 'Loading...';
+            document.getElementById('editStartDate').value = '';
+            document.getElementById('editEndDate').value = '';
+            document.getElementById('editNote').value = '';
+            document.getElementById('editSoldierId').innerHTML = '<option value="">Loading...</option>';
+
+            // Fetch assignment data
+            fetch(`/coursecadremanager/${type}/${id}/edit-data`)
+                .then(response => response.json())
+                .then(data => {
+                    // Populate form fields
+                    document.getElementById('editAssignmentTypeDisplay').textContent =
+                        `${type === 'course' ? '📚 Course' : '👥 Cadre'} Assignment`;
+
+                    document.getElementById('editStartDate').value = data.start_date;
+                    document.getElementById('editEndDate').value = data.end_date || '';
+                    document.getElementById('editNote').value = data.remarks || '';
+
+                    // Populate course/cadre dropdown
+                    if (type === 'course') {
+                        populateDropdown('editCourseId', data.courses, data.course_id);
+                    } else {
+                        populateDropdown('editCadreId', data.cadres, data.cadre_id);
+                    }
+
+                    // Populate soldier dropdown
+                    populateSoldierDropdown('editSoldierId', data.soldiers, data.soldier_id, data
+                        .completed_today_soldiers);
+
+                    // Show modal
+                    document.getElementById('editAssignmentModal').classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error fetching assignment data:', error);
+                    showError('Failed to load assignment data. Please try again.');
+                });
+        }
+
+        function closeEditModal() {
+            // Reset form
+            document.getElementById('editAssignmentForm').reset();
+
+            // Hide modal
+            document.getElementById('editAssignmentModal').classList.add('hidden');
+        }
+
+        function populateDropdown(selectId, options, selectedValue) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '';
+
+            options.forEach(option => {
+                const optionElement = document.createElement('option');
+                optionElement.value = option.id;
+                optionElement.textContent = option.name;
+                optionElement.selected = option.id == selectedValue;
+                select.appendChild(optionElement);
+            });
+        }
+
+        function populateSoldierDropdown(selectId, soldiers, selectedValue, completedTodaySoldiers) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '';
+
+            // Group soldiers into available and assigned
+            const availableSoldiers = soldiers.filter(s => !s.has_active_assignments || s.id == selectedValue);
+            const assignedSoldiers = soldiers.filter(s => s.has_active_assignments && s.id != selectedValue);
+
+            // Add available soldiers
+            if (availableSoldiers.length > 0) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = 'Available Soldiers';
+
+                availableSoldiers.forEach(soldier => {
+                    const option = document.createElement('option');
+                    option.value = soldier.id;
+                    option.textContent =
+                        `${soldier.full_name} (${soldier.army_no}) - ${soldier.rank.name}, ${soldier.company.name}`;
+                    option.selected = soldier.id == selectedValue;
+
+                    if (completedTodaySoldiers.includes(soldier.id)) {
+                        option.textContent += ' [Completed Today]';
+                    }
+
+                    optgroup.appendChild(option);
+                });
+
+                select.appendChild(optgroup);
+            }
+
+            // Add assigned soldiers
+            if (assignedSoldiers.length > 0) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = 'Assigned Soldiers (Unavailable)';
+                optgroup.disabled = true;
+
+                assignedSoldiers.forEach(soldier => {
+                    const option = document.createElement('option');
+                    option.value = soldier.id;
+                    option.textContent =
+                        `${soldier.full_name} (${soldier.army_no}) - ${soldier.rank.name}, ${soldier.company.name}`;
+                    option.disabled = true;
+                    optgroup.appendChild(option);
+                });
+
+                select.appendChild(optgroup);
+            }
+        }
+
+        // Handle form submission
+        // Handle form submission
+        document.getElementById('editAssignmentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Get the assignment type
+            const type = document.getElementById('editAssignmentType').value;
+
+            // Manually validate the form based on the type
+            const startDate = document.getElementById('editStartDate').value;
+            const soldierId = document.getElementById('editSoldierId').value;
+            const note = document.getElementById('editNote').value;
+
+            // Validate required fields
+            if (!startDate) {
+                showError('Start date is required.');
+                return;
+            }
+
+            if (!soldierId) {
+                showError('Soldier is required.');
+                return;
+            }
+
+            if (type === 'course') {
+                const courseId = document.getElementById('editCourseId').value;
+                if (!courseId) {
+                    showError('Course is required.');
+                    return;
+                }
+            } else {
+                const cadreId = document.getElementById('editCadreId').value;
+                if (!cadreId) {
+                    showError('Cadre is required.');
+                    return;
+                }
+            }
+
+            const formData = new FormData(this);
+            const id = document.getElementById('editAssignmentId').value;
+
+            fetch(`/coursecadremanager/${type}/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-HTTP-Method-Override': 'PUT'
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Close modal
+                        closeEditModal();
+
+                        // Show success message
+                        showSuccess(data.message);
+
+                        // Reload the page after a short delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        showError(data.message || 'Failed to update assignment.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating assignment:', error);
+                    showError('Failed to update assignment. Please try again.');
+                });
+        });
+
+        // Handle date adjustment warning
+        document.getElementById('editSoldierId').addEventListener('change', function() {
+            checkForDateAdjustment();
+        });
+
+        document.getElementById('editStartDate').addEventListener('change', function() {
+            checkForDateAdjustment();
+        });
+
+        function checkForDateAdjustment() {
+            const selectedOption = document.getElementById('editSoldierId').selectedOptions[0];
+            const startDate = document.getElementById('editStartDate').value;
+            const warning = document.getElementById('editDateAdjustmentWarning');
+
+            if (selectedOption && selectedOption.textContent.includes('[Completed Today]') &&
+                startDate === new Date().toISOString().split('T')[0]) {
+                warning.classList.remove('hidden');
+            } else {
+                warning.classList.add('hidden');
+            }
+        }
+
+        function showSuccess(message) {
+            // Create success alert
+            const alert = document.createElement('div');
+            alert.className =
+                'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50';
+            alert.innerHTML = `
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span>${message}</span>
+        </div>
+    `;
+
+            document.body.appendChild(alert);
+
+            // Remove after 5 seconds
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        function showError(message) {
+            // Create error alert
+            const alert = document.createElement('div');
+            alert.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50';
+            alert.innerHTML = `
+        <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span>${message}</span>
+        </div>
+    `;
+
+            document.body.appendChild(alert);
+
+            // Remove after 5 seconds
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
         }
     </script>
 @endsection

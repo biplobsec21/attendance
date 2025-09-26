@@ -50,7 +50,7 @@ class AppointmentManagerController extends Controller
         $companies = Company::all();
 
         // Get soldiers with current appointments
-        $assignedSoldierIds = SoldierServices::where('appointment_type', 'current')
+        $assignedSoldierIds = $assignedSoldierIds = SoldierServices::whereIn('status', ['active', 'scheduled'])
             ->pluck('soldier_id')
             ->toArray();
 
@@ -281,6 +281,7 @@ class AppointmentManagerController extends Controller
 
         $query = SoldierServices::where('soldier_id', $soldierId)
             ->where('id', '!=', $excludeId)
+            ->whereIn('status', ['active', 'scheduled'])
             ->where(function ($q) use ($fromDate, $toDate) {
                 // Check for any overlap
                 $q->where(function ($query) use ($fromDate, $toDate) {
@@ -306,11 +307,12 @@ class AppointmentManagerController extends Controller
     {
         $requestedDate = Carbon::parse($requestedDate);
 
-        // Check if soldier has an appointment ending today
+        // Check if soldier has an appointment ending today (regardless of status)
         $endingToday = SoldierServices::where('soldier_id', $soldierId)
             ->whereDate('appointments_to_date', Carbon::today())
             ->exists();
 
+        // If appointment ends today and requested date is today, set to tomorrow
         if ($endingToday && $requestedDate->isToday()) {
             return Carbon::tomorrow()->toDateString();
         }

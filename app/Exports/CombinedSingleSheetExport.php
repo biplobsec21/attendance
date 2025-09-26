@@ -20,26 +20,28 @@ use Illuminate\Support\Facades\DB;
 class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMapping, WithTitle, WithEvents
 {
     protected $date;
+    protected $companies;
+    protected $rankTypes;
+    protected $appointments;
 
     public function __construct($date)
     {
         $this->date = $date;
+        $this->companies = Company::orderBy('name')->pluck('name', 'id');
+        $this->rankTypes = Rank::distinct()->pluck('type')->sort();
+        $this->appointments = Appointment::orderBy('name')->pluck('name', 'id');
     }
 
     public function collection()
     {
-        // Get Company and Rank data
-        $companies = Company::orderBy('name')->pluck('name', 'id');
-        $rankTypes = Rank::distinct()->pluck('type')->sort();
-
         $companyRankData = [];
 
         // Fill the data structure for each company and rank type
-        foreach ($companies as $companyId => $companyName) {
+        foreach ($this->companies as $companyId => $companyName) {
             $row = ['company_name' => $companyName];
 
             // For each rank type, get the count of soldiers
-            foreach ($rankTypes as $rankType) {
+            foreach ($this->rankTypes as $rankType) {
                 // Count total soldiers in this company and rank type
                 $totalSoldiers = Soldier::where('company_id', $companyId)
                     ->whereHas('rank', function ($query) use ($rankType) {
@@ -75,7 +77,7 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
 
         // Add a total row (summing all companies)
         $totalRow = ['company_name' => 'Total'];
-        foreach ($rankTypes as $rankType) {
+        foreach ($this->rankTypes as $rankType) {
             $rankTotal = Soldier::whereHas('rank', function ($query) use ($rankType) {
                 $query->where('type', $rankType);
             })->count();
@@ -92,7 +94,6 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
                         ->orWhereNull('appointments_to_date');
                 });
         })->count();
-        
         $totalRow['appointed'] = $grandAppointedSoldiers;
 
         $grandFinalTotal = $grandTotalSoldiers - $grandAppointedSoldiers;
@@ -101,16 +102,13 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
         $companyRankData[] = $totalRow;
 
         // Get Parade data
-        $appointments = Appointment::orderBy('name')->pluck('name', 'id');
-        $companies = Company::orderBy('name')->pluck('name', 'id');
-
         $paradeData = [];
 
         // Fill the data structure
-        foreach ($appointments as $appId => $appName) {
-            $row = ['name' => $appName];
+        foreach ($this->appointments as $appId => $appName) {
+            $row = ['appointment_name' => $appName];
 
-            foreach ($companies as $companyId => $companyName) {
+            foreach ($this->companies as $companyId => $companyName) {
                 // Count soldiers with this appointment and company who were active on the given date
                 $count = Soldier::whereHas('services', function ($query) use ($appId) {
                     $query->where('appointment_id', $appId)
@@ -124,22 +122,33 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
                 $row[$companyName] = $count;
             }
 
-            // Calculate total for this appointment
-            $row['total'] = array_sum(array_slice($row, 1, -1));
+            // Calculate total for this appointment - FIXED
+            $appointmentTotal = 0;
+            foreach ($this->companies as $companyName) {
+                $appointmentTotal += $row[$companyName] ?? 0;
+            }
+            $row['total'] = $appointmentTotal;
 
             $paradeData[] = $row;
         }
 
-        // Add total row
-        $totalRow = ['name' => 'Total'];
-        foreach ($companies as $companyId => $companyName) {
-            $total = 0;
+        // Add total row - FIXED
+        $totalRow = ['appointment_name' => 'Total'];
+        foreach ($this->companies as $companyId => $companyName) {
+            $companyTotal = 0;
             foreach ($paradeData as $row) {
-                $total += $row[$companyName] ?? 0;
+                $companyTotal += $row[$companyName] ?? 0;
             }
-            $totalRow[$companyName] = $total;
+            $totalRow[$companyName] = $companyTotal;
         }
-        $totalRow['total'] = array_sum(array_slice($totalRow, 1, -1));
+
+        // Calculate grand total for the appointment report - FIXED
+        $grandTotal = 0;
+        foreach ($this->companies as $companyName) {
+            $grandTotal += $totalRow[$companyName] ?? 0;
+        }
+        $totalRow['total'] = $grandTotal;
+
         $paradeData[] = $totalRow;
 
         // Combine both data sets with a separator row and header row
@@ -167,13 +176,10 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
 
     public function headings(): array
     {
-        // Get all distinct rank types
-        $rankTypes = Rank::distinct()->pluck('type')->sort()->toArray();
-
         $headings = ['Company Name'];
 
         // Add each rank type as a column
-        foreach ($rankTypes as $rankType) {
+        foreach ($this->rankTypes as $rankType) {
             $headings[] = $rankType;
         }
 
@@ -195,13 +201,10 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
 
         // Check if this is a header row for the second report
         if (isset($row['header']) && $row['header']) {
-            // Get all companies for the second report's headers
-            $companies = Company::orderBy('name')->pluck('name')->toArray();
-
             $mapped = ['Appointment Name'];
 
-            foreach ($companies as $company) {
-                $mapped[] = $company;
+            foreach ($this->companies as $companyName) {
+                $mapped[] = $companyName;
             }
 
             $mapped[] = 'Total';
@@ -211,13 +214,10 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
 
         // Check if this row is from Company and Rank data
         if (isset($row['company_name'])) {
-            // Get all distinct rank types
-            $rankTypes = Rank::distinct()->pluck('type')->sort()->toArray();
-
             $mapped = [$row['company_name']];
 
             // Add each rank type count
-            foreach ($rankTypes as $rankType) {
+            foreach ($this->rankTypes as $rankType) {
                 $mapped[] = $row[$rankType] ?? 0;
             }
 
@@ -230,13 +230,10 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
         }
 
         // Otherwise, it's from Parade data
-        // Get all companies
-        $companies = Company::orderBy('name')->pluck('name')->toArray();
+        $mapped = [$row['appointment_name']];
 
-        $mapped = [$row['name']];
-
-        foreach ($companies as $company) {
-            $mapped[] = $row[$company] ?? 0;
+        foreach ($this->companies as $companyName) {
+            $mapped[] = $row[$companyName] ?? 0;
         }
 
         $mapped[] = $row['total'];
@@ -302,7 +299,7 @@ class CombinedSingleSheetExport implements FromCollection, WithHeadings, WithMap
                         ->getFont()->setBold(true);
 
                     // Add a title for the second report
-                    $sheet->setCellValue('A' . ($headerRow - 1), 'Apointment Report');
+                    $sheet->setCellValue('A' . ($headerRow - 1), 'Appointment Report');
                     $sheet->getStyle('A' . ($headerRow - 1))
                         ->getFont()
                         ->setBold(true)

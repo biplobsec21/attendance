@@ -7,43 +7,66 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            font-size: 12px;
+            font-size: 10px;
+            /* Smaller font size */
+            line-height: 1.2;
         }
 
         .title {
             text-align: center;
-            font-size: 16px;
+            font-size: 14px;
+            /* Smaller title */
             font-weight: bold;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .subtitle {
             text-align: center;
-            font-size: 14px;
+            font-size: 12px;
+            /* Smaller subtitle */
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         th,
         td {
             border: 1px solid #000;
-            padding: 5px;
-            text-align: center;
+            padding: 4px;
+            /* Smaller padding */
+            font-size: 9px;
+            /* Smaller table font */
         }
 
         th {
             background-color: #f2f2f2;
             font-weight: bold;
+            text-align: center;
+            /* Center align headers */
+        }
+
+        /* Text cells - left aligned */
+        .text-cell {
+            text-align: left;
+        }
+
+        /* Number cells - center aligned */
+        .number-cell {
+            text-align: center;
         }
 
         .separator {
-            height: 20px;
+            height: 15px;
+        }
+
+        /* Zero value styling - show as dash */
+        .zero-value {
+            color: #999;
         }
     </style>
 </head>
@@ -55,7 +78,7 @@
     <table>
         <thead>
             <tr>
-                <th>Company Name</th>
+                <th class="text-cell">Company Name</th>
                 @foreach ($rankTypes as $rankType)
                     <th>{{ $rankType }}</th>
                 @endforeach
@@ -67,13 +90,23 @@
         <tbody>
             @foreach ($companyRankData as $row)
                 <tr>
-                    <td>{{ $row['company_name'] }}</td>
+                    <td class="text-cell">{{ $row['company_name'] }}</td>
                     @foreach ($rankTypes as $rankType)
-                        <td>{{ $row[$rankType] ?? 0 }}</td>
+                        @php
+                            $value = $row[$rankType] ?? 0;
+                            $displayValue = $value == 0 ? '-' : $value;
+                            $cellClass = $value == 0 ? 'number-cell zero-value' : 'number-cell';
+                        @endphp
+                        <td class="{{ $cellClass }}">{{ $displayValue }}</td>
                     @endforeach
-                    <td>{{ $row['total'] }}</td>
-                    <td>{{ $row['appointed'] }}</td>
-                    <td>{{ $row['final_total'] }}</td>
+                    @php
+                        $totalValue = $row['total'] ?? 0;
+                        $appointedValue = $row['appointed'] ?? 0;
+                        $finalTotalValue = $row['final_total'] ?? 0;
+                    @endphp
+                    <td class="number-cell">{{ $totalValue == 0 ? '-' : $totalValue }}</td>
+                    <td class="number-cell">{{ $appointedValue == 0 ? '-' : $appointedValue }}</td>
+                    <td class="number-cell">{{ $finalTotalValue == 0 ? '-' : $finalTotalValue }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -85,7 +118,7 @@
     <table>
         <thead>
             <tr>
-                <th>Appointment Name</th>
+                <th class="text-cell">Appointment Name</th>
                 @foreach ($companies as $company)
                     <th>{{ $company }}</th>
                 @endforeach
@@ -95,11 +128,19 @@
         <tbody>
             @foreach ($paradeData as $row)
                 <tr>
-                    <td>{{ $row['appointment_name'] }}</td>
+                    <td class="text-cell">{{ $row['appointment_name'] }}</td>
                     @foreach ($companies as $company)
-                        <td>{{ $row[$company] ?? 0 }}</td>
+                        @php
+                            $value = $row[$company] ?? 0;
+                            $displayValue = $value == 0 ? '-' : $value;
+                            $cellClass = $value == 0 ? 'number-cell zero-value' : 'number-cell';
+                        @endphp
+                        <td class="{{ $cellClass }}">{{ $displayValue }}</td>
                     @endforeach
-                    <td>{{ $row['total'] }}</td>
+                    @php
+                        $totalValue = $row['total'] ?? 0;
+                    @endphp
+                    <td class="number-cell">{{ $totalValue == 0 ? '-' : $totalValue }}</td>
                 </tr>
             @endforeach
         </tbody>
