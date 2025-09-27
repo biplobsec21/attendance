@@ -31,6 +31,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AppointmentManagerController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CommissionsController;
+use App\Http\Controllers\CompanyRankManpowerController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SoldierExportController;
@@ -227,7 +228,8 @@ require __DIR__ . '/auth.php';
 
 
 Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {});
-
+Route::get('/primary-manpower', [CompanyRankManpowerController::class, 'index'])->name('company_rank_manpower.index');
+Route::post('/primary-manpower', [CompanyRankManpowerController::class, 'store'])->name('company_rank_manpower.store');
 
 
 Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function () {
