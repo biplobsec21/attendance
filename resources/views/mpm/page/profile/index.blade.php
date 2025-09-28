@@ -60,24 +60,25 @@
                             </div>
                         </div>
                     </div>
-                    {{-- <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
+                    {{-- ERE Stats Card --}}
+                    <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
                         <div class="flex items-center">
                             <div class="bg-red-100 rounded-full p-3">
-                                <i class="fas fa-medical text-red-600 text-xl"></i>
+                                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
                             </div>
                             <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-600">Medical</p>
-                                <p class="text-2xl font-bold text-gray-900" id="medical-count">0</p>
+                                <p class="text-sm font-medium text-gray-600">With ERE</p>
+                                <p class="text-2xl font-bold text-gray-900" id="ere-count">0</p>
                             </div>
                         </div>
-                    </div> --}}
+                    </div>
                 </div>
             </div>
 
             <!-- Filters Section -->
             <div class=" mx-auto px-4 sm:px-6 lg:px-8 mb-8">
                 <div class="bg-white rounded-xl shadow-md p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                         <!-- Search -->
                         <div class="lg:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
@@ -114,10 +115,9 @@
                                 <option value="">All Status</option>
                                 <option value="active">Active</option>
                                 <option value="leave">On Leave</option>
-                                {{-- <option value="medical">Medical</option> --}}
-                                {{-- <option value="inactive">Inactive</option> --}}
                             </select>
                         </div>
+
                         {{-- Skill --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Skills</label>
@@ -126,6 +126,7 @@
                                 <option value="">All Skills</option>
                             </select>
                         </div>
+
                         {{-- Courses --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Courses</label>
@@ -134,12 +135,24 @@
                                 <option value="">All Courses</option>
                             </select>
                         </div>
+
                         {{-- Cadres --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Cadres</label>
                             <select id="cadre-filter"
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                <option value="">All Caders</option>
+                                <option value="">All Cadres</option>
+                            </select>
+                        </div>
+
+                        {{-- ERE Filter --}}
+                        <div>
+                            <label for="ere-filter" class="block text-sm font-medium text-gray-700 mb-2">ERE Status</label>
+                            <select id="ere-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="all">All Soldiers</option>
+                                <option value="with-ere">With ERE</option>
+                                <option value="without-ere">Without ERE</option>
                             </select>
                         </div>
                     </div>
@@ -151,11 +164,11 @@
                             <i class="fas fa-times mr-2"></i>Clear Filters
                         </button>
                         <button id="export-excel"
-                            class="px-4 py-2 text-green-600 bg-green-100 rounded-lg hover:bg-green-200 transition-colors duration-200">
+                            class="hidden px-4 py-2 text-green-600 bg-green-100 rounded-lg hover:bg-green-200 transition-colors duration-200">
                             <i class="fas fa-file-excel mr-2"></i>Export Excel
                         </button>
                         <button id="export-pdf"
-                            class="px-4 py-2 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors duration-200">
+                            class="hidden px-4 py-2 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors duration-200">
                             <i class="fas fa-file-pdf mr-2"></i>Export PDF
                         </button>
                         <button id="bulk-action"
@@ -187,8 +200,6 @@
                                     <th
                                         class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Skills</th>
-
-
                                     <th
                                         class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     </th>
@@ -246,9 +257,8 @@
             </div>
         </div>
     </div>
-
-
 @endsection
+
 @push('scripts')
     <script>
         const routes = {
@@ -257,11 +267,24 @@
             edit: "{{ route('soldier.personalForm', ['profile' => ':id']) }}",
             bulkDelete: "{{ route('soldier.bulkDelete') }}",
             view: "{{ route('soldier.details', ['id' => ':id']) }}",
-
         };
+
+        // Debug ERE filter
+        document.addEventListener('DOMContentLoaded', function() {
+            const ereFilter = document.getElementById('ere-filter');
+            if (ereFilter) {
+                console.log('ERE filter element found');
+                ereFilter.addEventListener('change', function() {
+                    console.log('ERE filter changed to:', this.value);
+                });
+            } else {
+                console.error('ERE filter element not found');
+            }
+        });
     </script>
     <script type="module" src="{{ asset('asset/js/soldiers/init.js') }}"></script>
 @endpush
+
 @push('styles')
     <link rel="stylesheet" href="{{ asset('asset/css/profile.css') }}">
 @endpush

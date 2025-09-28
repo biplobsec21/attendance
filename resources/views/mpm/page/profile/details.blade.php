@@ -11,7 +11,7 @@
             <aside class="w-full lg:w-1/3 xl:w-1/4">
                 <div class="bg-white rounded-2xl shadow-lg p-6 sticky top-24 hover:shadow-xl transition-shadow">
                     <div class="flex flex-col items-center">
-                        <img src="{{ asset('storage/' . $profile->image) }}" alt="Profile Image"
+                        <img src="{{ asset($profile->image) }}" alt="Profile Image"
                             class="w-32 h-32 rounded-full border-4 border-orange-100 object-cover shadow-md">
 
                         <h1 class="text-2xl font-bold text-gray-900 mt-4">{{ $profile->full_name ?? 'N/A' }}</h1>

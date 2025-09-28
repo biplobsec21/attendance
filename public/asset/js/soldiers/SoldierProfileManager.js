@@ -7,7 +7,7 @@ import { showToast } from "./soldierHelpers.js";
 
 export default class SoldierProfileManager {
     constructor() {
-        this.filters = { search: "", rank: "", company: "", status: "", skill: "", course: "", cadre: "" };
+        this.filters = { search: "", rank: "", company: "", status: "", skill: "", course: "", cadre: "", ere: "all" };
         this.selectedRows = new Set();
         this.soldiers = [];
         this.bulkActions = new SoldierBulkActions(this);
@@ -67,6 +67,7 @@ export default class SoldierProfileManager {
             document.getElementById('total-count').textContent = data.stats?.total || 0;
             document.getElementById('active-count').textContent = data.stats?.active || 0;
             document.getElementById('leave-count').textContent = data.stats?.leave || 0;
+            document.getElementById('ere-count').textContent = data.stats?.with_ere || 0;
 
         } catch (e) {
             console.error("Error loading soldiers", e);
@@ -168,21 +169,26 @@ export default class SoldierProfileManager {
     filterAndRender() {
         let filtered = this.soldiers;
 
+        console.log('Initial soldiers count:', filtered.length);
+        console.log('Current filters:', this.filters);
+
         if (this.filters.search) {
             const term = this.filters.search.toLowerCase();
             filtered = filtered.filter(s =>
                 s.name?.toLowerCase().includes(term) ||
                 (s.army_no && s.army_no.toLowerCase().includes(term))
             );
+            console.log('After search filter:', filtered.length);
         }
 
         if (this.filters.rank) {
             filtered = filtered.filter(s => s.rank === this.filters.rank);
+            console.log('After rank filter:', filtered.length);
         }
 
         if (this.filters.company) {
             filtered = filtered.filter(s => s.unit === this.filters.company);
-            console.log(filtered);
+            console.log('After company filter:', filtered.length);
         }
 
         if (this.filters.status) {
@@ -190,22 +196,24 @@ export default class SoldierProfileManager {
                 const status = s.is_leave ? 'leave' : (s.is_sick ? 'medical' : 'active');
                 return status === this.filters.status;
             });
+            console.log('After status filter:', filtered.length);
         }
 
         if (this.filters.skill) {
             filtered = filtered.filter(soldier =>
                 soldier.cocurricular?.some(skill => skill.name === this.filters.skill)
             );
+            console.log('After skill filter:', filtered.length);
         }
 
         if (this.filters.course) {
-            console.log('filters: ', this.filters.course);
             const filterValue = this.filters.course.toLowerCase().trim();
             filtered = filtered.filter(soldier =>
                 soldier.courses?.some(course =>
                     course.name.toLowerCase().trim() === filterValue
                 )
             );
+            console.log('After course filter:', filtered.length);
         }
 
         if (this.filters.cadre) {
@@ -215,6 +223,25 @@ export default class SoldierProfileManager {
                     cadre.name.toLowerCase().trim() === filterValue
                 )
             );
+            console.log('After cadre filter:', filtered.length);
+        }
+
+        // ERE filter logic with better debugging
+        if (this.filters.ere && this.filters.ere !== "all") {
+            console.log('Applying ERE filter:', this.filters.ere);
+
+            const beforeEreFilter = filtered.length;
+
+            filtered = filtered.filter(soldier => {
+                const hasEre = soldier.has_ere === true;
+                const shouldInclude = this.filters.ere === "with-ere" ? hasEre : !hasEre;
+
+                console.log(`Soldier ${soldier.id}: has_ere=${soldier.has_ere}, shouldInclude=${shouldInclude}`);
+
+                return shouldInclude;
+            });
+
+            console.log('After ERE filter:', filtered.length, '(removed', beforeEreFilter - filtered.length, 'soldiers)');
         }
 
         const emptyState = document.getElementById('empty-state');
@@ -223,10 +250,44 @@ export default class SoldierProfileManager {
         } else {
             emptyState.classList.add('hidden');
         }
-        console.log(filtered);
+
+        console.log('Final filtered count:', filtered.length);
         this.renderData(filtered);
     }
 
+    clearFilters() {
+        this.filters = {
+            search: "",
+            rank: "",
+            company: "",
+            status: "",
+            skill: "",
+            course: "",
+            cadre: "",
+            ere: "all" // Reset ERE filter to default value
+        };
+
+        const searchInput = document.getElementById('search-input');
+        const rankSelect = document.getElementById('rank-filter');
+        const companySelect = document.getElementById('company-filter');
+        const statusSelect = document.getElementById('status-filter');
+        const skillSelect = document.getElementById('skill-filter');
+        const courseSelect = document.getElementById('course-filter');
+        const cadreSelect = document.getElementById('cadre-filter');
+        const ereSelect = document.getElementById('ere-filter');
+
+        if (searchInput) searchInput.value = '';
+        if (rankSelect) rankSelect.value = '';
+        if (companySelect) companySelect.value = '';
+        if (statusSelect) statusSelect.value = '';
+        if (skillSelect) skillSelect.value = '';
+        if (courseSelect) courseSelect.value = '';
+        if (cadreSelect) cadreSelect.value = '';
+        if (ereSelect) ereSelect.value = 'all'; // Reset ERE filter to default
+
+        console.log('All filters cleared');
+        this.filterAndRender();
+    }
     renderData(soldiers) {
         const tbody = document.getElementById("soldiers-tbody");
         if (!tbody) return;

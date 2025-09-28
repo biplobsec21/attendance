@@ -2,8 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller; // <- Add this line
-
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Soldier;
 use Illuminate\Support\Facades\DB;
@@ -17,20 +16,34 @@ class SoldierAPIController extends Controller
     {
         $this->formatter = $formatter;
     }
+
     public function index(Request $request)
     {
-
-        $profiles = Soldier::with(['rank', 'company', 'currentLeaveApplications.leaveType'])
+        // Load the ere relationship along with rank and company
+        $profiles = Soldier::with(['rank', 'company', 'ere', 'currentLeaveApplications.leaveType'])
             ->withCount(['currentLeaveApplications as current_leave_applications_count'])
             ->get();
 
+        // Format the collection and add ERE status
+        $formattedProfiles = $profiles->map(function ($soldier) {
+            $formatted = $this->formatter->format($soldier);
+            $formatted['has_ere'] = $soldier->ere()->exists();
+            return $formatted;
+        });
+
         return response()->json([
-            'data' => $this->formatter->formatCollection($profiles),
+            'data' => $formattedProfiles,
             'stats' => [
                 'total' => $profiles->count(),
-                'active' => $profiles->where('is_on_leave', false)->where('is_sick', false)->count(), // is_on_leave is appends data
-                'leave' => $profiles->where('is_on_leave', true)->count(), // is_on_leave is appends data
-                'medical' => $profiles->where('is_sick', true)->count()
+                'active' => $profiles->where('is_on_leave', false)->where('is_sick', false)->count(),
+                'leave' => $profiles->where('is_on_leave', true)->count(),
+                'medical' => $profiles->where('is_sick', true)->count(),
+                'with_ere' => $profiles->filter(function ($soldier) {
+                    return $soldier->ere()->exists();
+                })->count(),
+                'without_ere' => $profiles->filter(function ($soldier) {
+                    return !$soldier->ere()->exists();
+                })->count()
             ]
         ]);
     }

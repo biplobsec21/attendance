@@ -354,4 +354,29 @@ class Soldier extends Model
 
         return $coursesCompletedToday || $cadresCompletedToday;
     }
+
+    public function hasEreRecords(): bool
+    {
+        return $this->ere()->exists();
+    }
+    /**
+     * Scope to get soldiers without ERE records
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeWithoutEre($query)
+    {
+        return $query->whereDoesntHave('ere');
+    }
+    /**
+     * Scope to get soldiers with ERE records
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeWithEre($query)
+    {
+        return $query->whereHas('ere');
+    }
 }

@@ -27,6 +27,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
 use App\Services\SoldierDataFormatter;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 class SoldierController extends Controller
 {
@@ -38,23 +40,38 @@ class SoldierController extends Controller
     }
     public function index(Request $request)
     {
-        // $profiles = Soldier::with(['rank', 'company'])->get();
-        // dd($profiles);
         $query = Soldier::query();
-        // $profile = $query->paginate(20)->withQueryString();
+
         if ($request->ajax()) {
             $profiles = Soldier::with(['rank', 'company'])->get();
 
+            // Format the collection with ERE status
+            $formattedProfiles = $this->formatter->formatCollection($profiles);
+
+            // Add ERE status to each profile
+            $formattedProfiles->transform(function ($profile) {
+                $soldier = Soldier::find($profile['id']);
+                $profile['has_ere'] = $soldier ? $soldier->hasEreRecords() : false;
+                return $profile;
+            });
+
             return response()->json([
-                'data' => $this->formatter->formatCollection($profiles),
+                'data' => $formattedProfiles,
                 'stats' => [
                     'total' => $profiles->count(),
                     'active' => $profiles->where('is_leave', false)->where('is_sick', false)->count(),
                     'leave' => $profiles->where('is_leave', true)->count(),
-                    'medical' => $profiles->where('is_sick', true)->count()
+                    'medical' => $profiles->where('is_sick', true)->count(),
+                    'with_ere' => $profiles->filter(function ($soldier) {
+                        return $soldier->hasEreRecords();
+                    })->count(),
+                    'without_ere' => $profiles->filter(function ($soldier) {
+                        return !$soldier->hasEreRecords();
+                    })->count()
                 ]
             ]);
         }
+
         return view('mpm.page.profile.index');
     }
 
@@ -87,10 +104,23 @@ class SoldierController extends Controller
 
             // Handle image upload
             if ($request->hasFile('image')) {
-                $data['image'] = $request->file('image')->store('profiles', 'public');
+                $image = $request->file('image');
+                $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+
+                // Create directory if it doesn't exist
+                $uploadPath = public_path('uploads/profiles');
+                if (!File::exists($uploadPath)) {
+                    File::makeDirectory($uploadPath, 0755, true, true);
+                }
+
+                // Move image to public folder
+                $image->move($uploadPath, $imageName);
+                $data['image'] = 'uploads/profiles/' . $imageName;
             }
+
             $data['personal_completed'] = true;
             $soldier = Soldier::create($data);
+
             // Redirect to next step with success message
             return redirect()->route('soldier.serviceForm', $soldier->id)
                 ->with('success', 'Personal information created successfully.');
@@ -108,14 +138,29 @@ class SoldierController extends Controller
     {
         try {
             $data = $request->validated();
+
             if ($request->hasFile('image')) {
-                if ($soldier->image && \Storage::disk('public')->exists($soldier->image)) {
-                    \Storage::disk('public')->delete($soldier->image);
+                // Delete old image if it exists
+                if ($soldier->image && File::exists(public_path($soldier->image))) {
+                    File::delete(public_path($soldier->image));
                 }
-                $data['image'] = $request->file('image')->store('profiles', 'public');
+
+                $image = $request->file('image');
+                $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+
+                // Create directory if it doesn't exist
+                $uploadPath = public_path('uploads/profiles');
+                if (!File::exists($uploadPath)) {
+                    File::makeDirectory($uploadPath, 0755, true, true);
+                }
+
+                // Move image to public folder
+                $image->move($uploadPath, $imageName);
+                $data['image'] = 'uploads/profiles/' . $imageName;
             }
+
             $soldier->update($data);
-            // dd($data);
+
             return redirect()->back()
                 ->with('success', 'Personal information updated successfully.');
         } catch (\Exception $e) {
@@ -126,6 +171,7 @@ class SoldierController extends Controller
                 ->with('error', 'An unexpected error occurred. Please try again.');
         }
     }
+
     // <end>*************************Profile personal information<end>
     // <end>*************************Profile personal information<end>
     // <end>*************************Profile personal information<end>
@@ -269,24 +315,41 @@ class SoldierController extends Controller
         });
 
         $coursesData = $profile->courses->map(function ($data) {
+            // Map database status to form status
+            $formStatus = null;
+            if ($data->pivot->course_status === 'active') {
+                $formStatus = 'Running';
+            } elseif ($data->pivot->course_status === 'completed') {
+                $formStatus = 'Passed';
+            }
+
             return [
                 'name' => $data->id,
-                'status' => $data->pivot->course_status,
+                'status' => $formStatus,
                 'start_date' => $data->pivot->start_date,
                 'end_date' => $data->pivot->end_date,
                 'result' => $data->pivot->remarks,
             ];
         });
+
         $cadresData = $profile->cadres->map(function ($data) {
+            // Map database status to form status
+            $formStatus = null;
+            if ($data->pivot->course_status === 'active') {
+                $formStatus = 'Running';
+            } elseif ($data->pivot->course_status === 'completed') {
+                $formStatus = 'Passed';
+            }
+
             return [
                 'name' => $data->id,
-                'status' => $data->pivot->course_status,
+                'status' => $formStatus,
                 'start_date' => $data->pivot->start_date,
                 'end_date' => $data->pivot->end_date,
                 'result' => $data->pivot->remarks,
             ];
         });
-        // dd($cadresData);
+
 
         $cocurricular = $profile->skills->map(function ($data) {
             return [
@@ -308,8 +371,6 @@ class SoldierController extends Controller
                 'end_date' => $data->pivot->end_date,
             ];
         });
-
-
 
         $sections = [
             'education' => [
@@ -360,7 +421,6 @@ class SoldierController extends Controller
             ],
         ];
 
-
         return view('mpm.page.profile.qualification', compact(
             'profileSteps',
             'profile',
@@ -371,25 +431,22 @@ class SoldierController extends Controller
             'cocurricular',
             'attData',
             'ereData',
-
         ));
     }
 
 
-    public function saveQualifications(StoreQualificationRequest  $request)
+    public function saveQualifications(StoreQualificationRequest $request)
     {
         $profile = Soldier::findOrFail($request->id);
 
-
         // Save education qualifications
         DB::transaction(function () use ($request, $profile) {
-
-            foreach (['soldiers_att', 'soldiers_ere', 'soldier_skills', 'soldier_educations', 'soldier_cadres', 'soldier_courses'] as $table)
+            foreach (['soldiers_att', 'soldiers_ere', 'soldier_skills', 'soldier_educations', 'soldier_cadres', 'soldier_courses'] as $table) {
                 DB::table($table)->where('soldier_id', $request->id)->delete();
+            }
 
             // EDUCATIONS
             if ($request->filled('education')) {
-                // dd($request->education);
                 foreach ($request->education as $edu) {
                     if (empty($edu['name'])) continue;
 
@@ -406,35 +463,65 @@ class SoldierController extends Controller
                 foreach ($request->courses as $course) {
                     if (empty($course['name'])) continue;
 
+                    // Determine status based on the selection
+                    $status = $course['status'] ?? null;
+                    $courseStatus = null;
+                    $startDate = $course['start_date'] ?? null;
+
+                    if ($status === 'Running') {
+                        $courseStatus = 'active';
+                        // Set start date to today if not provided
+                        if (empty($startDate)) {
+                            $startDate = now()->toDateString();
+                        }
+                    } elseif ($status === 'Passed') {
+                        $courseStatus = 'completed';
+                    }
+
                     $profile->courses()->attach($course['name'], [
-                        'course_status'   => $course['status'] ?? null,
+                        'course_status'   => $courseStatus,
+                        'status'   => $courseStatus,
                         'remarks'         => $course['result'] ?? null,
-                        'start_date'      => $course['start_date'] ?? null,
+                        'start_date'      => $startDate,
                         'end_date'        => $course['end_date'] ?? null,
-                        'completion_date' => null,
+                        'completion_date' => $course['end_date'] ?? null,
                     ]);
                 }
             }
 
             // CADRES
             if ($request->filled('cadres')) {
-
                 foreach ($request->cadres as $cadre) {
                     if (empty($cadre['name'])) continue;
 
+                    // Determine status based on the selection
+                    $status = $cadre['status'] ?? null;
+                    $cadreStatus = null;
+                    $startDate = $cadre['start_date'] ?? null;
+
+                    if ($status === 'Running') {
+                        $cadreStatus = 'active';
+                        // Set start date to today if not provided
+                        if (empty($startDate)) {
+                            $startDate = now()->toDateString();
+                        }
+                    } elseif ($status === 'Passed') {
+                        $cadreStatus = 'completed';
+                    }
+
                     $profile->cadres()->attach($cadre['name'], [
-                        'course_status'   => $cadre['status'] ?? null,
+                        'course_status'   => $cadreStatus,
+                        'status'   => $cadreStatus,
                         'remarks'         => $cadre['result'] ?? null,
-                        'start_date'      => $cadre['start_date'] ?? null,
+                        'start_date'      => $startDate,
                         'end_date'        => $cadre['end_date'] ?? null,
-                        'completion_date' => null,
+                        'completion_date' => $cadre['end_date'] ?? null,
                     ]);
                 }
             }
 
             // CO-CURRICULAR
             if ($request->filled('cocurricular')) {
-
                 foreach ($request->cocurricular as $skill) {
                     if (empty($skill['name'])) continue;
 
@@ -447,7 +534,6 @@ class SoldierController extends Controller
 
             // ERE
             if ($request->filled('ere')) {
-
                 foreach ($request->ere as $er) {
                     if (empty($er['name'])) continue;
 
@@ -460,7 +546,6 @@ class SoldierController extends Controller
 
             // ATTACHMENTS
             if ($request->filled('attachments')) {
-
                 foreach ($request->attachments as $att) {
                     if (empty($att['name'])) continue;
 
@@ -471,7 +556,6 @@ class SoldierController extends Controller
                 }
             }
         });
-
 
         $profile->update([
             'qualifications_completed' => 1
@@ -723,8 +807,8 @@ class SoldierController extends Controller
     {
         try {
             // Delete associated image if exists
-            if ($soldier->image && \Storage::disk('public')->exists($soldier->image)) {
-                \Storage::disk('public')->delete($soldier->image);
+            if ($soldier->image && File::exists(public_path($soldier->image))) {
+                File::delete(public_path($soldier->image));
             }
 
             $soldier->delete();
@@ -733,6 +817,39 @@ class SoldierController extends Controller
         } catch (\Exception $e) {
             \Log::error('Error deleting soldier: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to delete profile'], 500);
+        }
+    }
+    /**
+     * Bulk delete soldiers
+     */
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'soldier_ids' => 'required|array',
+            'soldier_ids.*' => 'exists:soldiers,id'
+        ]);
+
+        try {
+            $soldierIds = $request->get('soldier_ids');
+            $soldiers = Soldier::whereIn('id', $soldierIds)->get();
+
+            // Delete images
+            foreach ($soldiers as $soldier) {
+                if ($soldier->image && File::exists(public_path($soldier->image))) {
+                    File::delete(public_path($soldier->image));
+                }
+            }
+
+            // Delete soldiers
+            Soldier::whereIn('id', $soldierIds)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => count($soldierIds) . ' profiles deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Bulk delete error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to delete profiles'], 500);
         }
     }
 
@@ -825,41 +942,7 @@ class SoldierController extends Controller
         }
     }
 
-    /**
-     * Bulk delete soldiers
-     */
-    public function bulkDelete(Request $request)
-    {
-        //dd($request->all());
-        $request->validate([
-            'soldier_ids' => 'required|array',
-            'soldier_ids.*' => 'exists:soldiers,id'
-        ]);
 
-        try {
-            $soldierIds = $request->get('soldier_ids');
-            $soldiers = Soldier::whereIn('id', $soldierIds)->get();
-
-            // Delete images
-            foreach ($soldiers as $soldier) {
-                if ($soldier->image && \Storage::disk('public')->exists($soldier->image)) {
-                    \Storage::disk('public')->delete($soldier->image);
-                }
-            }
-
-            // Delete soldiers
-
-            Soldier::whereIn('id', $soldierIds)->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => count($soldierIds) . ' profiles deleted successfully'
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Bulk delete error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to delete profiles'], 500);
-        }
-    }
 
     private function exportToExcel($soldiers)
     {

@@ -313,6 +313,7 @@
 
             // Initial toggle for old rows
             document.querySelectorAll('div[role="qualification-row"]').forEach(row => toggleConditional(row));
+            // Add this to your DOMContentLoaded event listener
         });
     </script>
 @endpush

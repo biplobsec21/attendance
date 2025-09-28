@@ -9,9 +9,12 @@ export function renderTableRow(soldier) {
     const skills = getSkill(soldier.cocurricular);
     const educations = getEducations(soldier.educations);
     const courseAndCadres = getCourseAndCadres(soldier.courses, soldier.cadres);
-    // console.log(soldier.is_leave);
     const defaultAvatar = "/images/default-avatar.png";
 
+    // ERE status badge
+    const ereBadge = soldier.has_ere ?
+        '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">ERE</span>' :
+        '';
 
     return `
         <tr class="hover:bg-gray-50 transition-colors duration-150" data-soldier-id="${soldier.id}">
@@ -27,7 +30,7 @@ export function renderTableRow(soldier) {
                    <div class="flex flex-col items-center">
                     <!-- Image -->
                     <img class="h-40 w-32 rounded-lg object-cover border-2 border-gray-200"
-                        src="${soldier.image ? `/storage/${soldier.image}` : defaultAvatar}"
+                        src="${soldier.image ? `/${soldier.image}` : defaultAvatar}"
                         alt="${soldier.name || 'Soldier'}"
                         onerror="this.src='/images/default-avatar.png'">
 
@@ -40,7 +43,10 @@ export function renderTableRow(soldier) {
                     </div>
                 </div>
                     <div class="ml-4">
-                        <div class="text-sm font-medium text-gray-900">${soldier.name || 'N/A'}</div>
+                        <div class="flex items-center">
+                            <div class="text-sm font-medium text-gray-900">${soldier.name || 'N/A'}</div>
+                            ${ereBadge}
+                        </div>
                         <div class="text-sm text-gray-500">Army #${soldier.army_no || 'N/A'}</div>
 
                         <ul class="mt-4 space-y-3 text-gray-700">
@@ -93,7 +99,7 @@ export function renderTableRow(soldier) {
                 </td>
 
 
-                <td class="px-6 py-4 text-sm font-medium flex flex-col items-center space-y-2">
+            <td class="px-6 py-4 text-sm font-medium flex flex-col items-center space-y-2">
                     <!-- View Button -->
                     <button class="view-btn bg-blue-100 text-blue-600 hover:bg-blue-200 hover:text-blue-800 w-10 h-10 flex items-center justify-center rounded-full shadow-md"
                             data-id="${soldier.id}" title="View">
