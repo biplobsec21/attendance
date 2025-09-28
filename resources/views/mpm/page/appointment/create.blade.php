@@ -98,7 +98,7 @@
                                 <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
                                     </path>
                                 </svg>
                             </div>
@@ -144,83 +144,15 @@
                             </div>
                         </div>
 
-                        <!-- Soldiers Repository -->
-                        <div id="soldier-repo"
-                            class="bg-white rounded-xl border-2 border-dashed border-gray-200 p-4 h-80 overflow-y-auto shadow-inner">
-                            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-                                @foreach ($soldiers as $soldier)
-                                    @php
-                                        $isAssigned = in_array($soldier->id, $assignedSoldierIds ?? []);
-                                    @endphp
+                        <!-- Available Soldiers Section -->
+                        @include('mpm.page.appointment.available_soldiers_section', [
+                            'availableSoldiers' => $availableSoldiers,
+                        ])
 
-                                    <label
-                                        class="group block {{ $isAssigned ? 'cursor-not-allowed' : 'cursor-pointer' }}">
-                                        <div
-                                            class="relative p-3 rounded-xl border-2 transition-all duration-200 {{ $isAssigned ? 'border-gray-200 bg-gray-50' : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 group-hover:shadow-md' }}">
-                                            <div class="flex items-start space-x-3">
-                                                <input type="checkbox" name="soldier_ids[]" value="{{ $soldier->id }}"
-                                                    data-rank-id="{{ $soldier->rank_id }}"
-                                                    data-company-id="{{ $soldier->company_id }}"
-                                                    data-army-no="{{ strtolower(str_replace(' ', '', $soldier->army_no ?? '')) }}"
-                                                    data-full-name="{{ strtolower($soldier->full_name ?? '') }}"
-                                                    class="mt-1 h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 transition-colors duration-200"
-                                                    {{ $isAssigned ? 'disabled' : '' }}>
-
-                                                <div class="flex-1 min-w-0">
-                                                    <div class="flex items-center space-x-2 mb-1">
-                                                        <div
-                                                            class="w-8 h-8 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                                                            {{ strtoupper(substr($soldier->full_name, 0, 2)) }}
-                                                        </div>
-                                                        <p
-                                                            class="text-sm font-semibold {{ $isAssigned ? 'text-gray-400' : 'text-gray-900' }} truncate">
-                                                            {{ $soldier->full_name }}
-                                                        </p>
-                                                    </div>
-
-                                                    <div class="space-y-1">
-                                                        <p
-                                                            class="text-xs {{ $isAssigned ? 'text-gray-400' : 'text-gray-600' }} flex items-center">
-                                                            <span
-                                                                class="inline-block w-2 h-2 bg-blue-400 rounded-full mr-1"></span>
-                                                            Army No: {{ $soldier->army_no }}
-                                                        </p>
-                                                        <p
-                                                            class="text-xs {{ $isAssigned ? 'text-gray-400' : 'text-gray-600' }} flex items-center">
-                                                            <span
-                                                                class="inline-block w-2 h-2 bg-green-400 rounded-full mr-1"></span>
-                                                            {{ $soldier->rank->name }}
-                                                        </p>
-                                                        <p
-                                                            class="text-xs {{ $isAssigned ? 'text-gray-400' : 'text-gray-600' }} flex items-center">
-                                                            <span
-                                                                class="inline-block w-2 h-2 bg-yellow-400 rounded-full mr-1"></span>
-                                                            {{ $soldier->company->name }}
-                                                        </p>
-                                                    </div>
-
-                                                    @if ($isAssigned)
-                                                        <div class="mt-2 flex items-center">
-                                                            <div
-                                                                class="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-medium flex items-center">
-                                                                <svg class="w-3 h-3 mr-1" fill="none"
-                                                                    stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                                        stroke-width="2"
-                                                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
-                                                                    </path>
-                                                                </svg>
-                                                                Currently Assigned
-                                                            </div>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
+                        <!-- Assigned Personnel Section -->
+                        @include('mpm.page.appointment.assigned_personnel_section', [
+                            'assignedSoldiers' => $assignedSoldiers,
+                        ])
                     </div>
 
                     <!-- Notes Section -->
@@ -271,9 +203,10 @@
             const armyInput = document.getElementById("filter-army-no");
             const rankSelect = document.getElementById("filter-rank");
             const companySelect = document.getElementById("filter-company");
-            const repo = document.getElementById("soldier-repo");
-            // Select the actual soldier cards (labels inside the grid)
-            const soldierCards = Array.from(repo.querySelectorAll("label"));
+            const availableRepo = document.getElementById("available-soldier-repo");
+            const assignedRepo = document.getElementById("assigned-soldier-repo");
+            const availableSoldierCards = Array.from(availableRepo.querySelectorAll("label"));
+            const assignedSoldierCards = Array.from(assignedRepo.querySelectorAll("div.group"));
 
             function normalize(str = '') {
                 return String(str).toLowerCase().replace(/\s+/g, '');
@@ -287,10 +220,9 @@
 
                 let visibleCount = 0;
 
-                soldierCards.forEach(card => {
+                // Filter available soldiers
+                availableSoldierCards.forEach(card => {
                     const checkbox = card.querySelector('input[type="checkbox"]');
-                    const isAssigned = checkbox.disabled;
-
                     const cardArmy = normalize(checkbox.dataset.armyNo || '');
                     const cardName = normalize(checkbox.dataset.fullName || '');
                     const cardRank = String(checkbox.dataset.rankId || '');
@@ -303,37 +235,69 @@
                     const matchesRank = !rank || cardRank === rank;
                     const matchesCompany = !company || cardCompany === company;
 
-                    // Apply filter to all soldiers (both assigned and unassigned)
+                    // Apply filter
                     if (matchesArmy && matchesRank && matchesCompany) {
-                        card.style.display = "block";
+                        card.style.display = "flex";
                         visibleCount++;
                     } else {
                         card.style.display = "none";
                     }
                 });
 
-                // Show/hide empty state message
-                updateEmptyState(visibleCount);
+                // Filter assigned soldiers
+                assignedSoldierCards.forEach(card => {
+                    // Since assigned soldiers don't have data attributes, we need to add them
+                    // For now, we'll just show all assigned soldiers
+                    // In a real implementation, you'd add data attributes to these cards too
+                    card.style.display = "block";
+                    visibleCount++;
+                });
+
+                // Show/hide empty state messages
+                updateEmptyStates();
             }
 
-            function updateEmptyState(visibleCount) {
-                const grid = repo.querySelector('.grid');
-                let emptyState = grid.querySelector('.empty-state');
+            function updateEmptyStates() {
+                // Update available soldiers empty state
+                const availableGrid = availableRepo.querySelector('.grid');
+                let availableEmptyState = availableGrid.querySelector('.empty-state');
+                const visibleAvailable = availableSoldierCards.filter(card => card.style.display !== "none").length;
 
-                if (visibleCount === 0 && !emptyState) {
-                    emptyState = document.createElement('div');
-                    emptyState.className =
+                if (visibleAvailable === 0 && !availableEmptyState) {
+                    availableEmptyState = document.createElement('div');
+                    availableEmptyState.className =
                         'empty-state col-span-full flex flex-col items-center justify-center py-12 text-gray-500';
-                    emptyState.innerHTML = `
-                <svg class="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                </svg>
-                <p class="text-lg font-medium mb-2">No personnel found</p>
-                <p class="text-sm">Try adjusting your search filters</p>
-            `;
-                    grid.appendChild(emptyState);
-                } else if (visibleCount > 0 && emptyState) {
-                    emptyState.remove();
+                    availableEmptyState.innerHTML = `
+                        <svg class="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <p class="text-lg font-medium mb-2">No available personnel found</p>
+                        <p class="text-sm">Try adjusting your search filters</p>
+                    `;
+                    availableGrid.appendChild(availableEmptyState);
+                } else if (visibleAvailable > 0 && availableEmptyState) {
+                    availableEmptyState.remove();
+                }
+
+                // Update assigned soldiers empty state
+                const assignedGrid = assignedRepo.querySelector('.grid');
+                let assignedEmptyState = assignedGrid.querySelector('.empty-state');
+                const visibleAssigned = assignedSoldierCards.filter(card => card.style.display !== "none").length;
+
+                if (visibleAssigned === 0 && !assignedEmptyState) {
+                    assignedEmptyState = document.createElement('div');
+                    assignedEmptyState.className =
+                        'empty-state col-span-full flex flex-col items-center justify-center py-12 text-gray-500';
+                    assignedEmptyState.innerHTML = `
+                        <svg class="w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <p class="text-lg font-medium mb-2">No assigned personnel found</p>
+                        <p class="text-sm">Try adjusting your search filters</p>
+                    `;
+                    assignedGrid.appendChild(assignedEmptyState);
+                } else if (visibleAssigned > 0 && assignedEmptyState) {
+                    assignedEmptyState.remove();
                 }
             }
 

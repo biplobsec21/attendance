@@ -108,11 +108,22 @@ class DutyController extends Controller
      */
     public function update(UpdateDutyRequest $request, Duty $duty): RedirectResponse
     {
-        // Update the duty record
-        $duty->update($request->validated());
+        // Get the validated data
+        $validatedData = $request->validated();
 
-        // Get the rank_manpower data from the request
+        // Calculate total manpower from the rank_manpower array
+        $totalManpower = 0;
         $rankManpower = $request->input('rank_manpower', []);
+
+        foreach ($rankManpower as $rankData) {
+            $totalManpower += (int)$rankData['manpower'];
+        }
+
+        // Update the validated data with the calculated total manpower
+        $validatedData['manpower'] = $totalManpower;
+
+        // Update the duty record with the modified validated data
+        $duty->update($validatedData);
 
         // Delete existing duty_rank records for this duty
         DutyRank::where('duty_id', $duty->id)->delete();

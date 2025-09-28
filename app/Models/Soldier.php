@@ -253,15 +253,45 @@ class Soldier extends Model
     }
 
     // New method to check if soldier has active assignments
+    // New method to check if soldier has active assignments
     public function hasActiveAssignments(): bool
     {
-        return $this->activeCourses()->exists() || $this->activeCadres()->exists();
+        return $this->activeCourses()->exists() ||
+            $this->activeCadres()->exists() ||
+            $this->hasActiveServices();
     }
+    // Helper method to check if soldier has active services
+    public function hasActiveServices(): bool
+    {
+        $today = Carbon::today();
 
+        return $this->services()
+            ->where(function ($query) use ($today) {
+                $query->whereNull('appointments_to_date')
+                    ->orWhere('appointments_to_date', '>=', $today);
+            })
+            ->where('appointments_from_date', '<=', $today)
+            ->exists();
+    }
+    // Add this method to the Soldier model
+
+    public function activeServices()
+    {
+        $today = Carbon::today();
+
+        return $this->services()
+            ->where(function ($query) use ($today) {
+                $query->whereNull('appointments_to_date')
+                    ->orWhere('appointments_to_date', '>=', $today);
+            })
+            ->where('appointments_from_date', '<=', $today);
+    }
+    // New method to get all active assignments
     // New method to get all active assignments
     public function getActiveAssignments(): array
     {
         $assignments = [];
+        $today = Carbon::today();
 
         // Get active courses
         $activeCourses = $this->activeCourses()->get();
@@ -284,6 +314,25 @@ class Soldier extends Model
                 'start_date' => $cadre->pivot->start_date,
                 'end_date' => $cadre->pivot->end_date,
                 'status' => $cadre->pivot->status,
+            ];
+        }
+
+        // Get active services
+        $activeServices = $this->services()
+            ->where(function ($query) use ($today) {
+                $query->whereNull('appointments_to_date')
+                    ->orWhere('appointments_to_date', '>=', $today);
+            })
+            ->where('appointments_from_date', '<=', $today)
+            ->get();
+
+        foreach ($activeServices as $service) {
+            $assignments[] = [
+                'type' => 'service',
+                'name' => $service->appointments_name ?? 'Service Assignment',
+                'start_date' => $service->appointments_from_date,
+                'end_date' => $service->appointments_to_date,
+                'status' => 'active',
             ];
         }
 

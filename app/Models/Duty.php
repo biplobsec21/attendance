@@ -22,9 +22,14 @@ class Duty extends Model
         'duty_name',
         'start_time',
         'end_time',
-        // 'manpower',
+        'manpower',
         'remark',
         'status',
+    ];
+    protected $casts = [
+        'start_time' => 'datetime',
+        'end_time' => 'datetime',
+        'status' => 'string',
     ];
     public function ranks()
     {

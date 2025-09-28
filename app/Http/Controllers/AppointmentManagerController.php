@@ -53,13 +53,25 @@ class AppointmentManagerController extends Controller
         $assignedSoldierIds = $assignedSoldierIds = SoldierServices::whereIn('status', ['active', 'scheduled'])
             ->pluck('soldier_id')
             ->toArray();
+        // Get soldiers with their active assignments using the new model methods
+        $soldiers = Soldier::with(['rank', 'company', 'activeServices'])->get();
 
+        // Separate soldiers into available and assigned
+        $availableSoldiers = $soldiers->reject(function ($soldier) {
+            return $soldier->hasActiveAssignments();
+        });
+
+        $assignedSoldiers = $soldiers->filter(function ($soldier) {
+            return $soldier->hasActiveAssignments();
+        });
         return view('mpm.page.appointment.create', compact(
             'appointments',
             'soldiers',
             'ranks',
             'companies',
-            'assignedSoldierIds' // Pass to view
+            'assignedSoldierIds', // Pass to view
+            'availableSoldiers',    // Changed from 'soldiers'
+            'assignedSoldiers',     // New variable
         ));
     }
 

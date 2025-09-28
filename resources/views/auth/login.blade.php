@@ -17,7 +17,11 @@
                 {{ session('status') }}
             </div>
         @endif
-
+        @if ($errors->has('message'))
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4">
+                {{ $errors->first('message') }}
+            </div>
+        @endif
         <h2 class="text-2xl font-bold text-center mb-6">Login</h2>
 
         <form method="POST" action="{{ route('login') }}">

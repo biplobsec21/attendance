@@ -233,7 +233,25 @@
                                     </svg>
                                     Add ranks and specify the required manpower for each
                                 </p>
-
+                                {{-- Total Manpower --}}
+                                <div class="group">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                        Total Manpower <span class="text-rose-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input type="text" id="total-manpower" name="manpower"
+                                            value="{{ $duty->manpower }}" readonly
+                                            class="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-900 font-bold text-lg text-center transition-all duration-300 focus:outline-none focus:bg-gray-100 focus:border-gray-200">
+                                    </div>
+                                    <p class="text-gray-500 text-sm mt-2 flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Automatically calculated from the sum of manpower of selected ranks
+                                    </p>
+                                </div>
                                 @error('rank_manpower')
                                     <p class="text-rose-500 text-sm mt-2 flex items-center">
                                         <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">

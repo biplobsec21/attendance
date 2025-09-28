@@ -215,7 +215,25 @@
                                     </svg>
                                     Add ranks and specify the required manpower for each
                                 </p>
-
+                                {{-- Total Manpower --}}
+                                <div class="group">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                        Total Manpower <span class="text-rose-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input type="text" id="total-manpower" name="manpower" value="0"
+                                            readonly
+                                            class="w-full px-4 py-3 bg-gray-100 border-2 border-gray-200 rounded-xl text-gray-900 font-bold text-lg text-center transition-all duration-300 focus:outline-none focus:bg-gray-100 focus:border-gray-200">
+                                    </div>
+                                    <p class="text-gray-500 text-sm mt-2 flex items-center">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Automatically calculated from the sum of manpower of selected ranks
+                                    </p>
+                                </div>
                                 @error('rank_manpower')
                                     <p class="text-rose-500 text-sm mt-2 flex items-center">
                                         <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -332,6 +350,7 @@
             const dutyForm = document.getElementById('duty-form');
             const startTimeEl = document.getElementById('start-time');
             const endTimeEl = document.getElementById('end-time');
+            const totalManpowerInput = document.getElementById('total-manpower'); // Add this
 
             // Rank selection elements
             const addRankTrigger = document.getElementById('add-rank-trigger');
@@ -349,7 +368,8 @@
                 dutyForm: !!dutyForm,
                 addRankTrigger: !!addRankTrigger,
                 addRankDropdown: !!addRankDropdown,
-                rankOptions: rankOptions.length
+                rankOptions: rankOptions.length,
+                totalManpowerInput: !!totalManpowerInput // Add this
             });
 
             // Check if we have any ranks
@@ -449,13 +469,14 @@
 
                     // Update the UI
                     updateSelectedRanksDisplay();
+                    updateTotalManpower(); // Add this
 
                     // Close dropdown
                     isDropdownOpen = false;
                     addRankDropdown.classList.add('hidden');
                     addRankArrow.style.transform = 'rotate(0deg)';
                     addRankTrigger.classList.remove('border-blue-500', 'ring-4',
-                    'ring-blue-500/20');
+                        'ring-blue-500/20');
                     rankSearch.value = '';
                     filterRankOptions('');
                 });
@@ -470,12 +491,13 @@
                     helperMessage.className =
                         'text-center py-4 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200';
                     helperMessage.innerHTML = `
-                        <svg class="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                        </svg>
-                        <p class="text-sm">No ranks added yet. Click "Add a rank with manpower" to get started.</p>
-                    `;
+                    <svg class="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                    <p class="text-sm">No ranks added yet. Click "Add a rank with manpower" to get started.</p>
+                `;
                     selectedRanksContainer.appendChild(helperMessage);
+                    updateTotalManpower(); // Add this
                     return;
                 }
 
@@ -487,41 +509,41 @@
                     rankCard.dataset.rankId = rank.id;
 
                     rankCard.innerHTML = `
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center">
-                                <div class="flex items-center justify-center w-8 h-8 bg-blue-500 rounded-lg mr-3">
-                                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                    </svg>
-                                </div>
-                                <h3 class="font-medium text-gray-800">${rank.name}</h3>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center">
+                            <div class="flex items-center justify-center w-8 h-8 bg-blue-500 rounded-lg mr-3">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
                             </div>
-                            <button type="button" class="text-gray-400 hover:text-red-500 transition-colors remove-rank" data-rank-id="${rank.id}">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <h3 class="font-medium text-gray-800">${rank.name}</h3>
+                        </div>
+                        <button type="button" class="text-gray-400 hover:text-red-500 transition-colors remove-rank" data-rank-id="${rank.id}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="flex items-center">
+                        <label class="text-sm text-gray-600 mr-3">Manpower:</label>
+                        <div class="flex items-center">
+                            <button type="button" class="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-l-lg hover:bg-gray-50 decrease-manpower" data-rank-id="${rank.id}">
+                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                                </svg>
+                            </button>
+                            <input type="number" min="1" value="${rank.manpower}" class="w-16 h-8 text-center border-t border-b border-gray-300 manpower-input" data-rank-id="${rank.id}">
+                            <button type="button" class="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-r-lg hover:bg-gray-50 increase-manpower" data-rank-id="${rank.id}">
+                                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                 </svg>
                             </button>
                         </div>
-                        <div class="flex items-center">
-                            <label class="text-sm text-gray-600 mr-3">Manpower:</label>
-                            <div class="flex items-center">
-                                <button type="button" class="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-l-lg hover:bg-gray-50 decrease-manpower" data-rank-id="${rank.id}">
-                                    <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
-                                    </svg>
-                                </button>
-                                <input type="number" min="1" value="${rank.manpower}" class="w-16 h-8 text-center border-t border-b border-gray-300 manpower-input" data-rank-id="${rank.id}">
-                                <button type="button" class="w-8 h-8 flex items-center justify-center bg-white border border-gray-300 rounded-r-lg hover:bg-gray-50 increase-manpower" data-rank-id="${rank.id}">
-                                    <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                        <!-- Hidden input for form submission -->
-                        <input type="hidden" name="rank_manpower[${rank.id}][rank_id]" value="${rank.id}">
-                        <input type="hidden" name="rank_manpower[${rank.id}][manpower]" value="${rank.manpower}" class="manpower-hidden-input" data-rank-id="${rank.id}">
-                    `;
+                    </div>
+                    <!-- Hidden input for form submission -->
+                    <input type="hidden" name="rank_manpower[${rank.id}][rank_id]" value="${rank.id}">
+                    <input type="hidden" name="rank_manpower[${rank.id}][manpower]" value="${rank.manpower}" class="manpower-hidden-input" data-rank-id="${rank.id}">
+                `;
 
                     selectedRanksContainer.appendChild(rankCard);
 
@@ -551,6 +573,7 @@
                         }
 
                         updateSelectedRanksDisplay();
+                        updateTotalManpower(); // Add this
                     });
 
                     decreaseBtn.addEventListener('click', function() {
@@ -561,6 +584,7 @@
                             manpowerInput.value = newValue;
                             hiddenManpowerInput.value = newValue;
                             selectedRanks[rankId].manpower = newValue;
+                            updateTotalManpower(); // Add this
                         }
                     });
 
@@ -571,6 +595,7 @@
                         manpowerInput.value = newValue;
                         hiddenManpowerInput.value = newValue;
                         selectedRanks[rankId].manpower = newValue;
+                        updateTotalManpower(); // Add this
                     });
 
                     manpowerInput.addEventListener('change', function() {
@@ -585,12 +610,39 @@
 
                         hiddenManpowerInput.value = newValue;
                         selectedRanks[rankId].manpower = newValue;
+                        updateTotalManpower(); // Add this
                     });
                 });
             }
 
+            // Function to calculate and update total manpower
+            function updateTotalManpower() {
+                let total = 0;
+                Object.values(selectedRanks).forEach(rank => {
+                    total += parseInt(rank.manpower) || 0;
+                });
+
+                // Update the total manpower input field
+                if (totalManpowerInput) {
+                    totalManpowerInput.value = total;
+
+                    // Add visual feedback based on the total
+                    if (total === 0) {
+                        totalManpowerInput.classList.remove('text-green-600', 'text-blue-600');
+                        totalManpowerInput.classList.add('text-gray-500');
+                    } else if (total <= 5) {
+                        totalManpowerInput.classList.remove('text-gray-500', 'text-blue-600');
+                        totalManpowerInput.classList.add('text-green-600');
+                    } else {
+                        totalManpowerInput.classList.remove('text-gray-500', 'text-green-600');
+                        totalManpowerInput.classList.add('text-blue-600');
+                    }
+                }
+            }
+
             // Initialize the display
             updateSelectedRanksDisplay();
+            updateTotalManpower(); // Add this
 
             // Form validation
             const hhmmRegex = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
@@ -628,14 +680,17 @@
                     const errorEl = document.createElement('p');
                     errorEl.classList.add('text-rose-500', 'text-sm', 'mt-2', 'rank-error');
                     errorEl.innerHTML = `
-                        <svg class="w-4 h-4 mr-1 inline" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                        </svg>
-                        At least one rank must be selected with manpower.
-                    `;
+                    <svg class="w-4 h-4 mr-1 inline" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                    </svg>
+                    At least one rank must be selected with manpower.
+                `;
                     selectedRanksContainer.parentNode.appendChild(errorEl);
                     hasError = true;
                 }
+
+                // Update total manpower one more time before form submission
+                updateTotalManpower();
 
                 if (hasError) {
                     e.preventDefault();
@@ -689,12 +744,12 @@
                 if (dutyForm.checkValidity() && Object.keys(selectedRanks).length > 0) {
                     const submitBtn = dutyForm.querySelector('button[type="submit"]');
                     submitBtn.innerHTML = `
-                        <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                    `;
+                    <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                `;
                     submitBtn.disabled = true;
                     submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
                 }

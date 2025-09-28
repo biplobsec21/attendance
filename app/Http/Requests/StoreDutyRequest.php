@@ -41,7 +41,7 @@ class StoreDutyRequest extends FormRequest
 
             'remark'   => 'nullable|string',
             'status'   => 'required|in:Active,Inactive',
-
+            'manpower' => ['required', 'integer', 'min:1'],
             // Validate the rank_manpower array
             'rank_manpower' => 'required|array|min:1',
             'rank_manpower.*.rank_id' => 'required|exists:ranks,id',
