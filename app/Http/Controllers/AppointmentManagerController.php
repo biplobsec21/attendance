@@ -237,6 +237,7 @@ class AppointmentManagerController extends Controller
             $service->update([
                 'appointments_to_date'  => Carbon::today()->toDateString(),
                 'status'                => 'completed',
+                'appointment_type'      => 'previous',
                 'note'                  => $service->note .
                     ($request->release_note ? "\n\nRelease Note: " . $request->release_note : ''),
                 'updated_at'            => now(),

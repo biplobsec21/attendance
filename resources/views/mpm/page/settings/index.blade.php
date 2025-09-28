@@ -141,6 +141,13 @@
                             <i class="fas fa-user text-purple-500"></i> User Create
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('company_rank_manpower.index') }}"
+                            class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition">
+                            <i class="fas fa-user text-purple-500"></i> Authority Manpower
+                        </a>
+                    </li>
+
 
                 </ul>
             </div>

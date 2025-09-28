@@ -5,6 +5,8 @@
 @section('content')
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div class="container mx-auto px-4 py-8">
+            <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
+
             <!-- Header Section -->
             <div class="mb-8">
                 <div class="flex items-center space-x-3 mb-2">
@@ -17,7 +19,7 @@
                         </svg>
                     </div>
                     <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                        Manpower Distribution
+                        Authority Manpower Distribution
                     </h1>
                 </div>
                 <p class="text-gray-600 text-sm">Manage and track personnel allocation across companies and ranks</p>

@@ -228,11 +228,12 @@ require __DIR__ . '/auth.php';
 
 
 Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {});
-Route::get('/primary-manpower', [CompanyRankManpowerController::class, 'index'])->name('company_rank_manpower.index');
-Route::post('/primary-manpower', [CompanyRankManpowerController::class, 'store'])->name('company_rank_manpower.store');
-
 
 Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/primary-manpower', [CompanyRankManpowerController::class, 'index'])->name('company_rank_manpower.index');
+    Route::post('/primary-manpower', [CompanyRankManpowerController::class, 'store'])->name('company_rank_manpower.store');
+
+
     Route::get('/', [SettingsController::class, 'index'])
         ->name('settings');
 

@@ -201,70 +201,29 @@ class SoldierController extends Controller
         try {
             DB::transaction(function () use ($request, $profile) {
                 // === Delete old records first ===
-                $profile->services()
-                    ->whereIn('appointment_type', ['previous', 'current'])
-                    ->delete();
+
 
                 // Collect all appointment IDs for efficient querying
                 $appointmentIds = [];
 
                 // Collect IDs from previous appointments
-                if ($request->has('previous_appointments')) {
-                    foreach ($request->previous_appointments as $prev) {
-                        if (!empty($prev['id'])) {
-                            $appointmentIds[] = $prev['id'];
-                        }
-                    }
-                }
+
 
                 // Add current appointment ID if exists
-                if ($request->filled('current_appointment_id')) {
-                    $appointmentIds[] = $request->current_appointment_id;
-                }
+
 
                 // Fetch all appointments in one query
-                $appointments = Appointment::whereIn('id', $appointmentIds)->get()->keyBy('id');
 
                 $insertData = [];
 
                 // === Previous Appointments ===
-                if ($request->has('previous_appointments')) {
-                    foreach ($request->previous_appointments as $prev) {
-                        if (!empty($prev['id']) && isset($appointments[$prev['id']])) {
-                            $appointment = $appointments[$prev['id']];
-                            $insertData[] = [
-                                'appointment_id'         => $prev['id'],
-                                'appointments_name'      => $appointment->name,
-                                'appointment_type'       => 'previous',
-                                'soldier_id'             => $profile->id,
-                                'appointments_from_date' => $prev['from_date'] ?? null,
-                                'appointments_to_date'   => $prev['to_date'] ?? null,
-                                'created_at'             => now(),
-                                'updated_at'             => now(),
-                            ];
-                        }
-                    }
-                }
+
 
                 // === Current Appointments ===
-                if ($request->filled('current_appointment_id') && isset($appointments[$request->current_appointment_id])) {
-                    $appointment = $appointments[$request->current_appointment_id];
-                    $insertData[] = [
-                        'appointment_id'         => $request->current_appointment_id,
-                        'appointments_name'      => $appointment->name,
-                        'appointment_type'       => 'current',
-                        'soldier_id'             => $profile->id,
-                        'appointments_from_date' => $request->current_appointment_from_date,
-                        'appointments_to_date'   => null,
-                        'created_at'             => now(),
-                        'updated_at'             => now(),
-                    ];
-                }
+
 
                 // === Insert fresh data using relationship ===
-                if (!empty($insertData)) {
-                    $profile->services()->createMany($insertData);
-                }
+
             });
 
             // Update soldier

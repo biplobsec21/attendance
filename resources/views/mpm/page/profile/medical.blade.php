@@ -192,14 +192,10 @@
                 </x-section-wrapper>
 
                 {{-- Bottom Navigation --}}
-                <div id="bottom-navigation" class="flex justify-between mt-6 border-t pt-6">
-                    <button id="prev-btn"
-                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded">
-                        Previous
-                    </button>
+                <div id="bottom-navigation" class="flex justify-end mt-6 border-t pt-6">
                     <button type="submit" id="next-btn"
                         class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded">
-                        Save
+                        Complete
                     </button>
                 </div>
             </form>

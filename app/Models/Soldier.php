@@ -271,6 +271,7 @@ class Soldier extends Model
                     ->orWhere('appointments_to_date', '>=', $today);
             })
             ->where('appointments_from_date', '<=', $today)
+            ->where('status', '!=', 'completed')
             ->exists();
     }
     // Add this method to the Soldier model

@@ -441,7 +441,21 @@
                                     </div>
                                 </div>
 
-
+                                <div
+                                    class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 border border-purple-200">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="text-3xl font-bold text-purple-700">100%</div>
+                                            <div class="text-sm font-medium text-purple-600">Success Rate</div>
+                                        </div>
+                                        <div class="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd"
+                                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -539,7 +553,8 @@
             <div
                 class="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg">
                 <div class="container mx-auto px-4 py-4 max-w-7xl">
-                    <div class="flex items-center justify-end">
+                    <div class="flex items-right justify-between">
+
                         <button type="submit" id="next-btn"
                             class="flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl transition-all duration-200 hover:shadow-lg transform hover:scale-105">
                             Save & Continue

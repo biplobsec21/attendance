@@ -6,7 +6,15 @@
     <div class="container mx-auto p-4">
         <x-breadcrumb :breadcrumbs="generateBreadcrumbs_auto()" />
         @include('mpm.components.alerts')
-
+        @if ($errors->any())
+            <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                <ul class="list-disc pl-5">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <div class="bg-white/30 shadow-lg rounded-lg p-4 sm:p-6 formBack">
             <div class="mb-8">
                 <h1 class="text-3xl font-bold text-gray-900 mb-2">Military Appointment Management</h1>
@@ -147,24 +155,9 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div class="flex items-center space-x-2">
-                                                <!-- View Button -->
-                                                {{-- <button onclick="viewAppointment({{ $service->id }})"
-                                                    class="text-blue-600 hover:text-blue-900 transition-colors duration-200"
-                                                    title="View Details">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
-                                                        </path>
-                                                    </svg>
-                                                </button> --}}
-
                                                 <!-- Edit Button -->
                                                 <button
-                                                    onclick="editAppointment({{ $service->id }}, '{{ $service->appointments_name }}', '{{ $service->note ?? '' }}')"
+                                                    onclick="editAppointment({{ $service->id }}, '{{ $service->appointments_name }}', '{{ $service->note ?? '' }}', '{{ $service->appointments_from_date ?? '' }}')"
                                                     class="text-yellow-600 hover:text-yellow-900 transition-colors duration-200"
                                                     title="Edit">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor"
@@ -399,6 +392,16 @@
                         </select>
                     </div>
 
+                    <!-- Appointment From Date -->
+                    <div class="mb-4">
+                        <label for="appointments_from_date" class="block text-sm font-medium text-gray-700 mb-1">
+                            From Date <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date" name="appointments_from_date" id="appointments_from_date"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            required>
+                    </div>
+
                     <!-- Note -->
                     <div class="mb-6">
                         <label for="note" class="block text-sm font-medium text-gray-700 mb-1">Note</label>
@@ -545,7 +548,7 @@
             // window.location.href = `/appointmanager/${id}`;
         }
 
-        function editAppointment(id, currentDuty, currentNote) {
+        function editAppointment(id, currentDuty, currentNote, fromDate) {
             // Set form action
             document.getElementById('editAppointmentForm').action = `/appointmanager/${id}`;
 
@@ -554,6 +557,9 @@
 
             // Set current note
             document.getElementById('editNote').value = currentNote;
+
+            // Set from date
+            document.getElementById('appointments_from_date').value = fromDate;
 
             // Reset appointment selection
             document.getElementById('appointment_id').value = '';
