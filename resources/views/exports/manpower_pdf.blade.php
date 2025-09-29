@@ -80,15 +80,6 @@
         <p>Date: {{ $formattedDate }}</p>
     </div>
 
-    <div class="note-box">
-        <strong>Note:</strong> All manpower tables exclude soldiers with active ERE (Exclusion, Restriction, or
-        Exemption) records.
-        A soldier is considered to have an active ERE if the current date falls between the start_date and end_date of
-        any ERE record,
-        or if the end_date is null (indicating an indefinite ERE). Leave status is determined based on approved leave
-        applications.
-    </div>
-
     <!-- Initialize all variables with defaults to prevent undefined errors -->
     @php
         use App\Helpers\ManpowerViewHelper;

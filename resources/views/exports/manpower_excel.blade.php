@@ -5,6 +5,11 @@
     <meta charset="utf-8">
     <title>Manpower Distribution Report</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -23,23 +28,28 @@
             font-weight: bold;
         }
 
-        .note {
-            background-color: #fffbeb;
-            padding: 8px;
-            font-size: 11px;
-            text-align: center;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
+        .header-row td {
+            border: none;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 10px;
         }
 
-        .section-title {
-            font-weight: bold;
-            font-size: 14px;
+        .note-row td {
+            background-color: #fffbeb;
+            border: 1px solid #ddd;
+            font-size: 11px;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .section-title-row td {
             background-color: #f2f2f2;
             border: 1px solid #ddd;
+            font-weight: bold;
+            font-size: 14px;
             padding: 8px;
             text-align: center;
-            margin-bottom: 10px;
         }
 
         .total-row {
@@ -50,17 +60,18 @@
 </head>
 
 <body>
-    <h2 style="text-align: center;">Manpower Distribution Report</h2>
-    <p style="text-align: center;">{{ $formattedDate }}</p>
+    <!-- Header Table -->
+    <table>
+        <tr class="header-row">
+            <td colspan="100%" style="text-align: center;">
+                Manpower Distribution Report<br>
+                {{ $formattedDate }}
+            </td>
+        </tr>
+    </table>
 
-    <div class="note">
-        <strong>Note:</strong> All manpower tables exclude soldiers with active ERE (Exclusion, Restriction, or
-        Exemption) records.
-        A soldier is considered to have an active ERE if the current date falls between the start_date and end_date of
-        any ERE record,
-        or if the end_date is null (indicating an indefinite ERE). Leave status is determined based on approved leave
-        applications.
-    </div>
+    <!-- Note Table -->
+
 
     <!-- Initialize all variables with defaults to prevent undefined errors -->
     @php
@@ -74,8 +85,11 @@
         $withoutLeaveOfficerTotals = $withoutLeaveOfficerTotals ?? [];
     @endphp
 
-    <div class="section-title">Planned Manpower Distribution</div>
+    <!-- Planned Manpower Distribution Table -->
     <table>
+        <tr class="section-title-row">
+            <td colspan="100%"><strong> Planned Manpower Distribution </strong> </td>
+        </tr>
         <thead>
             <tr>
                 <th>Company</th>
@@ -126,8 +140,11 @@
         </tfoot>
     </table>
 
-    <div class="section-title">Received Manpower Distribution</div>
+    <!-- Received Manpower Distribution Table -->
     <table>
+        <tr class="section-title-row">
+            <td colspan="100%">Received Manpower Distribution</td>
+        </tr>
         <thead>
             <tr>
                 <th>Company</th>
@@ -179,8 +196,11 @@
         </tfoot>
     </table>
 
-    <div class="section-title">Manpower with Leave</div>
+    <!-- Manpower with Leave Table -->
     <table>
+        <tr class="section-title-row">
+            <td colspan="100%">Manpower with Leave</td>
+        </tr>
         <thead>
             <tr>
                 <th>Company</th>
@@ -232,8 +252,11 @@
         </tfoot>
     </table>
 
-    <div class="section-title">Manpower without Leave</div>
+    <!-- Manpower without Leave Table -->
     <table>
+        <tr class="section-title-row">
+            <td colspan="100%">Manpower without Leave</td>
+        </tr>
         <thead>
             <tr>
                 <th>Company</th>
