@@ -66,6 +66,7 @@
                                     </label>
                                     <input type="date" name="start_date" id="start_date"
                                         value="{{ old('start_date', now()->toDateString()) }}"
+                                        max="{{ now()->toDateString() }}"
                                         class="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl shadow-sm focus:ring-4 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-300">
                                 </div>
 

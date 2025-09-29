@@ -63,6 +63,7 @@
                             </label>
                             <input type="date" name="appointments_from_date" id="appointments_from_date"
                                 value="{{ old('appointments_from_date', now()->toDateString()) }}"
+                                max="{{ now()->toDateString() }}"
                                 class="w-full rounded-xl border-2 border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 px-4 py-3 text-sm"
                                 required>
                         </div>
