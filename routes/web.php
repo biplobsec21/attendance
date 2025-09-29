@@ -326,6 +326,7 @@ Route::group(['middleware' => ['auth']], function () {
             ->name('export.duties');
     });
     Route::get('/export/parade/{type}', [ExportController::class, 'exportParade'])->name('export.parade');
+    Route::get('/export/manpower/{type}', [ExportController::class, 'exportManpower'])->name('export.manpower');
     // Route::get('/report/parade/{date}', [ReportController::class, 'paradeReport'])->name('report.parade');
 });
 
