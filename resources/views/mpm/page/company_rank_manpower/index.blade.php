@@ -58,18 +58,27 @@
                                             <span>Company / Rank</span>
                                         </div>
                                     </th>
-                                    @foreach ($ranks as $rank)
+
+                                    <!-- Officer Column -->
+                                    <th
+                                        class="px-4 py-4 text-center text-sm font-semibold text-white border-r border-slate-600 min-w-[120px]">
+                                        <div class="flex flex-col items-center space-y-1">
+
+                                            <span class="text-xs">Officers</span>
+                                        </div>
+                                    </th>
+
+                                    <!-- Other Ranks -->
+                                    @foreach ($otherRanks as $rank)
                                         <th
                                             class="px-4 py-4 text-center text-sm font-semibold text-white border-r border-slate-600 last:border-r-0 min-w-[120px]">
                                             <div class="flex flex-col items-center space-y-1">
-                                                <div
-                                                    class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                                                    <span class="text-xs font-bold">{{ substr($rank->name, 0, 2) }}</span>
-                                                </div>
+
                                                 <span class="text-xs">{{ $rank->name }}</span>
                                             </div>
                                         </th>
                                     @endforeach
+
                                     <th
                                         class="px-4 py-4 text-center text-sm font-semibold text-white bg-gradient-to-r from-slate-700 to-slate-600 min-w-[100px]">
                                         <div class="flex flex-col items-center space-y-1">
@@ -96,14 +105,32 @@
                                                 <span>{{ $company->name }}</span>
                                             </div>
                                         </td>
-                                        @foreach ($ranks as $rank)
+
+                                        <!-- Officer Input -->
+                                        <td class="px-4 py-4 text-center border-r border-gray-200">
+                                            <div class="flex flex-col items-center space-y-1">
+                                                <input type="number" min="0"
+                                                    name="officer_manpower[{{ $company->id }}]"
+                                                    value="{{ old('officer_manpower.' . $company->id, $officerTotals[$company->id] ?? 0) }}"
+                                                    class="w-20 h-10 px-3 py-2 text-center border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white/70 backdrop-blur-sm hover:border-gray-300 officer-input"
+                                                    data-company="{{ $company->id }}">
+                                                @error("officer_manpower.{$company->id}")
+                                                    <div class="text-red-500 text-xs mt-1 bg-red-50 px-2 py-1 rounded">
+                                                        {{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </td>
+
+                                        <!-- Other Ranks Inputs -->
+                                        @foreach ($otherRanks as $rank)
                                             <td class="px-4 py-4 text-center border-r border-gray-200 last:border-r-0">
                                                 <div class="flex flex-col items-center space-y-1">
                                                     <input type="number" min="0"
                                                         name="manpower[{{ $company->id }}][{{ $rank->id }}]"
                                                         value="{{ old('manpower.' . $company->id . '.' . $rank->id, $manpower[$company->id][$rank->id]->manpower_number ?? '') }}"
                                                         class="w-20 h-10 px-3 py-2 text-center border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white/70 backdrop-blur-sm hover:border-gray-300 manpower-input"
-                                                        data-company="{{ $company->id }}" data-rank="{{ $rank->id }}">
+                                                        data-company="{{ $company->id }}"
+                                                        data-rank="{{ $rank->id }}">
                                                     @error("manpower.{$company->id}.{$rank->id}")
                                                         <div class="text-red-500 text-xs mt-1 bg-red-50 px-2 py-1 rounded">
                                                             {{ $message }}</div>
@@ -111,6 +138,7 @@
                                                 </div>
                                             </td>
                                         @endforeach
+
                                         <td
                                             class="px-4 py-4 text-center bg-gradient-to-r from-blue-50 to-indigo-50 border-l-2 border-blue-200">
                                             <div class="flex flex-col items-center space-y-1">
@@ -139,7 +167,20 @@
                                             <span>Total by Rank</span>
                                         </div>
                                     </td>
-                                    @foreach ($ranks as $rank)
+
+                                    <!-- Officer Total -->
+                                    <td class="px-4 py-4 text-center text-white border-r border-indigo-600">
+                                        <div class="flex flex-col items-center space-y-1">
+                                            <div
+                                                class="w-20 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center border border-white/30">
+                                                <span class="font-bold" id="officer-total">0</span>
+                                            </div>
+                                            <span class="text-xs text-indigo-200">Total</span>
+                                        </div>
+                                    </td>
+
+                                    <!-- Other Ranks Totals -->
+                                    @foreach ($otherRanks as $rank)
                                         <td
                                             class="px-4 py-4 text-center text-white border-r border-indigo-600 last:border-r-0">
                                             <div class="flex flex-col items-center space-y-1">
@@ -152,6 +193,7 @@
                                             </div>
                                         </td>
                                     @endforeach
+
                                     <td
                                         class="px-4 py-4 text-center bg-gradient-to-r from-purple-700 to-pink-700 border-l-2 border-purple-500">
                                         <div class="flex flex-col items-center space-y-1">
@@ -212,13 +254,28 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const inputs = document.querySelectorAll('.manpower-input');
+            const officerInputs = document.querySelectorAll('.officer-input');
 
             function calculateTotals() {
                 // Calculate company totals
                 const companies = {};
                 const ranks = {};
+                let officerTotal = 0;
                 let grandTotal = 0;
 
+                // Calculate officer totals
+                officerInputs.forEach(input => {
+                    const companyId = input.dataset.company;
+                    const value = parseInt(input.value) || 0;
+
+                    if (!companies[companyId]) companies[companyId] = 0;
+                    companies[companyId] += value;
+
+                    officerTotal += value;
+                    grandTotal += value;
+                });
+
+                // Calculate other rank totals
                 inputs.forEach(input => {
                     const companyId = input.dataset.company;
                     const rankId = input.dataset.rank;
@@ -241,6 +298,9 @@
                     if (element) element.textContent = companies[companyId];
                 });
 
+                // Update officer total
+                document.getElementById('officer-total').textContent = officerTotal;
+
                 // Update rank totals
                 Object.keys(ranks).forEach(rankId => {
                     const element = document.querySelector(`.rank-total[data-rank="${rankId}"]`);
@@ -256,6 +316,10 @@
 
             // Recalculate totals when any input changes
             inputs.forEach(input => {
+                input.addEventListener('input', calculateTotals);
+            });
+
+            officerInputs.forEach(input => {
                 input.addEventListener('input', calculateTotals);
             });
         });
