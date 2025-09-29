@@ -4,6 +4,8 @@
 
 @section('content')
     <div class="container mx-auto p-4">
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
+
         <!-- Alert Messages -->
         @include('mpm.components.alerts')
 
@@ -34,7 +36,7 @@
                     </form>
                     <!-- Add New Right -->
                     <div class="w-full md:w-auto md:ml-4">
-                        <a href="{{-- {{ route('leave-types.create') }} --}}"
+                        <a href="{{ route('leave-types.create') }}"
                             class="w-full md:w-auto bg-transparent text-black font-semibold py-2 px-4 border border-black rounded-lg hover:bg-black hover:text-white transition-colors text-center no-underline block md:inline-block">Add
                             New Leave Type</a>
                     </div>
@@ -96,17 +98,18 @@
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit"
-                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 {{-- {{ $leaveType->status_badge_class }} --}} cursor-pointer border-0">
-                                            Active{{ $leaveType->status_text }}
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 {{ $leaveType->status_badge_class }} cursor-pointer border-0">
+                                            {{ $leaveType->status_text }}
                                         </button>
                                     </form>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    Sep 01, 2025{{-- {{ $leaveType->created_at->format('M d, Y') }} --}}
+                                    {{ $leaveType->created_at->format('M d, Y') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <a href="{{-- {{ route('leave-types.show', $leaveType) }} --}}" class="text-blue-600 hover:text-blue-900 mr-3">View</a>
-                                    <a href="{{-- {{ route('leave-types.edit', $leaveType) }} --}}"
+                                    <a href="{{ route('leave-types.show', $leaveType) }}"
+                                        class="text-blue-600 hover:text-blue-900 mr-3">View</a>
+                                    <a href="{{ route('leave-types.edit', $leaveType) }}"
                                         class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
                                     <form method="POST" action="{{-- {{ route('leave-types.destroy', $leaveType) }} --}}" class="inline"
                                         onsubmit="return confirm('Are you sure you want to delete this leave type?')">
