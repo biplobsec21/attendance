@@ -25,7 +25,7 @@
                 <p class="text-gray-600 text-sm">Manage and track personnel allocation across companies and ranks</p>
             </div>
 
-            <!-- Success Message -->
+            <!-- Success/Error Messages -->
             @if (session('success'))
                 <div
                     class="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-800 rounded-xl shadow-sm flex items-center space-x-3">
@@ -38,7 +38,20 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('company_rank_manpower.store') }}">
+            @if (session('error'))
+                <div
+                    class="mb-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 text-red-800 rounded-xl shadow-sm flex items-center space-x-3">
+                    <div class="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                            </path>
+                        </svg>
+                    </div>
+                    <span class="font-medium">{{ session('error') }}</span>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('company_rank_manpower.store') }}" id="manpower-form">
                 @csrf
 
                 <!-- Main Table Card -->
@@ -63,7 +76,6 @@
                                     <th
                                         class="px-4 py-4 text-center text-sm font-semibold text-white border-r border-slate-600 min-w-[120px]">
                                         <div class="flex flex-col items-center space-y-1">
-
                                             <span class="text-xs">Officers</span>
                                         </div>
                                     </th>
@@ -73,7 +85,6 @@
                                         <th
                                             class="px-4 py-4 text-center text-sm font-semibold text-white border-r border-slate-600 last:border-r-0 min-w-[120px]">
                                             <div class="flex flex-col items-center space-y-1">
-
                                                 <span class="text-xs">{{ $rank->name }}</span>
                                             </div>
                                         </th>
@@ -113,7 +124,7 @@
                                                     name="officer_manpower[{{ $company->id }}]"
                                                     value="{{ old('officer_manpower.' . $company->id, $officerTotals[$company->id] ?? 0) }}"
                                                     class="w-20 h-10 px-3 py-2 text-center border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white/70 backdrop-blur-sm hover:border-gray-300 officer-input"
-                                                    data-company="{{ $company->id }}">
+                                                    data-company="{{ $company->id }}" oninput="validateNumber(this)">
                                                 @error("officer_manpower.{$company->id}")
                                                     <div class="text-red-500 text-xs mt-1 bg-red-50 px-2 py-1 rounded">
                                                         {{ $message }}</div>
@@ -129,8 +140,8 @@
                                                         name="manpower[{{ $company->id }}][{{ $rank->id }}]"
                                                         value="{{ old('manpower.' . $company->id . '.' . $rank->id, $manpower[$company->id][$rank->id]->manpower_number ?? '') }}"
                                                         class="w-20 h-10 px-3 py-2 text-center border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200 bg-white/70 backdrop-blur-sm hover:border-gray-300 manpower-input"
-                                                        data-company="{{ $company->id }}"
-                                                        data-rank="{{ $rank->id }}">
+                                                        data-company="{{ $company->id }}" data-rank="{{ $rank->id }}"
+                                                        oninput="validateNumber(this)">
                                                     @error("manpower.{$company->id}.{$rank->id}")
                                                         <div class="text-red-500 text-xs mt-1 bg-red-50 px-2 py-1 rounded">
                                                             {{ $message }}</div>
@@ -159,7 +170,8 @@
                                 <tr>
                                     <td class="px-6 py-4 font-bold text-white border-r border-indigo-600">
                                         <div class="flex items-center space-x-3">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
                                                 </path>
@@ -223,7 +235,7 @@
                     </div>
 
                     <div class="flex items-center space-x-4">
-                        <button type="reset"
+                        <button type="button" onclick="resetForm()"
                             class="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium shadow-sm">
                             <span class="flex items-center space-x-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,75 +265,87 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            calculateTotals();
+        });
+
+        function validateNumber(input) {
+            // Ensure the value is not negative
+            if (input.value < 0) {
+                input.value = 0;
+            }
+            calculateTotals();
+        }
+
+        function calculateTotals() {
             const inputs = document.querySelectorAll('.manpower-input');
             const officerInputs = document.querySelectorAll('.officer-input');
 
-            function calculateTotals() {
-                // Calculate company totals
-                const companies = {};
-                const ranks = {};
-                let officerTotal = 0;
-                let grandTotal = 0;
+            // Calculate company totals
+            const companies = {};
+            const ranks = {};
+            let officerTotal = 0;
+            let grandTotal = 0;
 
-                // Calculate officer totals
-                officerInputs.forEach(input => {
-                    const companyId = input.dataset.company;
-                    const value = parseInt(input.value) || 0;
-
-                    if (!companies[companyId]) companies[companyId] = 0;
-                    companies[companyId] += value;
-
-                    officerTotal += value;
-                    grandTotal += value;
-                });
-
-                // Calculate other rank totals
-                inputs.forEach(input => {
-                    const companyId = input.dataset.company;
-                    const rankId = input.dataset.rank;
-                    const value = parseInt(input.value) || 0;
-
-                    // Company totals
-                    if (!companies[companyId]) companies[companyId] = 0;
-                    companies[companyId] += value;
-
-                    // Rank totals
-                    if (!ranks[rankId]) ranks[rankId] = 0;
-                    ranks[rankId] += value;
-
-                    grandTotal += value;
-                });
-
-                // Update company totals
-                Object.keys(companies).forEach(companyId => {
-                    const element = document.querySelector(`.company-total[data-company="${companyId}"]`);
-                    if (element) element.textContent = companies[companyId];
-                });
-
-                // Update officer total
-                document.getElementById('officer-total').textContent = officerTotal;
-
-                // Update rank totals
-                Object.keys(ranks).forEach(rankId => {
-                    const element = document.querySelector(`.rank-total[data-rank="${rankId}"]`);
-                    if (element) element.textContent = ranks[rankId];
-                });
-
-                // Update grand total
-                document.getElementById('grand-total').textContent = grandTotal;
-            }
-
-            // Calculate totals on page load
-            calculateTotals();
-
-            // Recalculate totals when any input changes
-            inputs.forEach(input => {
-                input.addEventListener('input', calculateTotals);
-            });
-
+            // Calculate officer totals
             officerInputs.forEach(input => {
-                input.addEventListener('input', calculateTotals);
+                const companyId = input.dataset.company;
+                const value = parseInt(input.value) || 0;
+
+                if (!companies[companyId]) companies[companyId] = 0;
+                companies[companyId] += value;
+
+                officerTotal += value;
+                grandTotal += value;
             });
+
+            // Calculate other rank totals
+            inputs.forEach(input => {
+                const companyId = input.dataset.company;
+                const rankId = input.dataset.rank;
+                const value = parseInt(input.value) || 0;
+
+                // Company totals
+                if (!companies[companyId]) companies[companyId] = 0;
+                companies[companyId] += value;
+
+                // Rank totals
+                if (!ranks[rankId]) ranks[rankId] = 0;
+                ranks[rankId] += value;
+
+                grandTotal += value;
+            });
+
+            // Update company totals
+            Object.keys(companies).forEach(companyId => {
+                const element = document.querySelector(`.company-total[data-company="${companyId}"]`);
+                if (element) element.textContent = companies[companyId];
+            });
+
+            // Update officer total
+            document.getElementById('officer-total').textContent = officerTotal;
+
+            // Update rank totals
+            Object.keys(ranks).forEach(rankId => {
+                const element = document.querySelector(`.rank-total[data-rank="${rankId}"]`);
+                if (element) element.textContent = ranks[rankId];
+            });
+
+            // Update grand total
+            document.getElementById('grand-total').textContent = grandTotal;
+        }
+
+        function resetForm() {
+            if (confirm('Are you sure you want to reset all changes?')) {
+                document.getElementById('manpower-form').reset();
+                calculateTotals();
+            }
+        }
+
+        // Recalculate totals when any input changes
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('manpower-input') || e.target.classList.contains('officer-input')) {
+                calculateTotals();
+            }
         });
     </script>
 @endsection

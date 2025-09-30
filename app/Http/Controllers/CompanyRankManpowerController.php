@@ -6,6 +6,7 @@ use App\Models\Company;
 use App\Models\Rank;
 use App\Models\CompanyRankManpower;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CompanyRankManpowerController extends Controller
 {
@@ -55,63 +56,56 @@ class CompanyRankManpowerController extends Controller
             'officer_manpower.*' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        // Save non-officer ranks
-        foreach ($data['manpower'] as $company_id => $ranks) {
-            foreach ($ranks as $rank_id => $manpower_number) {
-                $manpower_number = $manpower_number ?? 0;
-                CompanyRankManpower::updateOrCreate(
-                    ['company_id' => $company_id, 'rank_id' => $rank_id],
-                    ['manpower_number' => $manpower_number]
-                );
-            }
-        }
+        DB::beginTransaction();
 
-        // Distribute officer manpower among officer ranks
-        foreach ($data['officer_manpower'] as $company_id => $total_officers) {
-            $total_officers = $total_officers ?? 0;
+        try {
+            // Get all officer ranks once
+            $officerRanks = Rank::active()->where('type', 'OFFICER')->get();
+            $primaryOfficerRank = $officerRanks->first();
 
-            // Get all officer ranks for this company
-            $companyOfficerRanks = Rank::active()->where('type', 'OFFICER')->get();
+            // Process each company
+            foreach ($data['officer_manpower'] as $company_id => $officerTotal) {
+                $officerTotal = $officerTotal ?? 0;
 
-            // Get existing manpower distribution for officer ranks
-            $existingOfficerManpower = CompanyRankManpower::where('company_id', $company_id)
-                ->whereIn('rank_id', $companyOfficerRanks->pluck('id'))
-                ->get()
-                ->keyBy('rank_id');
-
-            // Calculate total existing officers
-            $existingTotal = $existingOfficerManpower->sum('manpower_number');
-
-            // If no existing data, distribute equally
-            if ($existingTotal == 0) {
-                $officerCount = $companyOfficerRanks->count();
-                if ($officerCount > 0) {
-                    $baseValue = floor($total_officers / $officerCount);
-                    $remainder = $total_officers % $officerCount;
-
-                    foreach ($companyOfficerRanks as $index => $rank) {
-                        $value = $baseValue + ($index < $remainder ? 1 : 0);
+                // Save non-officer ranks for this company
+                if (isset($data['manpower'][$company_id])) {
+                    foreach ($data['manpower'][$company_id] as $rank_id => $manpower_number) {
+                        $manpower_number = $manpower_number ?? 0;
                         CompanyRankManpower::updateOrCreate(
-                            ['company_id' => $company_id, 'rank_id' => $rank->id],
-                            ['manpower_number' => $value]
+                            ['company_id' => $company_id, 'rank_id' => $rank_id],
+                            ['manpower_number' => $manpower_number]
                         );
                     }
                 }
-            } else {
-                // Distribute proportionally based on existing distribution
-                foreach ($companyOfficerRanks as $rank) {
-                    $existingValue = $existingOfficerManpower[$rank->id]->manpower_number ?? 0;
-                    $ratio = $existingTotal > 0 ? $existingValue / $existingTotal : 0;
-                    $newValue = round($total_officers * $ratio);
 
+                // Handle officer manpower
+                if ($primaryOfficerRank) {
+                    // Store the total in the first officer rank
                     CompanyRankManpower::updateOrCreate(
-                        ['company_id' => $company_id, 'rank_id' => $rank->id],
-                        ['manpower_number' => $newValue]
+                        ['company_id' => $company_id, 'rank_id' => $primaryOfficerRank->id],
+                        ['manpower_number' => $officerTotal]
                     );
+
+                    // Set all other officer ranks to 0 (if there are multiple officer ranks)
+                    foreach ($officerRanks->skip(1) as $rank) {
+                        CompanyRankManpower::updateOrCreate(
+                            ['company_id' => $company_id, 'rank_id' => $rank->id],
+                            ['manpower_number' => 0]
+                        );
+                    }
                 }
             }
-        }
 
-        return redirect()->back()->with('success', 'Manpower distribution updated.');
+            DB::commit();
+
+            return redirect()->route('company_rank_manpower.index')
+                ->with('success', 'Manpower distribution updated successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()
+                ->with('error', 'Failed to update manpower distribution: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 }
