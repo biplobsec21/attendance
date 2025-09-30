@@ -7,6 +7,7 @@ use App\Models\Rank;
 use App\Models\CompanyRankManpower;
 use App\Models\Soldier;
 use App\Models\SoldierLeaveApplication;
+use App\Models\LeaveType;
 use Carbon\Carbon;
 
 class ManpowerDataService
@@ -24,6 +25,7 @@ class ManpowerDataService
 
         $companies = Company::active()->orderBy('name')->get();
         $ranks = Rank::active()->orderBy('name')->get();
+        $leaveTypes = LeaveType::active()->orderBy('name')->get();
 
         // Separate officer ranks from other ranks
         $officerRanks = $ranks->filter(function ($rank) {
@@ -168,10 +170,63 @@ class ManpowerDataService
             $withoutLeaveOfficerTotals[$company->id] = $officerTotal;
         }
 
+        // NEW: Fetch leave type distribution data
+        $leaveTypeManpower = Soldier::selectRaw('soldiers.company_id, soldier_leave_applications.leave_type_id, COUNT(*) as count')
+            ->join('soldier_leave_applications', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_leave_applications.soldier_id')
+                    ->where('soldier_leave_applications.application_current_status', 'approved')
+                    ->where('soldier_leave_applications.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_leave_applications.end_date')
+                            ->orWhere('soldier_leave_applications.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldiers_ere', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldiers_ere.soldier_id')
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldiers_ere.end_date')
+                            ->orWhere('soldiers_ere.end_date', '>=', $currentDate);
+                    })
+                    ->where('soldiers_ere.start_date', '<=', $currentDate);
+            })
+            ->whereIn('soldiers.company_id', $companies->pluck('id'))
+            ->whereNull('soldiers_ere.id') // Exclude soldiers with active ERE records
+            ->groupBy('soldiers.company_id', 'soldier_leave_applications.leave_type_id')
+            ->get()
+            ->groupBy('company_id')
+            ->map(function ($rows) {
+                return $rows->keyBy('leave_type_id');
+            });
+
+        // Calculate totals for each leave type
+        $leaveTypeTotals = [];
+        foreach ($leaveTypes as $leaveType) {
+            $total = 0;
+            foreach ($companies as $company) {
+                if (isset($leaveTypeManpower[$company->id][$leaveType->id])) {
+                    $total += $leaveTypeManpower[$company->id][$leaveType->id]->count;
+                }
+            }
+            $leaveTypeTotals[$leaveType->id] = $total;
+        }
+
+        // Calculate company totals for leave types
+        $leaveTypeCompanyTotals = [];
+        foreach ($companies as $company) {
+            $total = 0;
+            foreach ($leaveTypes as $leaveType) {
+                if (isset($leaveTypeManpower[$company->id][$leaveType->id])) {
+                    $total += $leaveTypeManpower[$company->id][$leaveType->id]->count;
+                }
+            }
+            $leaveTypeCompanyTotals[$company->id] = $total;
+        }
+
         return [
             'companies' => $companies,
             'officerRanks' => $officerRanks,
             'otherRanks' => $otherRanks,
+            'leaveTypes' => $leaveTypes,
             'manpower' => $manpower,
             'officerTotals' => $officerTotals,
             'receivedManpower' => $receivedManpower,
@@ -180,6 +235,9 @@ class ManpowerDataService
             'leaveOfficerTotals' => $leaveOfficerTotals,
             'withoutLeaveManpower' => $withoutLeaveManpower,
             'withoutLeaveOfficerTotals' => $withoutLeaveOfficerTotals,
+            'leaveTypeManpower' => $leaveTypeManpower,
+            'leaveTypeTotals' => $leaveTypeTotals,
+            'leaveTypeCompanyTotals' => $leaveTypeCompanyTotals,
         ];
     }
 }

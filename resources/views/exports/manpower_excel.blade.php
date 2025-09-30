@@ -72,7 +72,6 @@
 
     <!-- Note Table -->
 
-
     <!-- Initialize all variables with defaults to prevent undefined errors -->
     @php
         use App\Helpers\ManpowerViewHelper;
@@ -83,12 +82,15 @@
         $leaveOfficerTotals = $leaveOfficerTotals ?? [];
         $withoutLeaveManpower = $withoutLeaveManpower ?? collect();
         $withoutLeaveOfficerTotals = $withoutLeaveOfficerTotals ?? [];
+        $leaveTypeManpower = $leaveTypeManpower ?? collect();
+        $leaveTypeTotals = $leaveTypeTotals ?? [];
+        $leaveTypeCompanyTotals = $leaveTypeCompanyTotals ?? [];
     @endphp
 
     <!-- Planned Manpower Distribution Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="100%"><strong> Planned Manpower Distribution </strong> </td>
+            <td colspan="100%">Planned Manpower Distribution</td>
         </tr>
         <thead>
             <tr>
@@ -304,6 +306,42 @@
                 <td>
                     {{ ManpowerViewHelper::calculateWithoutLeaveGrandTotal($withoutLeaveOfficerTotals, $otherRanks, $companies, $withoutLeaveManpower) }}
                 </td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- NEW: Leave Types Distribution Table -->
+    <table>
+        <tr class="section-title-row">
+            <td colspan="100%">Leave Types Distribution</td>
+        </tr>
+        <thead>
+            <tr>
+                <th>Company</th>
+                @foreach ($leaveTypes as $leaveType)
+                    <th>{{ $leaveType->name }}</th>
+                @endforeach
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($companies as $company)
+                <tr>
+                    <td>{{ $company->name }}</td>
+                    @foreach ($leaveTypes as $leaveType)
+                        <td>{{ $leaveTypeManpower[$company->id][$leaveType->id]->count ?? 0 }}</td>
+                    @endforeach
+                    <td>{{ $leaveTypeCompanyTotals[$company->id] ?? 0 }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td>Total</td>
+                @foreach ($leaveTypes as $leaveType)
+                    <td>{{ $leaveTypeTotals[$leaveType->id] ?? 0 }}</td>
+                @endforeach
+                <td>{{ array_sum($leaveTypeCompanyTotals) }}</td>
             </tr>
         </tfoot>
     </table>

@@ -80,6 +80,8 @@
         <p>Date: {{ $formattedDate }}</p>
     </div>
 
+
+
     <!-- Initialize all variables with defaults to prevent undefined errors -->
     @php
         use App\Helpers\ManpowerViewHelper;
@@ -90,14 +92,9 @@
         $leaveOfficerTotals = $leaveOfficerTotals ?? [];
         $withoutLeaveManpower = $withoutLeaveManpower ?? collect();
         $withoutLeaveOfficerTotals = $withoutLeaveOfficerTotals ?? [];
-
-        // Debug: Check if data is actually available
-        // \Log::info('PDF View Data Check', [
-        //     'withoutLeaveManpower_empty' => $withoutLeaveManpower->isEmpty(),
-        //     'withoutLeaveManpower_counts' => $withoutLeaveManpower->count(),
-        //     'withoutLeaveOfficerTotals' => $withoutLeaveOfficerTotals
-        // ]);
-
+        $leaveTypeManpower = $leaveTypeManpower ?? collect();
+        $leaveTypeTotals = $leaveTypeTotals ?? [];
+        $leaveTypeCompanyTotals = $leaveTypeCompanyTotals ?? [];
     @endphp
 
     <div class="section-title">Planned Manpower Distribution</div>
@@ -152,7 +149,7 @@
         </tfoot>
     </table>
 
-    <div class="section-title">Received Manpower Distribution</div>
+    <div class="section-title">Received Manpower Distribution (Without ERE record)</div>
     <table>
         <thead>
             <tr>
@@ -275,13 +272,6 @@
                 @php
                     $companyId = $company->id;
                     $companyWithoutLeaveData = $withoutLeaveManpower[$companyId] ?? null;
-
-                    // Debug individual company data
-                    // \Log::info("PDF Company {$companyId} without leave data", [
-                    //     'company_data' => $companyWithoutLeaveData ? $companyWithoutLeaveData->toArray() : 'null',
-                    //     'officer_total' => $withoutLeaveOfficerTotals[$companyId] ?? 0
-                    // ]);
-
                 @endphp
                 <tr>
                     <td>{{ $company->name }}</td>
@@ -314,6 +304,40 @@
                 <td>
                     {{ ManpowerViewHelper::calculateWithoutLeaveGrandTotal($withoutLeaveOfficerTotals, $otherRanks, $companies, $withoutLeaveManpower) }}
                 </td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- NEW: Leave Types Distribution Table -->
+    <div class="section-title">Leave Types Distribution</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Company</th>
+                @foreach ($leaveTypes as $leaveType)
+                    <th>{{ $leaveType->name }}</th>
+                @endforeach
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($companies as $company)
+                <tr>
+                    <td>{{ $company->name }}</td>
+                    @foreach ($leaveTypes as $leaveType)
+                        <td>{{ $leaveTypeManpower[$company->id][$leaveType->id]->count ?? 0 }}</td>
+                    @endforeach
+                    <td>{{ $leaveTypeCompanyTotals[$company->id] ?? 0 }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td>Total</td>
+                @foreach ($leaveTypes as $leaveType)
+                    <td>{{ $leaveTypeTotals[$leaveType->id] ?? 0 }}</td>
+                @endforeach
+                <td>{{ array_sum($leaveTypeCompanyTotals) }}</td>
             </tr>
         </tfoot>
     </table>
