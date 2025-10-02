@@ -55,6 +55,7 @@ Actions:
 ➡️ These remain unchanged. Their records are treated as fixed duties whenever duty assignment/reporting is done.
 
 These are the database tables.
+@Bangla71desh*
 
 duties
 | Column     | Type   | Description                      |

@@ -337,7 +337,132 @@ class Soldier extends Model
             ];
         }
 
+        // Get active fixed duty assignments with detailed information
+        $activeFixedDuties = $this->dutyRanks()
+            ->where('assignment_type', 'fixed')
+            ->whereHas('duty', function ($query) {
+                $query->where('status', 'Active');
+            })
+            ->with(['duty' => function ($query) {
+                $query->select('id', 'duty_name', 'start_time', 'end_time', 'duration_days', 'status');
+            }])
+            ->get();
+
+        foreach ($activeFixedDuties as $dutyAssignment) {
+            $duty = $dutyAssignment->duty;
+
+            // Calculate total hours for display
+            $start = Carbon::createFromTimeString($duty->start_time);
+            $end = Carbon::createFromTimeString($duty->end_time);
+            if ($end->lt($start)) {
+                $end->addDay();
+            }
+            $dailyHours = $end->diffInHours($start);
+            $totalHours = $dailyHours * $duty->duration_days;
+
+            $assignments[] = [
+                'type' => 'fixed_duty',
+                'name' => $duty->duty_name,
+                'duty_name' => $duty->duty_name,
+                'start_time' => $duty->start_time,
+                'end_time' => $duty->end_time,
+                'duration_days' => $duty->duration_days,
+                'daily_hours' => $dailyHours,
+                'total_hours' => $totalHours,
+                'priority' => $dutyAssignment->priority,
+                'remarks' => $dutyAssignment->remarks,
+                'duty_id' => $duty->id,
+                'assignment_id' => $dutyAssignment->id,
+                'status' => 'active',
+                'schedule' => $this->getDutyScheduleDescription($duty),
+            ];
+        }
+
         return $assignments;
+    }
+    public function dutyRanks(): HasMany
+    {
+        return $this->hasMany(DutyRank::class, 'soldier_id');
+    }
+    /**
+     * Relationship with duties through duty_ranks for fixed assignments
+     */
+    public function fixedDuties(): BelongsToMany
+    {
+        return $this->belongsToMany(Duty::class, 'duty_rank', 'soldier_id', 'duty_id')
+            ->wherePivot('assignment_type', 'fixed')
+            ->withPivot(['priority', 'remarks', 'start_time', 'end_time', 'duration_days', 'assignment_type'])
+            ->withTimestamps();
+    }
+    /**
+     * Get active fixed duties
+     */
+    public function activeFixedDuties(): BelongsToMany
+    {
+        return $this->fixedDuties()
+            ->where('duties.status', 'Active');
+    }
+    /**
+     * Helper method to generate duty schedule description
+     */
+    protected function getDutyScheduleDescription($duty): string
+    {
+        if (!$duty) {
+            return 'Unknown schedule';
+        }
+
+        $description = $duty->start_time . ' - ' . $duty->end_time;
+
+        // Check if it's an overnight duty
+        try {
+            $start = Carbon::createFromTimeString($duty->start_time);
+            $end = Carbon::createFromTimeString($duty->end_time);
+            if ($end->lt($start)) {
+                $description .= ' (overnight)';
+            }
+        } catch (\Exception $e) {
+            // Handle invalid time format gracefully
+        }
+
+        if ($duty->duration_days > 1) {
+            $description .= ' for ' . $duty->duration_days . ' days';
+        }
+
+        return $description;
+    }
+    /**
+     * Check if soldier has any active fixed duty assignments
+     */
+    public function hasActiveFixedDuties(): bool
+    {
+        return $this->dutyRanks()
+            ->where('assignment_type', 'fixed')
+            ->whereHas('duty', function ($query) {
+                $query->where('status', 'Active');
+            })
+            ->exists();
+    }
+    /**
+     * Get count of active fixed duties
+     */
+    public function getActiveFixedDutiesCount(): int
+    {
+        return $this->dutyRanks()
+            ->where('assignment_type', 'fixed')
+            ->whereHas('duty', function ($query) {
+                $query->where('status', 'Active');
+            })
+            ->count();
+    }
+    /**
+     * Get only fixed duty assignments
+     */
+    public function getFixedDutyAssignments(): array
+    {
+        return collect($this->getActiveAssignments())
+            ->where('type', 'fixed_duty')
+            ->values()
+            ->toArray();
     }
     public function hasCompletedAssignmentsToday(): bool
     {

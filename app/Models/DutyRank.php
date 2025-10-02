@@ -15,14 +15,23 @@ class DutyRank extends Model
     protected $fillable = [
         'duty_id',
         'rank_id',
+        'soldier_id',
+        'assignment_type',
         'duty_type',
+        'manpower',
+        'start_time',
+        'end_time',
+        'group_id',
         'priority',
         'rotation_days',
-        'remarks',
-        'manpower',
-        'fixed_soldier_id'
-    ];
+        'remarks'
 
+    ];
+    protected $casts = [
+        'manpower' => 'integer',
+        'priority' => 'integer',
+        'rotation_days' => 'integer',
+    ];
     // Relationships
     public function duty()
     {
@@ -35,6 +44,41 @@ class DutyRank extends Model
     }
     public function soldier()
     {
-        return $this->belongsTo(Soldier::class, 'fixed_soldier_id');
+        return $this->belongsTo(Soldier::class, 'soldier_id');
+    }
+    // Scopes
+    public function scopeRosterAssignments($query)
+    {
+        return $query->where('assignment_type', 'roster');
+    }
+
+    public function scopeFixedAssignments($query)
+    {
+        return $query->where('assignment_type', 'fixed');
+    }
+
+    public function scopeForSoldier($query, $soldierId)
+    {
+        return $query->where('soldier_id', $soldierId);
+    }
+
+    // Accessors
+    public function getAssignmentDescriptionAttribute(): string
+    {
+        if ($this->assignment_type === 'fixed' && $this->soldier) {
+            return "Fixed: {$this->soldier->full_name} ({$this->soldier->army_no})";
+        }
+
+        return "Roster: {$this->rank->name} x {$this->manpower}";
+    }
+
+    public function getIsFixedAssignmentAttribute(): bool
+    {
+        return $this->assignment_type === 'fixed';
+    }
+
+    public function getIsRosterAssignmentAttribute(): bool
+    {
+        return $this->assignment_type === 'roster';
     }
 }

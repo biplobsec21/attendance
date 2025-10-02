@@ -135,33 +135,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/coursecadremanager/{type}/{id}/edit-data', [CourseCadreManagerController::class, 'getEditData'])->name('coursecadremanager.edit-data');
     Route::put('/coursecadremanager/{type}/{id}', [CourseCadreManagerController::class, 'update'])->name('coursecadremanager.update');
-    Route::prefix('duty')->group(function () {
 
-        Route::get('create', [DutyController::class, 'create'])->name('duty.create');
-        Route::get('', [DutyController::class, 'index'])->name('duty.index');
-        Route::get('{duty}/edit', [DutyController::class, 'edit'])->name('duty.edit');
-
-        // This route handles the form submission to update the record in the database.
-        Route::put('{duty}', [DutyController::class, 'update'])->name('duty.update');
-        // Route to handle the form submission and store the new record
-        Route::post('store', [DutyController::class, 'store'])->name('duty.store');
-        Route::delete('{duty}', [DutyController::class, 'destroy'])->name('duty.destroy');
-
-        Route::get('assign', [DutyController::class, 'assignDuties'])
-            ->name('duty.assign');
-
-        // Store/save the assignments
-
-        Route::get('assignlist', [DutyController::class, 'assignList'])->name('duty.assigntorank');
-        Route::post('assign', [DutyController::class, 'storeAssignments'])->name('duty.storeAssignment');
-        Route::get('assign', [DutyController::class, 'createAssignments'])->name('duty.createAssignment');
-
-
-
-        Route::get('assign/{id}/edit', [DutyController::class, 'editAssignment'])->name('duty.editAssignment');
-        Route::put('assign/{id}', [DutyController::class, 'updateAssignment'])->name('duty.updateAssignment');
-        Route::delete('assign/{id}', [DutyController::class, 'deleteAssignment'])->name('duty.deleteAssignment');
-    });
     Route::get('/soldiers/by-rank/{rank}', [ProfileController::class, 'getByRank'])->name('soldiers.byRank');
     Route::get('ranks-data', [RankController::class, 'getRanks'])->name('ranks.data');
 
@@ -309,6 +283,30 @@ Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function ()
     Route::patch('ranks/{rank}/toggle-status', [RankController::class, 'toggleStatus'])->name('ranks.toggle-status');
 
     Route::resource('filters', FilterController::class);
+
+    Route::prefix('duty')->group(function () {
+
+        Route::get('create', [DutyController::class, 'create'])->name('duty.create');
+        Route::get('', [DutyController::class, 'index'])->name('duty.index');
+        Route::get('{duty}/edit', [DutyController::class, 'edit'])->name('duty.edit');
+
+        // This route handles the form submission to update the record in the database.
+        Route::put('{duty}', [DutyController::class, 'update'])->name('duty.update');
+        // Route to handle the form submission and store the new record
+        Route::post('store', [DutyController::class, 'store'])->name('duty.store');
+        Route::delete('{duty}', [DutyController::class, 'destroy'])->name('duty.destroy');
+    });
+    Route::get('/duties/{duty}', [DutyController::class, 'show'])->name('duty.show');
+    Route::get('/duties/statistics', [DutyController::class, 'getStatistics'])->name('duties.statistics');
+    Route::get('/duties/available-soldiers', [DutyController::class, 'getAvailableSoldiers'])->name('duties.available-soldiers');
+    Route::get('/soldiers/{soldier}/details', [DutyController::class, 'getSoldierDetails'])->name('soldiers.details');
+    Route::post('/duties/{duty}/assign-soldier', [DutyController::class, 'assignSoldier'])->name('duties.assign-soldier');
+    Route::post('/duties/{duty}/remove-soldier', [DutyController::class, 'removeSoldier'])->name('duties.remove-soldier');
+    Route::post('/duties/check-availability', [DutyController::class, 'checkSoldierAvailability'])->name('duties.check-availability');
+    Route::get('/duties/{duty}/assignments', [DutyController::class, 'getDutyAssignments'])->name('duties.assignments');
+    Route::post('/duties/bulk-update-status', [DutyController::class, 'bulkUpdateStatus'])->name('duties.bulk-update-status');
+    Route::post('/duties/export', [DutyController::class, 'export'])->name('duties.export');
+    Route::post('/duties/{duty}/duplicate', [DutyController::class, 'duplicate'])->name('duty.duplicate');
 });
 
 

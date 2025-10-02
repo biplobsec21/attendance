@@ -1,0 +1,13 @@
+// Individual Ranks
+$rankManpower = [
+    ['rank_id' => 1, 'manpower' => 2],
+    ['rank_id' => 2, 'manpower' => 3]
+];
+
+// Rank Groups (OR Condition)
+$rankGroups = [
+    'group_1' => [
+        'manpower' => 2,
+        'ranks' => [3, 4, 5] // Any ONE of these ranks can fulfill
+    ]
+];

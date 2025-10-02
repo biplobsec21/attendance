@@ -25,11 +25,13 @@ class Duty extends Model
         'manpower',
         'remark',
         'status',
+        'duration_days',
     ];
     protected $casts = [
-        'start_time' => 'datetime',
-        'end_time' => 'datetime',
-        'status' => 'string',
+        'start_time' => 'datetime:H:i',
+        'end_time' => 'datetime:H:i',
+        'duration_days' => 'integer',
+        'manpower' => 'integer',
     ];
     public function ranks()
     {
@@ -40,5 +42,20 @@ class Duty extends Model
     public function dutyRanks()
     {
         return $this->hasMany(DutyRank::class);
+    }
+
+    /**
+     * Get fixed duty assignments
+     */
+    public function fixedAssignments()
+    {
+        return $this->dutyRanks()->where('assignment_type', 'fixed');
+    }
+    /**
+     * Get roster duty assignments
+     */
+    public function rosterAssignments()
+    {
+        return $this->dutyRanks()->where('assignment_type', 'roster');
     }
 }

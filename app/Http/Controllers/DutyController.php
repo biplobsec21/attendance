@@ -2,61 +2,70 @@
 
 namespace App\Http\Controllers;
 
-// Import necessary classes
 use App\Http\Requests\StoreDutyRequest;
 use App\Http\Requests\UpdateDutyRequest;
 use App\Models\Duty;
-use App\Models\DutyRank;
 use App\Models\Rank;
 use App\Models\Soldier;
+use App\Services\DutyService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use DB;
 
 class DutyController extends Controller
 {
+    public function __construct(
+        private DutyService $dutyService
+    ) {}
+
     /**
      * Display a listing of the resource with search, sort, and pagination.
      */
     public function index(Request $request): View
     {
-        $query = Duty::with(['dutyRanks.rank']); // Eager load the dutyRanks with their rank relationship
+        try {
+            $duties = $this->dutyService->searchDuties(
+                search: $request->search,
+                status: $request->status,
+                sortBy: $request->get('sort_by', 'created_at'),
+                sortDirection: $request->get('sort_direction', 'desc')
+            );
 
-        // Server-side search functionality
-        if ($request->filled('search')) {
-            $query->where('duty_name', 'like', '%' . $request->search . '%')
-                ->orWhere('remark', 'like', '%' . $request->search . '%');
+            $ranks = Rank::orderBy('name')->get();
+            $statistics = $this->dutyService->getDutyStatistics();
+
+            return view('mpm.page.duty.index', compact('duties', 'ranks', 'statistics'));
+        } catch (\Exception $e) {
+            return view('mpm.page.duty.index')
+                ->with('duties', collect())
+                ->with('ranks', collect())
+                ->with('statistics', [])
+                ->with('error', 'Failed to load duties: ' . $e->getMessage());
         }
-
-        // Server-side status filter
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Server-side sorting
-        $sortBy = $request->get('sort_by', 'created_at'); // Default sort column
-        $sortDirection = $request->get('sort_direction', 'desc'); // Default sort direction
-
-        if (in_array($sortBy, ['duty_name', 'status', 'created_at'])) {
-            $query->orderBy($sortBy, $sortDirection);
-        }
-
-        // Get all duties without pagination
-        $duties = $query->get();
-
-        // Get all ranks for the filter dropdown
-        $ranks = \App\Models\Rank::orderBy('name')->get();
-
-        return view('mpm.page.duty.index', compact('duties', 'ranks'));
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create(): View
+    public function create()
     {
-        $ranks = Rank::all();
-        return view('mpm.page.duty.create', compact('ranks'));
+        try {
+            $ranks = Rank::orderBy('name')->get();
+
+            // Get all available soldiers without any filters for create view
+            $availableSoldiers = $this->dutyService->getAvailableSoldiersForDuty();
+
+            // Debug in controller
+            \Log::info('Available soldiers in create:', ['count' => count($availableSoldiers)]);
+
+            return view('mpm.page.duty.create', compact('ranks', 'availableSoldiers'));
+        } catch (\Exception $e) {
+            \Log::error('Error in duty create:', ['error' => $e->getMessage()]);
+            return redirect()->route('duty.index')
+                ->with('error', 'Failed to load create form: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -64,43 +73,128 @@ class DutyController extends Controller
      */
     public function store(StoreDutyRequest $request): RedirectResponse
     {
-        // Create the duty record
-        $duty = Duty::create($request->validated());
+        // dd($request->validated());
+        try {
+            $this->dutyService->createDutyWithAssignments($request->validated());
 
-        // Get the rank_manpower data from the request
-        $rankManpower = $request->input('rank_manpower', []);
-
-        // Create duty_rank records for each selected rank with its specific manpower
-        foreach ($rankManpower as $rankData) {
-            DutyRank::create([
-                'duty_id' => $duty->id,
-                'rank_id' => $rankData['rank_id'],
-                'duty_type' => 'roster',
-                'manpower' => $rankData['manpower'],
-                'start_time' => $request->input('start_time'),
-                'end_time' => $request->input('end_time'),
-            ]);
+            return redirect()
+                ->route('duty.index')
+                ->with('success', 'Duty record created successfully.');
+        } catch (\Exception $e) {
+            dd($e->getMessage());
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to create duty: ' . $e->getMessage());
         }
-
-        return redirect()->route('duty.index')->with('success', 'Duty record created successfully.');
     }
 
     /**
-     * Display the specified resource. (Optional - good for a details page)
+     * Display the specified resource.
      */
-    public function show(Duty $duty): View
+    public function show(Duty $duty)
     {
-        return view('mpm.page.duty.show', compact('duty'));
+        try {
+            $duty->load([
+                'dutyRanks.rank',
+                'dutyRanks.soldier',
+                'dutyRanks.soldier.rank',
+                'dutyRanks.soldier.company'
+            ]);
+
+            $fixedAssignments = $this->dutyService->getDutyFixedAssignments($duty->id);
+            $rosterAssignments = $this->dutyService->getDutyRosterAssignments($duty->id);
+            $totalHours = $this->dutyService->calculateTotalDutyHours($duty);
+            $scheduleDescription = $this->dutyService->getDutyScheduleDescription($duty);
+
+            return view('mpm.page.duty.show', compact(
+                'duty',
+                'fixedAssignments',
+                'rosterAssignments',
+                'totalHours',
+                'scheduleDescription'
+            ));
+        } catch (\Exception $e) {
+            return redirect()->route('duty.index')
+                ->with('error', 'Failed to load duty details: ' . $e->getMessage());
+        }
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Duty $duty): View
+    public function edit(Duty $duty)
     {
-        $ranks = Rank::all();
-        $selectedRanks = $duty->dutyRanks()->pluck('rank_id')->toArray();
-        return view('mpm.page.duty.edit', compact('duty', 'ranks', 'selectedRanks'));
+        try {
+            $duty->load([
+                'dutyRanks.rank',
+                'dutyRanks.soldier',
+                'dutyRanks.soldier.rank',
+                'dutyRanks.soldier.company'
+            ]);
+
+            $ranks = Rank::orderBy('name')->get();
+            $availableSoldiers = $this->dutyService->getAvailableSoldiersForDuty(excludeDutyId: $duty->id);
+
+            // Prepare data for the form - FIXED VERSION
+            $individualRanks = [];
+            $rankGroups = [];
+            $fixedSoldiers = [];
+
+            foreach ($duty->dutyRanks as $assignment) {
+                if ($assignment->assignment_type === 'roster' && !$assignment->group_id) {
+                    // Individual roster assignment
+                    $individualRanks[$assignment->rank_id] = [
+                        'id' => $assignment->rank_id,
+                        'name' => $assignment->rank->name,
+                        'manpower' => $assignment->manpower
+                    ];
+                } elseif ($assignment->assignment_type === 'roster' && $assignment->group_id) {
+                    // Rank group assignment
+                    if (!isset($rankGroups[$assignment->group_id])) {
+                        $rankGroups[$assignment->group_id] = [
+                            'id' => $assignment->group_id,
+                            'manpower' => $assignment->manpower,
+                            'ranks' => []
+                        ];
+                    }
+                    $rankGroups[$assignment->group_id]['ranks'][] = $assignment->rank_id;
+                } elseif ($assignment->assignment_type === 'fixed') {
+                    // Fixed soldier assignment
+                    $fixedSoldiers[$assignment->soldier_id] = [
+                        'id' => $assignment->soldier_id,
+                        'soldier' => [
+                            'id' => $assignment->soldier->id,
+                            'full_name' => $assignment->soldier->full_name,
+                            'army_no' => $assignment->soldier->army_no,
+                            'rank' => $assignment->soldier->rank->name,
+                            'company' => $assignment->soldier->company->name ?? 'N/A'
+                        ],
+                        'priority' => $assignment->priority,
+                        'remarks' => $assignment->remarks
+                    ];
+                }
+            }
+
+            // Convert associative array to indexed array for groups
+            $rankGroups = array_values($rankGroups);
+
+            $totalHours = $this->dutyService->calculateTotalDutyHours($duty);
+            $scheduleDescription = $this->dutyService->getDutyScheduleDescription($duty);
+
+            return view('mpm.page.duty.edit', compact(
+                'duty',
+                'ranks',
+                'availableSoldiers',
+                'individualRanks',
+                'rankGroups',
+                'fixedSoldiers',
+                'totalHours',
+                'scheduleDescription'
+            ));
+        } catch (\Exception $e) {
+            return redirect()->route('duty.index')
+                ->with('error', 'Failed to load edit form: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -108,39 +202,17 @@ class DutyController extends Controller
      */
     public function update(UpdateDutyRequest $request, Duty $duty): RedirectResponse
     {
-        // Get the validated data
-        $validatedData = $request->validated();
+        try {
+            $this->dutyService->updateDutyWithAssignments($duty, $request->validated());
 
-        // Calculate total manpower from the rank_manpower array
-        $totalManpower = 0;
-        $rankManpower = $request->input('rank_manpower', []);
-
-        foreach ($rankManpower as $rankData) {
-            $totalManpower += (int)$rankData['manpower'];
+            return redirect()
+                ->route('duty.index')
+                ->with('success', 'Duty record updated successfully.');
+        } catch (\Exception $e) {
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to update duty: ' . $e->getMessage());
         }
-
-        // Update the validated data with the calculated total manpower
-        $validatedData['manpower'] = $totalManpower;
-
-        // Update the duty record with the modified validated data
-        $duty->update($validatedData);
-
-        // Delete existing duty_rank records for this duty
-        DutyRank::where('duty_id', $duty->id)->delete();
-
-        // Create new duty_rank records for each selected rank with its specific manpower
-        foreach ($rankManpower as $rankData) {
-            DutyRank::create([
-                'duty_id' => $duty->id,
-                'rank_id' => $rankData['rank_id'],
-                'duty_type' => 'roster',
-                'manpower' => $rankData['manpower'],
-                'start_time' => $request->input('start_time'),
-                'end_time' => $request->input('end_time'),
-            ]);
-        }
-
-        return redirect()->route('duty.index')->with('success', 'Duty record updated successfully.');
     }
 
     /**
@@ -148,110 +220,369 @@ class DutyController extends Controller
      */
     public function destroy(Duty $duty): RedirectResponse
     {
-        // You could add checks here if this duty is linked to other models, like the CourseController example
-        // For now, we will just delete it.
-        $duty->delete();
+        try {
+            $this->dutyService->deleteDuty($duty);
 
-        return redirect()->route('duty.index')->with('success', 'Duty record deleted successfully.');
+            return redirect()
+                ->route('duty.index')
+                ->with('success', 'Duty record deleted successfully.');
+        } catch (\Exception $e) {
+            return back()
+                ->with('error', 'Failed to delete duty: ' . $e->getMessage());
+        }
     }
 
-
-    public function assignList()
+    /**
+     * Get available soldiers for fixed duty assignment (AJAX endpoint)
+     */
+    public function getAvailableSoldiers(Request $request): JsonResponse
     {
+        try {
+            $rankId = $request->get('rank_id');
+            $excludeDutyId = $request->get('exclude_duty_id');
 
-        $assignments = DutyRank::with(['duty', 'rank'])->get();
-        return view('mpm.page.duty.assignments', compact('assignments'));
+            $soldiers = $this->dutyService->getAvailableSoldiersForDuty($rankId, $excludeDutyId);
+
+            return response()->json([
+                'success' => true,
+                'soldiers' => $soldiers
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load available soldiers: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-    public function createAssignments()
+    /**
+     * Get soldier details for fixed assignment (AJAX endpoint)
+     */
+    public function getSoldierDetails(Soldier $soldier): JsonResponse
     {
-        $duties = Duty::all();
-        $ranks = Rank::all();
-        $soldiers = Soldier::all();
-        $assignments = DutyRank::with(['duty', 'rank'])->get();
-        return view('mpm.page.duty.createAssign', compact('duties', 'ranks', 'soldiers'));
+        try {
+            $soldier->load(['rank', 'company', 'currentLeaveApplications']);
+
+            $isAvailable = $this->dutyService->isSoldierAvailableForDuty($soldier);
+            $activeAssignments = $soldier->getActiveAssignments();
+            $fixedDuties = $this->dutyService->getSoldierFixedDuties($soldier->id);
+
+            return response()->json([
+                'success' => true,
+                'soldier' => [
+                    'id' => $soldier->id,
+                    'army_no' => $soldier->army_no,
+                    'full_name' => $soldier->full_name,
+                    'rank' => $soldier->rank->name,
+                    'company' => $soldier->company->name ?? 'N/A',
+                    'is_available' => $isAvailable,
+                    'is_on_leave' => $soldier->is_on_leave,
+                    'current_leave_details' => $soldier->current_leave_details,
+                    'active_assignments' => $activeAssignments,
+                    'fixed_duties' => $fixedDuties,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load soldier details: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-
-    public function storeAssignments(Request $request)
+    /**
+     * Assign specific soldier to duty (AJAX endpoint)
+     */
+    public function assignSoldier(Request $request, Duty $duty): JsonResponse
     {
-        // dd($request->all());
-        $request->validate([
-            'duty_id' => 'required|exists:duties,id',
-            'rank_id' => 'required|exists:ranks,id',
-            'duty_type' => 'required|in:fixed,roster,regular',
-            'priority' => 'nullable|integer|min:1',
-            'rotation_days' => 'nullable|integer|min:1',
-            'remarks' => 'nullable|string|max:255',
-            'fixed_soldier_id' => [
-                function ($attribute, $value, $fail) use ($request) {
-                    if ($request->duty_type === 'fixed') {
-                        $soldier = Soldier::where('id', $value)
-                            ->where('rank_id', $request->rank_id)
-                            ->first();
+        try {
+            $request->validate([
+                'soldier_id' => 'required|exists:soldiers,id',
+                'priority' => 'nullable|integer|min:1|max:10',
+                'remarks' => 'nullable|string|max:500'
+            ]);
 
-                        if (!$soldier) {
-                            $fail('The selected soldier does not belong to the selected rank.');
-                        }
+            $success = $this->dutyService->assignSoldierToDuty(
+                $duty->id,
+                $request->soldier_id,
+                [
+                    'priority' => $request->priority,
+                    'remarks' => $request->remarks
+                ]
+            );
+
+            if ($success) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Soldier assigned to duty successfully.'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to assign soldier to duty. Soldier may not be available.'
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to assign soldier: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove soldier from duty assignment (AJAX endpoint)
+     */
+    public function removeSoldier(Request $request, Duty $duty): JsonResponse
+    {
+        try {
+            $request->validate([
+                'soldier_id' => 'required|exists:soldiers,id'
+            ]);
+
+            $success = $this->dutyService->removeSoldierFromDuty($duty->id, $request->soldier_id);
+
+            if ($success) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Soldier removed from duty successfully.'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to remove soldier from duty.'
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to remove soldier: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get duty statistics (AJAX endpoint)
+     */
+    public function getStatistics(): JsonResponse
+    {
+        try {
+            $statistics = $this->dutyService->getDutyStatistics();
+
+            return response()->json([
+                'success' => true,
+                'statistics' => $statistics
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load statistics: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Check soldier availability for duty (AJAX endpoint)
+     */
+    public function checkSoldierAvailability(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'soldier_id' => 'required|exists:soldiers,id',
+                'start_time' => 'required|date_format:H:i',
+                'end_time' => 'required|date_format:H:i',
+                'duration_days' => 'required|integer|min:1|max:30',
+                'exclude_duty_id' => 'nullable|exists:duties,id'
+            ]);
+
+            $soldier = Soldier::find($request->soldier_id);
+
+            if (!$soldier) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Soldier not found.'
+                ], 404);
+            }
+
+            $isAvailable = $this->dutyService->isSoldierAvailableForDuty($soldier, $request->exclude_duty_id);
+
+            $hasTimeConflict = false;
+            if ($isAvailable) {
+                $hasTimeConflict = $this->dutyService->hasTimeConflictForSoldier(
+                    $soldier->id,
+                    $request->start_time,
+                    $request->end_time,
+                    $request->duration_days,
+                    $request->exclude_duty_id
+                );
+            }
+
+            $activeAssignments = $soldier->getActiveAssignments();
+
+            return response()->json([
+                'success' => true,
+                'is_available' => $isAvailable && !$hasTimeConflict,
+                'has_time_conflict' => $hasTimeConflict,
+                'is_on_leave' => $soldier->is_on_leave,
+                'active_assignments' => $activeAssignments,
+                'soldier_details' => [
+                    'full_name' => $soldier->full_name,
+                    'army_no' => $soldier->army_no,
+                    'rank' => $soldier->rank->name,
+                    'company' => $soldier->company->name ?? 'N/A'
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to check availability: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get duty assignments breakdown (AJAX endpoint)
+     */
+    public function getDutyAssignments(Duty $duty): JsonResponse
+    {
+        try {
+            $fixedAssignments = $this->dutyService->getDutyFixedAssignments($duty->id);
+            $rosterAssignments = $this->dutyService->getDutyRosterAssignments($duty->id);
+            $allSoldiers = $this->dutyService->getDutySoldiers($duty->id);
+
+            $breakdown = [
+                'fixed' => [
+                    'count' => $fixedAssignments->count(),
+                    'assignments' => $fixedAssignments->map(function ($assignment) {
+                        return [
+                            'soldier_name' => $assignment->soldier->full_name,
+                            'army_no' => $assignment->soldier->army_no,
+                            'rank' => $assignment->soldier->rank->name,
+                            'priority' => $assignment->priority,
+                            'remarks' => $assignment->remarks
+                        ];
+                    })
+                ],
+                'roster' => [
+                    'count' => $rosterAssignments->count(),
+                    'assignments' => $rosterAssignments->groupBy('rank_id')->map(function ($assignments, $rankId) {
+                        $first = $assignments->first();
+                        return [
+                            'rank_name' => $first->rank->name,
+                            'manpower' => $first->manpower,
+                            'group_id' => $first->group_id,
+                            'potential_soldiers' => Soldier::where('rank_id', $rankId)
+                                ->where('status', true)
+                                ->notOnLeave()
+                                ->count()
+                        ];
+                    })->values()
+                ],
+                'total_soldiers' => count($allSoldiers)
+            ];
+
+            return response()->json([
+                'success' => true,
+                'breakdown' => $breakdown
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load duty assignments: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk update duty status
+     */
+    public function bulkUpdateStatus(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'duty_ids' => 'required|array',
+                'duty_ids.*' => 'exists:duties,id',
+                'status' => 'required|in:Active,Inactive'
+            ]);
+
+            $updatedCount = Duty::whereIn('id', $request->duty_ids)
+                ->update(['status' => $request->status]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully updated {$updatedCount} duties to {$request->status} status.",
+                'updated_count' => $updatedCount
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update duty status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Export duties to various formats
+     */
+    public function export(Request $request)
+    {
+        try {
+            $duties = $this->dutyService->searchDuties(
+                search: $request->search,
+                status: $request->status,
+                sortBy: $request->get('sort_by', 'duty_name'),
+                sortDirection: 'asc'
+            );
+
+            $format = $request->get('format', 'pdf');
+
+            // You can implement export logic here for PDF, Excel, etc.
+            // This is a placeholder for export functionality
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Export functionality not implemented yet.'
+            ], 501);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to export duties: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Duplicate an existing duty
+     */
+    public function duplicate(Duty $duty): RedirectResponse
+    {
+        try {
+            DB::transaction(function () use ($duty) {
+                // Create new duty with similar data
+                $newDuty = $duty->replicate();
+                $newDuty->duty_name = $duty->duty_name . ' (Copy)';
+                $newDuty->created_at = now();
+                $newDuty->updated_at = now();
+                $newDuty->save();
+
+                // Copy assignments (only roster assignments, not fixed soldiers)
+                foreach ($duty->dutyRanks as $assignment) {
+                    if ($assignment->assignment_type === 'roster') {
+                        $newAssignment = $assignment->replicate();
+                        $newAssignment->duty_id = $newDuty->id;
+                        $newAssignment->created_at = now();
+                        $newAssignment->updated_at = now();
+                        $newAssignment->save();
                     }
                 }
-            ]
+            });
 
-
-        ]);
-
-        // Prevent duplicate assignment
-        $exists = DutyRank::where('duty_id', $request->duty_id)
-            ->where('rank_id', $request->rank_id)
-            ->first();
-
-        if ($exists) {
-            // Send old input back + custom error message
+            return redirect()
+                ->route('duty.index')
+                ->with('success', 'Duty duplicated successfully. Please update fixed soldier assignments.');
+        } catch (\Exception $e) {
             return back()
-                ->withInput() // preserve all input values
-                ->with('error', 'This duty is already assigned to this rank. Duty: '
-                    . $exists->duty->duty_name
-                    . ', Rank: ' . $exists->rank->name
-                    . ', Type: ' . $exists->duty_type);
+                ->with('error', 'Failed to duplicate duty: ' . $e->getMessage());
         }
-
-        DutyRank::create($request->all());
-
-        return redirect()->route('duty.assigntorank')->with('success', 'Duty assigned successfully.');
-    }
-
-    public function editAssignment($id)
-    {
-        $assignment = DutyRank::findOrFail($id);
-        $duties = Duty::all();
-        $ranks = Rank::all();
-
-        return view('mpm.page.duty.editAssign', compact('assignment', 'duties', 'ranks'));
-    }
-
-    public function updateAssignment(Request $request, $id)
-    {
-        $assignment = DutyRank::findOrFail($id);
-
-        $request->validate([
-            'duty_id' => 'required|exists:duties,id',
-            'rank_id' => 'required|exists:ranks,id',
-            'duty_type' => 'required|in:fixed,roster,regular',
-            'priority' => 'nullable|integer|min:1',
-            'rotation_days' => 'nullable|integer|min:1',
-            'remarks' => 'nullable|string|max:255',
-        ]);
-
-        $assignment->update($request->all());
-
-        return redirect()->route('duty.assign')->with('success', 'Assignment updated successfully.');
-    }
-
-    public function deleteAssignment($id)
-    {
-        $assignment = DutyRank::findOrFail($id);
-        $assignment->delete();
-
-        return redirect()->route('duty.assign')->with('success', 'Assignment deleted successfully.');
     }
 }
