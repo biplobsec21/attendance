@@ -5,21 +5,21 @@ Overview
 
 The Dynamic Duty Creation Module automates the process of assigning duties to soldiers while respecting manpower requirements, soldier availability, and rank hierarchy. It supports two types of duties:
 Roster Duties – automatically generated from the duties table.
-Fixed Duties – based on predefined soldier commitments such as courses, cadres, or services.
+Fixed Duties – based on predefined soldier commitments such as duty_rank (fixed type ),courses, cadres, or services.
 
 Key Validation Rules:
 
 Duty status check: Only Active duties can be used for roster generation.
-Unique assignment: A soldier cannot be double-booked for the same date.
+Unique assignment: A soldier cannot be double-booked for the same time.
 Fair rotation: Prevent consecutive same duty for the same soldier.
-Exclusion logic: Soldiers with active cadre/course/service are skipped.
+Exclusion logic: Soldiers with active cadre/course/service/fixed are skipped.
 Leave/availability check: Ensure soldier is not on leave before assigning.
 
 
 Business Rules
 1. Roster Duties
 
- - Roster duties are generated using active records from the duties table.
+ - Roster duties are generated using active records and manpower from the duties table.
  - Each duty has:
 	duty_id
 	start_time / end_time
@@ -27,50 +27,74 @@ Business Rules
 
 Soldiers are assigned to these duties according to:
 	- Rank match → only soldiers of the correct rank are considered.
-	- Manpower count → assign as many soldiers as required.
-	- Fair distribution rule → avoid assigning the same soldier to the same duty type on consecutive days (e.g., no back-to-back night guard).
+	- Manpower count → assign as many soldiers as required. There is a group duty for example: A duty is distibuted two ranks for  example: 1 soldiers or 1 coloner. In This type of duites should select between these two ranks if manpower is available.
+	- Fair distribution rule → avoid assigning the same soldier to the same duty type on consecutive duities (e.g., no back-to-back duty of night guard) although the duty could be 1 or 2 or 3 days long. Make sure when the duty is finished it, the next duty for that soliders will not be same as previous duty.
 
-    - Fairness check → no back-to-back same duty (e.g., no consecutive night guards).
+    - Fairness check → no back-to-back same duty (e.g., no consecutive duty).
 	Exclusions → exclude soldiers who:
-	   - Are in active cadre/course/service on the given date.
+	   - Are in active cadre/course/service/fixed type on the given date.
 	   - Are on leave.
 
-Assigned roster duties are stored in the soldier_duties table.
+All the Assigned roster duties are stored in the soldier_duties table.
 Exclusions:
-    - Soldiers currently on cadres, courses, or services (soldier_cadres, soldier_courses, soldier_services) are excluded since they have fixed assignments.
+    - Soldiers currently on cadres, courses, or services (duty_rank (fixed type ), soldier_cadres, soldier_courses, soldier_services) are excluded since they have fixed assignments.
+
+
 
 2. Fixed Duties
-   - Soldiers with scheduled cadres, courses, or services are treated as already assigned to a duty during that period.
+   - Soldiers with scheduled cadres, courses, or services are treated as already assigned to a duty during that time period.
+   - Soldieres with  duty_rank (fixed type ) is also considered as fixed duties.
 Rules:
   - Only active soldiers are considered (not on leave).
+  - Only the duty_rank (fixed type ) also considered
   - Dates must fall within start_date and end_date of their cadre/course/service.
-  - These fixed duties override any roster assignment for the same period.
+  - May be in the soldiers duites tables the fixed type duties can be generated based on duty_rank (fixed type ).
 
 Actions:
   keep soldier_cadres, soldier_courses, soldier_services as the source of truth.
+  also considerd soldier_duties duty type fixed as the source of truth.
   Whenever display or calculate a soldier’s duty for a date, you merge dynamic (roster) duties + fixed duties (derived from those tables).
-
-
-➡️ Stores only roster duties (auto-generated).
-➡️ These remain unchanged. Their records are treated as fixed duties whenever duty assignment/reporting is done.
 
 These are the database tables.
 @Bangla71desh*
 
 duties
+===================
+
 | Column     | Type   | Description                      |
 | ---------- | ------ | -------------------------------- |
 | id         | int    | Primary key                      |
 | duty_name  | string | Name of duty (e.g., Night Guard) |
 | start_time | time   | Duty start time                  |
 | end_time   | time   | Duty end time                    |
+| duration_days | int(11)| duty duration	                            |
 | remark     | text   | Notes                            |
 | status     | string | `Active` / `Inactive`            |
 | created_at | ts     | Timestamp                        |
 | updated_at | ts     | Timestamp                        |
 
-soldier_services
+duty_rank
+=============
+id
+duty_id
+rank_id
+soldier_id
+duration_days
+assignment_type varchar('fixed','roaster')
+duty_type enum('fixed', 'roster', 'regular')
+group_id
+remarks
+priority
+rotation_days
+fixed_soldier_id
+manpower
+created_at
+updated_at
+start_time
+end_time
 
+soldier_services
+===================
 | Column                 | Type   | Description                        |
 | ---------------------- | ------ | ---------------------------------- |
 | id                     | int    | Primary key                        |
@@ -134,3 +158,9 @@ soldier_duties
 | created_at    | ts   | Timestamp                                           |
 | updated_at    | ts   | Timestamp                                           |
 
+
+During developement process follow the following step:
+First step:
+   - create soldier_duities based on duties,duty_rank table with necessary condition which provide above
+Second step:
+   - will provide later.

@@ -151,6 +151,30 @@ Route::middleware('auth')->group(function () {
             ->name('assignments.generateForDate');
     });
 
+    // routes/api.php or routes/web.php
+
+
+
+    Route::prefix('duty-assignments')->middleware(['auth'])->group(function () {
+        Route::get('/', [DutyAssignmentController::class, 'index'])->name('duty-assignments.index');
+        // API endpoints for AJAX calls
+        Route::post('/assign', [DutyAssignmentController::class, 'assignForDate'])->name('duty-assignments.assign');
+        Route::post('/assign-range', [DutyAssignmentController::class, 'assignForDateRange'])->name('duty-assignments.assign-range');
+        Route::get('/statistics', [DutyAssignmentController::class, 'statistics'])->name('duty-assignments.statistics');
+        Route::get('/details', [DutyAssignmentController::class, 'details'])->name('duty-assignments.details');
+        Route::get('/unfulfilled', [DutyAssignmentController::class, 'unfulfilled'])->name('duty-assignments.unfulfilled');
+        Route::post('/check-eligibility', [DutyAssignmentController::class, 'checkEligibility'])->name('duty-assignments.check-eligibility');
+        // reassign means changing the soldier for an existing assignment
+        Route::post('/reassign', [DutyAssignmentController::class, 'reassign'])->name('duty-assignments.reassign');
+        Route::post('/assign-soldier', [DutyAssignmentController::class, 'assignSoldier'])->name('duty-assignments.assign-soldier');
+
+        Route::post('/cancel', [DutyAssignmentController::class, 'cancel'])->name('duty-assignments.cancel');
+        Route::get('/export', [DutyAssignmentController::class, 'export'])->name('duty-assignments.export');
+
+        Route::get('/available-soldiers', [DutyAssignmentController::class, 'availableSoldiers']);
+        Route::get('/available-duties', [DutyAssignmentController::class, 'availableDuties']);
+    });
+
 
     Route::get('sports', [ViewController::class, 'sportsIndex'])->name('sports.index');
     Route::get('sports/create', [ViewController::class, 'sportsCreate'])->name('sports.create');

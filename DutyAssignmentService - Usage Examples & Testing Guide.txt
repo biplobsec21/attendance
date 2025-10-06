@@ -1,0 +1,1005 @@
+# DutyAssignmentService - Usage Examples & Testing Guide
+
+## Table of Contents
+1. [Basic Usage](#basic-usage)
+2. [Controller Integration](#controller-integration)
+3. [Testing Scenarios](#testing-scenarios)
+4. [Log Monitoring](#log-monitoring)
+5. [Common Issues & Troubleshooting](#common-issues--troubleshooting)
+
+---
+
+## Basic Usage
+
+### 1. Assign Duties for a Single Date
+
+```php
+use App\Services\DutyAssignmentService;
+
+$service = new DutyAssignmentService();
+
+// Assign all roster duties for January 1, 2025
+$service->assignDutiesForDate('2025-01-01');
+```
+
+**What happens:**
+- Retrieves all active duties with roster assignments
+- Builds exclusion list (soldiers on leave, courses, cadres, services, fixed duties)
+- Assigns eligible soldiers to duties based on rank and manpower requirements
+- Creates soldier_duties records for each day of multi-day duties
+- Logs detailed information at each step
+
+---
+
+### 2. Assign Duties for a Date Range
+
+```php
+$service = new DutyAssignmentService();
+
+// Assign duties for entire January 2025
+$result = $service->assignDutiesForDateRange('2025-01-01', '2025-01-31');
+
+// Check results
+echo "Successfully assigned: " . count($result['assigned_dates']) . " dates\n";
+echo "Failed: " . count($result['errors']) . " dates\n";
+
+if (!empty($result['errors'])) {
+    foreach ($result['errors'] as $error) {
+        echo "Error on {$error['date']}: {$error['error']}\n";
+    }
+}
+```
+
+---
+
+### 3. Check if Soldier Can Be Assigned
+
+```php
+$service = new DutyAssignmentService();
+
+$result = $service->canAssignSoldierToDuty(
+    soldierId: 123,
+    dutyId: 5,
+    date: '2025-01-15'
+);
+
+if ($result['can_assign']) {
+    echo "Soldier can be assigned!\n";
+} else {
+    echo "Cannot assign soldier. Reasons:\n";
+    foreach ($result['reasons'] as $reason) {
+        echo "- $reason\n";
+    }
+}
+```
+
+**Output example:**
+```
+Cannot assign soldier. Reasons:
+- Soldier has conflicting commitment (cadre/course/service/fixed duty)
+- Fair rotation violation: soldier just completed this duty
+```
+
+---
+
+### 4. Get Assignment Statistics
+
+```php
+$service = new DutyAssignmentService();
+
+$stats = $service->getAssignmentStatistics('2025-01-15');
+
+echo "Date: {$stats['date']}\n";
+echo "Total assignments: {$stats['total_assignments']}\n";
+echo "Unique soldiers: {$stats['unique_soldiers']}\n";
+echo "Average duties per soldier: {$stats['average_duties_per_soldier']}\n";
+
+foreach ($stats['assignments_by_duty'] as $duty) {
+    echo "\n{$duty['duty_name']}:\n";
+    echo "  Required: {$duty['required_manpower']}\n";
+    echo "  Assigned: {$duty['soldiers_assigned']}\n";
+    echo "  Fulfillment: {$duty['fulfillment_rate']}%\n";
+}
+```
+
+---
+
+### 5. Check Unfulfilled Duties
+
+```php
+$service = new DutyAssignmentService();
+
+$unfulfilled = $service->getUnfulfilledDuties('2025-01-15');
+
+if (empty($unfulfilled)) {
+    echo "All duties are fully staffed!\n";
+} else {
+    echo "Duties with shortages:\n";
+    foreach ($unfulfilled as $duty) {
+        echo "- {$duty['duty_name']}: ";
+        echo "{$duty['shortage']} soldiers short ";
+        echo "({$duty['fulfillment_rate']}% filled)\n";
+    }
+}
+```
+
+---
+
+### 6. Reassign a Soldier
+
+```php
+$service = new DutyAssignmentService();
+
+$result = $service->reassignSoldier(
+    soldierId: 123,
+    fromDutyId: 5,    // Remove from Night Guard
+    toDutyId: 7,      // Assign to Gate Guard
+    date: '2025-01-15'
+);
+
+if ($result['success']) {
+    echo $result['message'] . "\n";
+} else {
+    echo "Reassignment failed: {$result['message']}\n";
+    foreach ($result['reasons'] as $reason) {
+        echo "- $reason\n";
+    }
+}
+```
+
+---
+
+### 7. Cancel Duty Assignment
+
+```php
+$service = new DutyAssignmentService();
+
+$cancelled = $service->cancelDutyAssignment(
+    soldierId: 123,
+    dutyId: 5,
+    date: '2025-01-15'
+);
+
+if ($cancelled) {
+    echo "Duty assignment cancelled successfully\n";
+} else {
+    echo "Failed to cancel assignment (may not exist)\n";
+}
+```
+
+---
+
+### 8. Get Soldier's Duty History
+
+```php
+$service = new DutyAssignmentService();
+
+$history = $service->getSoldierDutyHistory(
+    soldierId: 123,
+    days: 30  // Last 30 days
+);
+
+echo "Duty history for Soldier #123:\n";
+foreach ($history as $assignment) {
+    echo "- {$assignment->assigned_date}: {$assignment->duty->duty_name}\n";
+}
+```
+
+---
+
+## Controller Integration
+
+### Example Controller
+
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\DutyAssignmentService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class DutyAssignmentController extends Controller
+{
+    protected $dutyService;
+
+    public function __construct(DutyAssignmentService $dutyService)
+    {
+        $this->dutyService = $dutyService;
+    }
+
+    /**
+     * Assign duties for a specific date
+     */
+    public function assignForDate(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date'
+        ]);
+
+        try {
+            $this->dutyService->assignDutiesForDate($request->date);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Duties assigned successfully',
+                'date' => $request->date
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Duty assignment failed', [
+                'date' => $request->date,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to assign duties',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Assign duties for a date range
+     */
+    public function assignForDateRange(Request $request)
+    {
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date'
+        ]);
+
+        try {
+            $result = $this->dutyService->assignDutiesForDateRange(
+                $request->start_date,
+                $request->end_date
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Date range processed',
+                'assigned_dates' => $result['assigned_dates'],
+                'errors' => $result['errors'],
+                'success_rate' => count($result['assigned_dates']) . '/' .
+                                (count($result['assigned_dates']) + count($result['errors']))
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process date range',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get assignment statistics
+     */
+    public function statistics(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date'
+        ]);
+
+        $stats = $this->dutyService->getAssignmentStatistics($request->date);
+
+        return response()->json([
+            'success' => true,
+            'data' => $stats
+        ]);
+    }
+
+    /**
+     * Check unfulfilled duties
+     */
+    public function unfulfilled(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date'
+        ]);
+
+        $unfulfilled = $this->dutyService->getUnfulfilledDuties($request->date);
+
+        return response()->json([
+            'success' => true,
+            'has_unfulfilled' => !empty($unfulfilled),
+            'data' => $unfulfilled
+        ]);
+    }
+
+    /**
+     * Check if soldier can be assigned
+     */
+    public function checkEligibility(Request $request)
+    {
+        $request->validate([
+            'soldier_id' => 'required|integer',
+            'duty_id' => 'required|integer',
+            'date' => 'required|date'
+        ]);
+
+        $result = $this->dutyService->canAssignSoldierToDuty(
+            $request->soldier_id,
+            $request->duty_id,
+            $request->date
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => $result
+        ]);
+    }
+
+    /**
+     * Reassign a soldier
+     */
+    public function reassign(Request $request)
+    {
+        $request->validate([
+            'soldier_id' => 'required|integer',
+            'from_duty_id' => 'required|integer',
+            'to_duty_id' => 'required|integer',
+            'date' => 'required|date'
+        ]);
+
+        $result = $this->dutyService->reassignSoldier(
+            $request->soldier_id,
+            $request->from_duty_id,
+            $request->to_duty_id,
+            $request->date
+        );
+
+        return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
+    /**
+     * Cancel assignment
+     */
+    public function cancel(Request $request)
+    {
+        $request->validate([
+            'soldier_id' => 'required|integer',
+            'duty_id' => 'required|integer',
+            'date' => 'required|date'
+        ]);
+
+        $cancelled = $this->dutyService->cancelDutyAssignment(
+            $request->soldier_id,
+            $request->duty_id,
+            $request->date
+        );
+
+        return response()->json([
+            'success' => $cancelled,
+            'message' => $cancelled ? 'Assignment cancelled' : 'Assignment not found'
+        ]);
+    }
+}
+```
+
+### Routes
+
+```php
+// routes/api.php or routes/web.php
+
+use App\Http\Controllers\DutyAssignmentController;
+
+Route::prefix('duty-assignments')->group(function () {
+    Route::post('/assign', [DutyAssignmentController::class, 'assignForDate']);
+    Route::post('/assign-range', [DutyAssignmentController::class, 'assignForDateRange']);
+    Route::get('/statistics', [DutyAssignmentController::class, 'statistics']);
+    Route::get('/unfulfilled', [DutyAssignmentController::class, 'unfulfilled']);
+    Route::post('/check-eligibility', [DutyAssignmentController::class, 'checkEligibility']);
+    Route::post('/reassign', [DutyAssignmentController::class, 'reassign']);
+    Route::post('/cancel', [DutyAssignmentController::class, 'cancel']);
+});
+```
+
+---
+
+## Testing Scenarios
+
+### Test 1: Multi-Day Duty Fair Rotation
+
+```php
+// Setup
+$duty = Duty::create([
+    'duty_name' => 'Extended Guard',
+    'start_time' => '08:00',
+    'end_time' => '08:00',
+    'duration_days' => 3,
+    'status' => 'Active'
+]);
+
+DutyRank::create([
+    'duty_id' => $duty->id,
+    'rank_id' => $captainRank->id,
+    'duty_type' => 'roster',
+    'manpower' => 1
+]);
+
+// Test
+$service = new DutyAssignmentService();
+
+// Day 1-3: Assign Captain A
+$service->assignDutiesForDate('2025-01-01');
+$day1Soldier = SoldierDuty::where('duty_id', $duty->id)
+    ->where('assigned_date', '2025-01-01')
+    ->first()->soldier_id;
+
+// Day 4-6: Should assign Captain B (not A)
+$service->assignDutiesForDate('2025-01-04');
+$day4Soldier = SoldierDuty::where('duty_id', $duty->id)
+    ->where('assigned_date', '2025-01-04')
+    ->first()->soldier_id;
+
+// Assert
+assert($day1Soldier != $day4Soldier, 'Fair rotation should assign different soldier');
+
+// Day 7-9: Can assign Captain A again
+$service->assignDutiesForDate('2025-01-07');
+$day7Soldier = SoldierDuty::where('duty_id', $duty->id)
+    ->where('assigned_date', '2025-01-07')
+    ->first()->soldier_id;
+
+assert($day7Soldier == $day1Soldier, 'Captain A can be assigned after gap');
+```
+
+---
+
+### Test 2: Time Conflict Detection
+
+```php
+// Create overlapping duties
+$morningDuty = Duty::create([
+    'duty_name' => 'Morning Guard',
+    'start_time' => '08:00',
+    'end_time' => '16:00',
+    'duration_days' => 1,
+    'status' => 'Active'
+]);
+
+$afternoonDuty = Duty::create([
+    'duty_name' => 'Afternoon Guard',
+    'start_time' => '14:00',  // Overlaps with morning (14:00-16:00)
+    'end_time' => '22:00',
+    'duration_days' => 1,
+    'status' => 'Active'
+]);
+
+// Both require same rank
+DutyRank::create(['duty_id' => $morningDuty->id, 'rank_id' => $captainRank->id, 'duty_type' => 'roster', 'manpower' => 1]);
+DutyRank::create(['duty_id' => $afternoonDuty->id, 'rank_id' => $captainRank->id, 'duty_type' => 'roster', 'manpower' => 1]);
+
+// Test
+$service = new DutyAssignmentService();
+$service->assignDutiesForDate('2025-01-01');
+
+// Get assigned soldiers
+$morningAssignments = SoldierDuty::where('duty_id', $morningDuty->id)->pluck('soldier_id')->toArray();
+$afternoonAssignments = SoldierDuty::where('duty_id', $afternoonDuty->id)->pluck('soldier_id')->toArray();
+
+// Assert: No soldier should be in both
+$intersection = array_intersect($morningAssignments, $afternoonAssignments);
+assert(empty($intersection), 'No soldier should have overlapping time assignments');
+```
+
+---
+
+### Test 3: Group Duty (Captain OR Colonel)
+
+```php
+$duty = Duty::create([
+    'duty_name' => 'Command Post',
+    'start_time' => '08:00',
+    'end_time' => '17:00',
+    'duration_days' => 1,
+    'status' => 'Active'
+]);
+
+// Group 1: Captain OR Colonel
+DutyRank::create([
+    'duty_id' => $duty->id,
+    'rank_id' => $captainRank->id,
+    'duty_type' => 'roster',
+    'manpower' => 1,
+    'group_id' => 1
+]);
+
+DutyRank::create([
+    'duty_id' => $duty->id,
+    'rank_id' => $colonelRank->id,
+    'duty_type' => 'roster',
+    'manpower' => 1,
+    'group_id' => 1
+]);
+
+// Test
+$service = new DutyAssignmentService();
+$service->assignDutiesForDate('2025-01-01');
+
+$assignments = SoldierDuty::where('duty_id', $duty->id)
+    ->where('assigned_date', '2025-01-01')
+    ->count();
+
+assert($assignments == 1, 'Group duty should assign only 1 soldier');
+```
+
+---
+
+### Test 4: Exclusions (Cadre/Course/Service/Fixed)
+
+```php
+// Put soldier on course
+$soldier = Soldier::first();
+SoldierCourse::create([
+    'soldier_id' => $soldier->id,
+    'course_id' => 1,
+    'start_date' => '2025-01-01',
+    'end_date' => '2025-01-15',
+    'status' => 'active'
+]);
+
+// Try to assign duties
+$service = new DutyAssignmentService();
+$service->assignDutiesForDate('2025-01-05');  // During course
+
+$assignments = SoldierDuty::where('soldier_id', $soldier->id)
+    ->where('assigned_date', '2025-01-05')
+    ->count();
+
+assert($assignments == 0, 'Soldier on course should not be assigned');
+
+// After course ends
+$service->assignDutiesForDate('2025-01-20');  // After course
+$assignmentsAfter = SoldierDuty::where('soldier_id', $soldier->id)
+    ->where('assigned_date', '2025-01-20')
+    ->exists();
+
+assert($assignmentsAfter, 'Soldier should be available after course ends');
+```
+
+---
+
+## Log Monitoring
+
+### View Logs in Laravel
+
+```bash
+# Real-time log monitoring
+tail -f storage/logs/laravel.log
+
+# Search for specific assignment
+grep "duty_id.*5" storage/logs/laravel.log
+
+# View assignment errors only
+grep "ERROR" storage/logs/laravel.log | grep "duty"
+```
+
+### Key Log Entries to Monitor
+
+**1. Assignment Start:**
+```
+[INFO] Starting duty assignment process {"date":"2025-01-01"}
+```
+
+**2. Duties Retrieved:**
+```
+[INFO] Active duties retrieved {
+    "date":"2025-01-01",
+    "total_duties":5,
+    "duty_names":["Night Guard","Gate Guard","..."]
+}
+```
+
+**3. Exclusions:**
+```
+[INFO] Exclusion list finalized {
+    "total_excluded":12,
+    "cadres":3,
+    "courses":5,
+    "services":2,
+    "fixed_duties":2
+}
+```
+
+**4. Eligibility Filtering:**
+```
+[INFO] Eligible soldiers filtering completed {
+    "initial_count":20,
+    "filtered_by_fair_rotation":3,
+    "filtered_by_time_conflict":2,
+    "final_eligible":15
+}
+```
+
+**5. Warnings:**
+```
+[WARNING] Insufficient soldiers for duty {
+    "duty_name":"Night Guard",
+    "required":5,
+    "available":3,
+    "shortage":2
+}
+```
+
+---
+
+## Common Issues & Troubleshooting
+
+### Issue 1: No Soldiers Assigned
+
+**Symptoms:** Duties created but no soldier_duties records
+
+**Check:**
+```php
+// Verify duration_days is stored correctly
+$assignments = SoldierDuty::where('soldier_id', 123)
+    ->orderBy('assigned_date', 'desc')
+    ->limit(5)
+    ->get(['soldier_id', 'duty_id', 'assigned_date', 'duration_days']);
+
+dd($assignments);
+
+// Check if fair rotation logic is executed
+Log::info('Testing fair rotation');
+$service = new DutyAssignmentService();
+$result = $service->canAssignSoldierToDuty(123, 5, '2025-01-04');
+dd($result);
+```
+
+**Solution:** Ensure `duration_days` column exists in `soldier_duties` table and is populated correctly
+
+---
+
+### Issue 3: Time Conflicts Not Detected
+
+**Symptoms:** Soldiers assigned to overlapping duties
+
+**Check:**
+```php
+$soldier = Soldier::find(123);
+$date = '2025-01-01';
+
+// Get all duties for this soldier on this date
+$duties = SoldierDuty::with('duty')
+    ->where('soldier_id', 123)
+    ->where('assigned_date', $date)
+    ->get();
+
+foreach ($duties as $duty) {
+    echo "Duty: {$duty->duty->duty_name}\n";
+    echo "Time: {$duty->start_time} - {$duty->end_time}\n";
+    echo "---\n";
+}
+```
+
+**Solution:** Verify time overlap logic is working. Check logs for "Time conflict detected" messages
+
+---
+
+### Issue 4: Group Duties Assigning Multiple Ranks
+
+**Symptoms:** Both Captain AND Colonel assigned when only one was needed
+
+**Check:**
+```php
+$dutyRanks = DutyRank::where('duty_id', 5)
+    ->where('duty_type', 'roster')
+    ->get(['rank_id', 'group_id', 'manpower']);
+
+dd($dutyRanks);
+
+// Check assignments
+$assignments = SoldierDuty::with('soldier.rank')
+    ->where('duty_id', 5)
+    ->where('assigned_date', '2025-01-01')
+    ->get();
+
+dd($assignments);
+```
+
+**Solution:** Ensure all ranks in a group have the same `group_id` value
+
+---
+
+### Issue 5: Performance Issues with Large Datasets
+
+**Symptoms:** Slow assignment process
+
+**Check:**
+```bash
+# Enable query logging
+DB::enableQueryLog();
+$service->assignDutiesForDate('2025-01-01');
+$queries = DB::getQueryLog();
+echo "Total queries: " . count($queries) . "\n";
+```
+
+**Optimization:**
+```php
+// Enable eager loading
+Duty::with([
+    'dutyRanks.rank',
+    'dutyRanks.soldier'
+])->get();
+
+// Use chunk for large datasets
+Soldier::where('status', true)
+    ->chunk(100, function ($soldiers) {
+        // Process in batches
+    });
+```
+
+---
+
+### Issue 6: Exclusions Not Working
+
+**Symptoms:** Soldiers on courses still getting assigned
+
+**Check:**
+```php
+$soldier = Soldier::find(123);
+$date = '2025-01-01';
+
+// Check active courses
+$courses = SoldierCourse::where('soldier_id', 123)
+    ->where('status', 'active')
+    ->where('start_date', '<=', $date)
+    ->where(function ($q) use ($date) {
+        $q->whereNull('end_date')
+          ->orWhere('end_date', '>=', $date);
+    })
+    ->get();
+
+dd($courses);
+
+// Check if in exclusion list
+$service = new DutyAssignmentService();
+$excluded = $service->getExcludedSoldierIds($date);
+dd(in_array(123, $excluded));
+```
+
+**Solution:**
+- Ensure courses have `status = 'active'` (not 'scheduled')
+- Verify date ranges are correct
+- Check that the course hasn't ended before the duty date
+
+---
+
+## Database Queries for Debugging
+
+### Find Soldiers with Multiple Duties on Same Date
+```sql
+SELECT
+    soldier_id,
+    assigned_date,
+    COUNT(*) as duty_count
+FROM soldier_duties
+WHERE assigned_date = '2025-01-01'
+GROUP BY soldier_id, assigned_date
+HAVING duty_count > 1;
+```
+
+### Find Duties with Insufficient Manpower
+```sql
+SELECT
+    d.id,
+    d.duty_name,
+    d.manpower as required,
+    COUNT(sd.id) as assigned,
+    (d.manpower - COUNT(sd.id)) as shortage
+FROM duties d
+LEFT JOIN soldier_duties sd ON d.id = sd.duty_id
+    AND sd.assigned_date = '2025-01-01'
+WHERE d.status = 'Active'
+GROUP BY d.id, d.duty_name, d.manpower
+HAVING shortage > 0;
+```
+
+### Find Time Overlaps
+```sql
+SELECT
+    sd1.soldier_id,
+    sd1.assigned_date,
+    d1.duty_name as duty1,
+    d1.start_time as start1,
+    d1.end_time as end1,
+    d2.duty_name as duty2,
+    d2.start_time as start2,
+    d2.end_time as end2
+FROM soldier_duties sd1
+JOIN duties d1 ON sd1.duty_id = d1.id
+JOIN soldier_duties sd2 ON sd1.soldier_id = sd2.soldier_id
+    AND sd1.assigned_date = sd2.assigned_date
+    AND sd1.id < sd2.id
+JOIN duties d2 ON sd2.duty_id = d2.id
+WHERE sd1.assigned_date = '2025-01-01';
+```
+
+### Find Back-to-Back Same Duties (Fair Rotation Violations)
+```sql
+SELECT
+    sd1.soldier_id,
+    sd1.duty_id,
+    d.duty_name,
+    sd1.assigned_date as date1,
+    sd2.assigned_date as date2,
+    DATEDIFF(sd2.assigned_date, sd1.assigned_date) as days_gap
+FROM soldier_duties sd1
+JOIN soldier_duties sd2 ON sd1.soldier_id = sd2.soldier_id
+    AND sd1.duty_id = sd2.duty_id
+    AND sd2.assigned_date > sd1.assigned_date
+JOIN duties d ON sd1.duty_id = d.id
+WHERE DATEDIFF(sd2.assigned_date, sd1.assigned_date) = 1
+ORDER BY sd1.soldier_id, sd1.assigned_date;
+```
+
+---
+
+## Scheduled Jobs (Optional)
+
+### Auto-Assign Duties Daily
+
+Create a scheduled job to automatically assign duties:
+
+```php
+// app/Console/Commands/AssignDailyDuties.php
+
+namespace App\Console\Commands;
+
+use App\Services\DutyAssignmentService;
+use Illuminate\Console\Command;
+use Carbon\Carbon;
+
+class AssignDailyDuties extends Command
+{
+    protected $signature = 'duties:assign-daily {--days=7}';
+    protected $description = 'Assign duties for upcoming days';
+
+    public function handle(DutyAssignmentService $service)
+    {
+        $days = $this->option('days');
+        $startDate = Carbon::tomorrow()->toDateString();
+        $endDate = Carbon::tomorrow()->addDays($days - 1)->toDateString();
+
+        $this->info("Assigning duties from {$startDate} to {$endDate}");
+
+        $result = $service->assignDutiesForDateRange($startDate, $endDate);
+
+        $this->info("Successfully assigned: " . count($result['assigned_dates']) . " dates");
+
+        if (!empty($result['errors'])) {
+            $this->error("Failed: " . count($result['errors']) . " dates");
+            foreach ($result['errors'] as $error) {
+                $this->error("  {$error['date']}: {$error['error']}");
+            }
+        }
+
+        return 0;
+    }
+}
+```
+
+Register in `app/Console/Kernel.php`:
+```php
+protected function schedule(Schedule $schedule)
+{
+    // Run every day at 2 AM
+    $schedule->command('duties:assign-daily --days=7')
+             ->dailyAt('02:00')
+             ->withoutOverlapping();
+}
+```
+
+---
+
+## API Testing with Postman/cURL
+
+### 1. Assign Duties for Date
+```bash
+curl -X POST http://localhost/api/duty-assignments/assign \
+  -H "Content-Type: application/json" \
+  -d '{"date": "2025-01-01"}'
+```
+
+### 2. Get Statistics
+```bash
+curl -X GET "http://localhost/api/duty-assignments/statistics?date=2025-01-01"
+```
+
+### 3. Check Eligibility
+```bash
+curl -X POST http://localhost/api/duty-assignments/check-eligibility \
+  -H "Content-Type: application/json" \
+  -d '{
+    "soldier_id": 123,
+    "duty_id": 5,
+    "date": "2025-01-01"
+  }'
+```
+
+### 4. Reassign Soldier
+```bash
+curl -X POST http://localhost/api/duty-assignments/reassign \
+  -H "Content-Type: application/json" \
+  -d '{
+    "soldier_id": 123,
+    "from_duty_id": 5,
+    "to_duty_id": 7,
+    "date": "2025-01-01"
+  }'
+```
+
+---
+
+## Performance Benchmarks
+
+Expected performance on average hardware:
+
+| Operation | Dataset Size | Expected Time |
+|-----------|--------------|---------------|
+| Single date assignment | 10 duties, 100 soldiers | < 2 seconds |
+| Date range (7 days) | 10 duties, 100 soldiers | < 10 seconds |
+| Date range (30 days) | 10 duties, 100 soldiers | < 40 seconds |
+| Statistics generation | 50 assignments | < 500ms |
+
+If performance is slower, check:
+- Missing database indexes
+- N+1 query issues (should be resolved with eager loading)
+- Large exclusion lists
+- Complex duty time ranges
+
+---
+
+## Best Practices
+
+1. **Always run assignments in off-peak hours** (e.g., 2 AM)
+2. **Monitor logs daily** for warnings and errors
+3. **Check unfulfilled duties** after each assignment run
+4. **Keep exclusion lists clean** (complete old courses/cadres/services)
+5. **Regularly review fair rotation** to ensure even distribution
+6. **Test new duties** with a single date before running date ranges
+7. **Backup database** before bulk operations
+8. **Set up alerts** for critical failures (email/Slack notifications)
+
+---
+
+## Summary
+
+The DutyAssignmentService provides a complete solution for:
+- ✅ Fair duty rotation with multi-day support
+- ✅ Time conflict detection and prevention
+- ✅ Group duty selection (OR logic)
+- ✅ Comprehensive exclusion handling
+- ✅ Detailed logging and monitoring
+- ✅ Statistics and reporting
+- ✅ Manual intervention tools (reassignment, cancellation)
+
+All critical business rules are implemented and validated with extensive logging for troubleshooting and auditing.
+// Check if duties are Active
+$activeDuties = Duty::where('status', 'Active')->count();
+
+// Check exclusion list
+$service = new DutyAssignmentService();
+$excluded = $service->getExcludedSoldierIds('2025-01-01');
+echo "Excluded soldiers: " . count($excluded) . "\n";
+
+// Check available soldiers
+$availableSoldiers = Soldier::where('status', true)
+    ->whereNotIn('id', $excluded)
+    ->count();
+echo "Available soldiers: $availableSoldiers\n";
+```
+
+**Solution:** Ensure you have active soldiers not on leave/courses/cadres/services
+
+---
+
+### Issue 2: Fair Rotation Not Working
+
+**Symptoms:** Same soldier assigned consecutive same duties
+
+**Check:**
+```php
