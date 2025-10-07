@@ -27,6 +27,12 @@ class UpdateDutyRequest extends FormRequest
             'status' => 'required|in:Active,Inactive',
             'manpower' => 'sometimes|integer|min:0',
 
+            // Excused Next Day Options
+            'excused_next_day_pt' => 'sometimes|boolean',
+            'excused_next_day_games' => 'sometimes|boolean',
+            'excused_next_day_roll_call' => 'sometimes|boolean',
+            'excused_next_day_parade' => 'sometimes|boolean',
+
             // Roster Assignments - Individual Ranks
             'rank_manpower' => 'sometimes|array',
             'rank_manpower.*.rank_id' => 'required_with:rank_manpower|exists:ranks,id',
@@ -373,6 +379,12 @@ class UpdateDutyRequest extends FormRequest
             'duration_days.required' => 'Duration days is required.',
             'status.required' => 'Status is required.',
 
+            // Excused Next Day messages
+            'excused_next_day_pt.boolean' => 'The excused next day PT field must be true or false.',
+            'excused_next_day_games.boolean' => 'The excused next day Games field must be true or false.',
+            'excused_next_day_roll_call.boolean' => 'The excused next day Roll Call field must be true or false.',
+            'excused_next_day_parade.boolean' => 'The excused next day Parade field must be true or false.',
+
             // Roster assignment messages
             'rank_manpower.*.rank_id.required_with' => 'Rank selection is required when adding manpower.',
             'rank_manpower.*.rank_id.exists' => 'Selected rank does not exist.',
@@ -406,6 +418,13 @@ class UpdateDutyRequest extends FormRequest
             'end_time' => 'end time',
             'duration_days' => 'duration days',
             'remark' => 'remarks',
+
+            // Excused Next Day attributes
+            'excused_next_day_pt' => 'excused next day PT',
+            'excused_next_day_games' => 'excused next day Games',
+            'excused_next_day_roll_call' => 'excused next day Roll Call',
+            'excused_next_day_parade' => 'excused next day Parade',
+
             'rank_manpower.*.rank_id' => 'rank',
             'rank_manpower.*.manpower' => 'manpower',
             'rank_groups.*.manpower' => 'group manpower',
@@ -424,6 +443,11 @@ class UpdateDutyRequest extends FormRequest
         $this->merge([
             'duration_days' => (int) ($this->duration_days ?? 1),
             'manpower' => (int) ($this->manpower ?? 0),
+            // Handle unchecked checkboxes
+            'excused_next_day_pt' => $this->has('excused_next_day_pt'),
+            'excused_next_day_games' => $this->has('excused_next_day_games'),
+            'excused_next_day_roll_call' => $this->has('excused_next_day_roll_call'),
+            'excused_next_day_parade' => $this->has('excused_next_day_parade'),
         ]);
 
         // Trim string inputs

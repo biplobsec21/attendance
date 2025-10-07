@@ -428,6 +428,73 @@
                                 @enderror
                             </div>
                         </div>
+                        {{-- Excused Options Section --}}
+                        {{-- Excused Options Section --}}
+                        <div class="group">
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                Excused Options
+                            </label>
+
+                            <div
+                                class="bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
+                                <div class="flex items-start space-x-3">
+                                    <input type="checkbox" id="default-excusal" checked disabled
+                                        class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                    <label for="default-excusal" class="text-sm text-gray-700">
+                                        <span class="font-semibold text-blue-700">Default Excusal:</span>
+                                        Soldiers assigned to this duty are automatically excused from
+                                        <span class="font-medium">PT, Parade, Games, and Roll Calls</span> during the
+                                        duty day.
+                                    </label>
+                                </div>
+
+                                <div>
+                                    <div class="flex items-center mb-2">
+                                        <span class="font-semibold text-blue-700">Excused Next Day:</span>
+                                        <span class="text-sm text-gray-600 ml-2">Select activities for which duties should
+                                            be excused the day after the duty ends:</span>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div class="flex items-start space-x-3">
+                                            <input type="checkbox" id="excused-next-day-pt" name="excused_next_day_pt"
+                                                value="1"
+                                                class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                {{ old('excused_next_day_pt') ? 'checked' : '' }}>
+                                            <label for="excused-next-day-pt" class="text-sm text-gray-700">
+                                                PT (Physical Training)
+                                            </label>
+                                        </div>
+                                        <div class="flex items-start space-x-3">
+                                            <input type="checkbox" id="excused-next-day-games"
+                                                name="excused_next_day_games" value="1"
+                                                class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                {{ old('excused_next_day_games') ? 'checked' : '' }}>
+                                            <label for="excused-next-day-games" class="text-sm text-gray-700">
+                                                Games
+                                            </label>
+                                        </div>
+                                        <div class="flex items-start space-x-3">
+                                            <input type="checkbox" id="excused-next-day-roll-call"
+                                                name="excused_next_day_roll_call" value="1"
+                                                class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                {{ old('excused_next_day_roll_call') ? 'checked' : '' }}>
+                                            <label for="excused-next-day-roll-call" class="text-sm text-gray-700">
+                                                Roll Call
+                                            </label>
+                                        </div>
+                                        <div class="flex items-start space-x-3">
+                                            <input type="checkbox" id="excused-next-day-parade"
+                                                name="excused_next_day_parade" value="1"
+                                                class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                {{ old('excused_next_day_parade') ? 'checked' : '' }}>
+                                            <label for="excused-next-day-parade" class="text-sm text-gray-700">
+                                                Parade
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         {{-- Action Buttons --}}
                         <div class="flex flex-col sm:flex-row gap-4 mt-8 pt-6 border-t border-gray-200">

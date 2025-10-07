@@ -202,6 +202,7 @@ class DutyController extends Controller
      */
     public function update(UpdateDutyRequest $request, Duty $duty): RedirectResponse
     {
+        // dd($request->validated());
         try {
             $this->dutyService->updateDutyWithAssignments($duty, $request->validated());
 
