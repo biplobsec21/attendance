@@ -29,6 +29,7 @@ use App\Http\Controllers\DutyAssignmentController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AppointmentManagerController;
+use App\Http\Controllers\AttendanceReportController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\CommissionsController;
 use App\Http\Controllers\CompanyRankManpowerController;
@@ -350,6 +351,13 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/export/parade/{type}', [ExportController::class, 'exportParade'])->name('export.parade');
     Route::get('/export/manpower/{type}', [ExportController::class, 'exportManpower'])->name('export.manpower');
     // Route::get('/report/parade/{date}', [ReportController::class, 'paradeReport'])->name('report.parade');
+    // Route::get('/export/game-attendance/{type}', [ExportController::class, 'exportGameAttendance'])->name('export.game');
+    // In routes/web.php or routes/api.php
+    // Dynamic attendance report export route
+    Route::get('/export/{reportType}/attendance/{exportType}', [AttendanceReportController::class, 'exportAttendanceReport'])
+        ->where('reportType', 'game|pt|roll-call|parade')
+        ->where('exportType', 'xl|xlsx|pdf|excel')
+        ->name('export.attendance');
 });
 
 Route::get('/test', [CommissionsController::class, 'testCommission'])->name('test');

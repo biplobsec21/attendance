@@ -7,7 +7,10 @@ use App\Exports\CombinedSingleSheetExport;
 use App\Exports\ParadePdfExport;
 use App\Exports\ManpowerExcelExport;
 use App\Exports\ManpowerPdfExport;
+use App\Exports\GameAttendancePdfExport;
+use App\Exports\GameAttendanceExcelExport;
 use App\Services\ManpowerDataCache;
+
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
@@ -130,6 +133,57 @@ class ExportController extends Controller
             ManpowerDataCache::clear($date);
 
             return Excel::download(new ManpowerExcelExport($date), $fileName);
+        }
+    }
+    public function exportAttendanceReport(Request $request, $type)
+    {
+        // Add 'excel' as a valid type and map it to 'xlsx'
+        $allowedTypes = ['xl', 'xlsx', 'pdf', 'excel'];
+        $type = strtolower($type);
+
+        if (!in_array($type, $allowedTypes)) {
+            abort(400, 'Invalid export type');
+        }
+
+        $date = $request->query('date');
+
+        if (!$date) {
+            return redirect()->back()->with('error', 'Date is required');
+        }
+
+        // Validate that the date is not in the future
+        $inputDate = Carbon::parse($date);
+        $today = Carbon::today();
+
+        if ($inputDate->gt($today)) {
+            return redirect()->back()->with('error', 'Future dates cannot be selected');
+        }
+
+        // Map 'excel' to 'xlsx' for processing
+        if ($type === 'excel') {
+            $type = 'xlsx';
+        }
+
+        if ($type === 'pdf') {
+            $fileName = 'game_attendance_' . now()->format('Ymd_His') . '.pdf';
+
+            // Create a single instance and get the data once
+            $gameAttendancePdfExport = new GameAttendancePdfExport($date);
+            $view = $gameAttendancePdfExport->view();
+            $data = $view->getData();
+
+            $pdf = PDF::loadView('exports.game_attendance_pdf', $data);
+
+            // Set paper size to legal landscape for better table visibility
+            $pdf->setPaper('legal', 'landscape');
+
+            return $pdf->download($fileName);
+        } else {
+            // Convert 'xl' to 'xlsx' for Excel export
+            $exportType = ($type === 'xl') ? 'xlsx' : $type;
+            $fileName = 'game_attendance_' . now()->format('Ymd_His') . '.' . $exportType;
+
+            return Excel::download(new GameAttendanceExcelExport($date), $fileName);
         }
     }
 }
