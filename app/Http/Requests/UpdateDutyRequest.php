@@ -32,9 +32,8 @@ class UpdateDutyRequest extends FormRequest
             'rank_manpower.*.rank_id' => 'required_with:rank_manpower|exists:ranks,id',
             'rank_manpower.*.manpower' => 'required_with:rank_manpower.*.rank_id|integer|min:1|max:100',
 
-            // Roster Assignments - Rank Groups (OR Groups)
+            // Roster Assignments - Rank Groups
             'rank_groups' => 'sometimes|array',
-            'rank_groups.*.id' => 'sometimes|string', // Group ID for existing groups
             'rank_groups.*.manpower' => 'required_with:rank_groups|integer|min:1|max:100',
             'rank_groups.*.ranks' => 'required_with:rank_groups.*.manpower|array|min:1',
             'rank_groups.*.ranks.*' => 'required|exists:ranks,id',
@@ -82,11 +81,6 @@ class UpdateDutyRequest extends FormRequest
             // Validate rank groups don't contain duplicates
             if (!empty($data['rank_groups'])) {
                 $this->validateRankGroups($validator, $data['rank_groups']);
-            }
-
-            // Validate no overlap between individual ranks and group ranks
-            if (!empty($data['rank_manpower']) && !empty($data['rank_groups'])) {
-                $this->validateRankOverlap($validator, $data['rank_manpower'], $data['rank_groups']);
             }
 
             // Validate total manpower limit
@@ -141,14 +135,6 @@ class UpdateDutyRequest extends FormRequest
             $validator->errors()->add(
                 'end_time',
                 'Start time and end time cannot be the same.'
-            );
-        }
-
-        // Validate duty doesn't start and end at midnight (edge case)
-        if ($startTime === '00:00' && $endTime === '00:00') {
-            $validator->errors()->add(
-                'end_time',
-                'Duty cannot start and end at midnight.'
             );
         }
     }
@@ -290,31 +276,6 @@ class UpdateDutyRequest extends FormRequest
     }
 
     /**
-     * Validate no overlap between individual ranks and group ranks
-     */
-    private function validateRankOverlap(Validator $validator, array $rankManpower, array $rankGroups): void
-    {
-        $individualRankIds = array_column($rankManpower, 'rank_id');
-        $groupRankIds = [];
-
-        foreach ($rankGroups as $group) {
-            if (!empty($group['ranks'])) {
-                $groupRankIds = array_merge($groupRankIds, $group['ranks']);
-            }
-        }
-
-        $overlappingRanks = array_intersect($individualRankIds, $groupRankIds);
-
-        if (!empty($overlappingRanks)) {
-            $rankNames = \App\Models\Rank::whereIn('id', $overlappingRanks)->pluck('name')->join(', ');
-            $validator->errors()->add(
-                'base',
-                "The following ranks cannot be both in individual assignments and in groups: {$rankNames}"
-            );
-        }
-    }
-
-    /**
      * Validate total manpower doesn't exceed system limits
      */
     private function validateTotalManpower(Validator $validator, array $data): void
@@ -394,7 +355,6 @@ class UpdateDutyRequest extends FormRequest
         $start = Carbon::createFromTimeString($startTime);
         $end = Carbon::createFromTimeString($endTime);
 
-        // If end time is earlier than start time, it spans to next day
         if ($end->lt($start)) {
             $end->addDay();
         }
