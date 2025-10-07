@@ -385,10 +385,18 @@ class GameAttendanceService
      */
     public function getRankTypes()
     {
-        return Rank::select('type')
+        $rankTypes = Rank::select('type')
             ->distinct()
-            ->orderBy('type')
             ->pluck('type')
+            ->toArray();
+
+        $customOrder = ['OFFICER', 'JCO', 'OR', 'RCO'];
+
+        return collect($rankTypes)
+            ->sortBy(function ($type) use ($customOrder) {
+                return array_search($type, $customOrder) ?? 999;
+            })
+            ->values()
             ->toArray();
     }
 
