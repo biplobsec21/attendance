@@ -27,18 +27,21 @@ class StoreDutyRequest extends FormRequest
 
             // Roster Assignments - Individual Ranks
             'rank_manpower' => 'sometimes|array',
-            'rank_manpower.*.rank_id' => 'required_with:rank_manpower|exists:ranks,id',
+            'rank_manpower.*.rank_id' => 'required_with:rank_manpower.*|exists:ranks,id',
             'rank_manpower.*.manpower' => 'required_with:rank_manpower.*.rank_id|integer|min:1|max:100',
 
-            // Roster Assignments - Rank Groups
+            // Roster Assignments - Rank Groups (OR Groups)
             'rank_groups' => 'sometimes|array',
-            'rank_groups.*.manpower' => 'required_with:rank_groups|integer|min:1|max:100',
-            'rank_groups.*.ranks' => 'required_with:rank_groups.*.manpower|array|min:1',
+            'rank_groups.*.id' => 'sometimes|string',
+            'rank_groups.*.manpower' => 'required_with:rank_groups.*|integer|min:1|max:100',
+            'rank_groups.*.ranks' => 'required_with:rank_groups.*|array|min:1',
             'rank_groups.*.ranks.*' => 'required|exists:ranks,id',
+            'rank_groups.*.rank_manpower' => 'sometimes|array',
+            'rank_groups.*.rank_manpower.*' => 'sometimes|integer|min:1|max:100',
 
             // Fixed Soldier Assignments
             'fixed_soldiers' => 'sometimes|array',
-            'fixed_soldiers.*.soldier_id' => 'required_with:fixed_soldiers|exists:soldiers,id',
+            'fixed_soldiers.*.soldier_id' => 'required_with:fixed_soldiers.*|exists:soldiers,id',
             'fixed_soldiers.*.priority' => 'nullable|integer|min:1|max:10',
             'fixed_soldiers.*.remarks' => 'nullable|string|max:500',
         ];
@@ -80,7 +83,12 @@ class StoreDutyRequest extends FormRequest
                 $this->validateRankGroups($validator, $data['rank_groups']);
             }
 
-            // Validate total manpower limit (optional business rule)
+            // Validate no overlap between individual ranks and group ranks
+            if (!empty($data['rank_manpower']) && !empty($data['rank_groups'])) {
+                $this->validateRankOverlap($validator, $data['rank_manpower'], $data['rank_groups']);
+            }
+
+            // Validate total manpower limit
             $this->validateTotalManpower($validator, $data);
         });
     }
@@ -249,6 +257,7 @@ class StoreDutyRequest extends FormRequest
             }
 
             $ranksInThisGroup = [];
+            $groupRankManpower = $groupData['rank_manpower'] ?? [];
 
             foreach ($groupData['ranks'] as $rankIndex => $rankId) {
                 // Check for duplicates within the same group
@@ -268,9 +277,43 @@ class StoreDutyRequest extends FormRequest
                     );
                 }
                 $allRanksInGroups[] = $rankId;
+
+                // Validate that each rank in the group has a corresponding manpower value
+                $rankIdStr = (string)$rankId;
+                if (!empty($groupRankManpower) && !isset($groupRankManpower[$rankIdStr]) && !isset($groupRankManpower[$rankId])) {
+                    $validator->errors()->add(
+                        "rank_groups.{$groupId}.rank_manpower.{$rankId}",
+                        "Manpower is required for each rank in the group."
+                    );
+                }
             }
 
             $groupIndex++;
+        }
+    }
+
+    /**
+     * Validate no overlap between individual ranks and group ranks
+     */
+    private function validateRankOverlap(Validator $validator, array $rankManpower, array $rankGroups): void
+    {
+        $individualRankIds = array_column($rankManpower, 'rank_id');
+        $groupRankIds = [];
+
+        foreach ($rankGroups as $group) {
+            if (!empty($group['ranks'])) {
+                $groupRankIds = array_merge($groupRankIds, $group['ranks']);
+            }
+        }
+
+        $overlappingRanks = array_intersect($individualRankIds, $groupRankIds);
+
+        if (!empty($overlappingRanks)) {
+            $rankNames = \App\Models\Rank::whereIn('id', $overlappingRanks)->pluck('name')->join(', ');
+            $validator->errors()->add(
+                'base',
+                "The following ranks cannot be both in individual assignments and in groups: {$rankNames}"
+            );
         }
     }
 
@@ -281,15 +324,22 @@ class StoreDutyRequest extends FormRequest
     {
         $totalManpower = 0;
 
-        // Calculate roster manpower
+        // Calculate individual rank manpower
         foreach ($data['rank_manpower'] ?? [] as $rankData) {
             if (isset($rankData['manpower'])) {
                 $totalManpower += (int) $rankData['manpower'];
             }
         }
 
+        // Calculate group rank manpower
         foreach ($data['rank_groups'] ?? [] as $groupData) {
-            if (isset($groupData['manpower'])) {
+            // Sum up all rank_manpower values within the group
+            if (!empty($groupData['rank_manpower']) && is_array($groupData['rank_manpower'])) {
+                foreach ($groupData['rank_manpower'] as $manpower) {
+                    $totalManpower += (int) $manpower;
+                }
+            } elseif (isset($groupData['manpower'])) {
+                // Fallback to group manpower if rank_manpower is not provided
                 $totalManpower += (int) $groupData['manpower'];
             }
         }
@@ -357,6 +407,8 @@ class StoreDutyRequest extends FormRequest
             'rank_groups.*.ranks.min' => 'Rank group must contain at least one rank.',
             'rank_groups.*.ranks.*.required' => 'Rank selection is required.',
             'rank_groups.*.ranks.*.exists' => 'Selected rank does not exist.',
+            'rank_groups.*.rank_manpower.*.min' => 'Rank manpower must be at least 1.',
+            'rank_groups.*.rank_manpower.*.max' => 'Rank manpower cannot exceed 100.',
 
             // Fixed soldier messages
             'fixed_soldiers.*.soldier_id.required_with' => 'Soldier selection is required.',
@@ -379,6 +431,7 @@ class StoreDutyRequest extends FormRequest
             'rank_manpower.*.manpower' => 'manpower',
             'rank_groups.*.manpower' => 'group manpower',
             'rank_groups.*.ranks' => 'group ranks',
+            'rank_groups.*.rank_manpower' => 'rank manpower',
             'fixed_soldiers.*.soldier_id' => 'soldier',
             'fixed_soldiers.*.priority' => 'priority',
             'fixed_soldiers.*.remarks' => 'remarks',

@@ -382,13 +382,15 @@
                         }
 
                         const soldiers = assignedSoldiers.map(soldier => {
+                            console.log('Processing soldier:', soldier);
                             // Handle different soldier object structures
                             return {
                                 id: soldier.soldier_id || soldier.id || 0,
                                 name: soldier.full_name || soldier.name || 'Unknown Soldier',
                                 army_no: soldier.army_no || 'N/A',
                                 rank: soldier.rank || 'N/A',
-                                company: soldier.company || 'N/A'
+                                company: soldier.company || 'N/A',
+                                remarks: soldier.remarks || ''
                             };
                         });
 
@@ -449,7 +451,8 @@
                             name: fixedDuty.full_name || 'N/A',
                             army_no: fixedDuty.army_no || 'N/A',
                             rank: fixedDuty.rank || 'N/A',
-                            company: fixedDuty.company || 'N/A'
+                            company: fixedDuty.company || 'N/A',
+                            remarks: ''
                         });
                         fixedDutiesMap[fixedDuty.duty_id].assigned_count++;
                     } catch (error) {
@@ -746,7 +749,7 @@
 
                 if (duty.soldiers && duty.soldiers.length > 0) {
                     duty.soldiers.forEach(soldier => {
-                        console.log(soldier);
+                        console.log("rmarks" + soldier);
                         // Escape special characters for JavaScript strings
                         const safeSoldierName = (soldier.name || 'N/A').replace(/'/g, "\\'").replace(/"/g,
                             '\\"');
@@ -761,6 +764,8 @@
                             </span>
                             <span class="ml-2 text-gray-900">${soldier.name || 'N/A'}</span>
                             <span class="ml-1 text-gray-500 text-xs">(${soldier.army_no || 'N/A'})</span>
+                             <span class="ml-2 text-gray-900">${soldier.remarks}</span>
+
                         </div>
                         <div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button

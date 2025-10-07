@@ -1,13 +1,36 @@
-// duty-form.js - Updated JavaScript for Group Rank Selection
+// duty-form.js - Fixed to match Laravel validation requirements
 
 class DutyForm {
     constructor() {
-        console.log('DutyForm constructor called');
+        // Check if required elements exist before initialization
+        if (!this.checkRequiredElements()) {
+            console.error('Required form elements are missing');
+            return;
+        }
+
         this.initializeElements();
-        this.initializeEventListeners();
         this.initializeData();
+        this.initializeEventListeners();
         this.renderInitialData();
-        this.updateRankButtonStates();
+
+        // Expose methods globally for inline event handlers
+        this.exposeMethodsGlobally();
+
+        console.log('DutyForm initialized successfully');
+    }
+
+    checkRequiredElements() {
+        const requiredElements = [
+            'duty-form',
+            'start-time',
+            'end-time',
+            'duration-days',
+            'total-manpower',
+            'total-manpower-display',
+            'selected-items-container'
+        ];
+
+        return requiredElements.every(id => document.getElementById(id) !== null);
     }
 
     initializeElements() {
@@ -38,12 +61,10 @@ class DutyForm {
         this.multiDayIndicator = document.getElementById('multi-day-indicator');
         this.dailyDuration = document.getElementById('daily-duration');
         this.totalDuration = document.getElementById('total-duration');
-
-        console.log('Elements initialized');
     }
 
     initializeData() {
-        // Data structures
+        // Data structures with default values
         this.selectionData = {
             individualRanks: window.initialIndividualRanks || {},
             orGroups: window.initialRankGroups || [],
@@ -53,19 +74,28 @@ class DutyForm {
         this.groupCounter = this.selectionData.orGroups.length;
         this.availableSoldiers = window.availableSoldiers || [];
 
-        console.log('Data initialized:', {
-            individualRanks: Object.keys(this.selectionData.individualRanks).length,
-            orGroups: this.selectionData.orGroups.length,
-            fixedSoldiers: Object.keys(this.selectionData.fixedSoldiers).length,
-            availableSoldiers: this.availableSoldiers.length
-        });
+        // State tracking
+        this.isLoading = false;
+        this.lastError = null;
     }
 
     initializeEventListeners() {
-        // Time and duration listeners
-        if (this.startTimeEl) this.startTimeEl.addEventListener('change', () => this.calculateAndDisplayDuration());
-        if (this.endTimeEl) this.endTimeEl.addEventListener('change', () => this.calculateAndDisplayDuration());
-        if (this.durationDaysEl) this.durationDaysEl.addEventListener('change', () => this.calculateAndDisplayDuration());
+        // Time and duration listeners with debounce for performance
+        const debounce = (func, delay) => {
+            let timeout;
+            return function () {
+                const context = this;
+                const args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), delay);
+            };
+        };
+
+        const debouncedDurationCalculation = debounce(() => this.calculateAndDisplayDuration(), 300);
+
+        if (this.startTimeEl) this.startTimeEl.addEventListener('change', debouncedDurationCalculation);
+        if (this.endTimeEl) this.endTimeEl.addEventListener('change', debouncedDurationCalculation);
+        if (this.durationDaysEl) this.durationDaysEl.addEventListener('change', debouncedDurationCalculation);
 
         // Rank search and selection
         if (this.rankSearch) this.rankSearch.addEventListener('input', (e) => this.filterRanks(e.target.value));
@@ -85,29 +115,72 @@ class DutyForm {
             this.soldierSearch.addEventListener('input', (e) => this.filterSoldiers(e.target.value));
         }
 
-        // Form submission
+        // Form submission with validation
         if (this.dutyForm) this.dutyForm.addEventListener('submit', (e) => this.handleFormSubmission(e));
 
-        // Modal close handlers
+        // Modal close handlers with cleanup
         if (this.soldierSelectionModal) {
             this.soldierSelectionModal.addEventListener('click', (e) => {
                 if (e.target === this.soldierSelectionModal) this.closeSoldierModal();
             });
         }
+    }
 
-        console.log('Event listeners initialized');
+    exposeMethodsGlobally() {
+        // Expose methods globally for inline event handlers
+        window.dutyForm = this;
+
+        // Global functions for inline event handlers
+        window.selectSoldier = (soldierId) => this.selectSoldier(soldierId);
+        window.closeSoldierModal = () => this.closeSoldierModal();
     }
 
     renderInitialData() {
-        console.log('Rendering initial data...');
-        this.renderSelectedItems();
-        this.renderFixedSoldiers();
-        this.calculateAndDisplayDuration();
-        this.updateTotalManpower();
-        this.updateRankButtonStates();
-        console.log('Initial data rendered');
+        try {
+            this.renderSelectedItems();
+            this.renderFixedSoldiers();
+            this.calculateAndDisplayDuration();
+            this.updateTotalManpower();
+            this.updateRankButtonStates();
+        } catch (error) {
+            console.error('Error rendering initial data:', error);
+            this.showError('Failed to initialize form. Please refresh the page.');
+        }
     }
 
+    // Error handling method
+    showError(message) {
+        this.lastError = message;
+        console.error(message);
+
+        // Create error notification
+        const errorEl = document.createElement('div');
+        errorEl.className = 'fixed top-4 right-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md z-50';
+        errorEl.innerHTML = `
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                </svg>
+                <p>${message}</p>
+                <button class="ml-4 text-red-700 hover:text-red-900" onclick="this.parentElement.parentElement.remove()">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+
+        document.body.appendChild(errorEl);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (errorEl.parentElement) {
+                errorEl.remove();
+            }
+        }, 5000);
+    }
+
+    // Rank Management Methods
     updateRankButtonStates() {
         this.rankButtons.forEach(btn => {
             const rankId = btn.dataset.rankId;
@@ -133,7 +206,6 @@ class DutyForm {
         });
     }
 
-    // Rank Management Methods
     filterRanks(searchTerm) {
         const term = searchTerm.toLowerCase();
         this.rankButtons.forEach(btn => {
@@ -187,7 +259,7 @@ class DutyForm {
         this.selectionData.orGroups.push({
             id: groupId,
             ranks: [], // This will store objects with rank id, name and manpower
-            manpower: 1 // Default manpower for new ranks
+            manpower: 1 // Default manpower for the group
         });
 
         this.renderSelectedItems();
@@ -274,77 +346,88 @@ class DutyForm {
         return card;
     }
 
+    // duty-form.js - Fixed form data structure for rank groups
+
+    // Update the createGroupCard method to ensure hidden inputs are properly created
+    // Update the createGroupCard method to use correct form input names
     createGroupCard(group) {
         const card = document.createElement('div');
         card.className = 'bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200';
+        card.setAttribute('data-group-id', group.id);
 
         const rankNames = group.ranks.map(rankItem => rankItem.name).join(' OR ');
 
         card.innerHTML = `
-    <div class="flex items-center justify-between mb-3">
-        <div class="flex items-center flex-1">
-            <div class="flex items-center justify-center w-10 h-10 bg-purple-500 rounded-lg mr-3">
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                </svg>
-            </div>
-            <div class="flex-1">
-                <h4 class="font-semibold text-gray-800">OR Group</h4>
-                <p class="text-xs text-gray-600">Any of these ranks can fulfill</p>
-            </div>
-        </div>
-        <button type="button" class="text-gray-400 hover:text-red-500 transition-colors" onclick="window.dutyForm.removeGroup('${group.id}')">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        </button>
-    </div>
-
-    <div class="mb-3">
-        <div class="bg-white rounded-lg p-3 min-h-[50px] border border-gray-200">
-            ${rankNames || '<span class="text-gray-400 text-sm">Click below to add ranks to this group</span>'}
-        </div>
-    </div>
-
-    ${group.ranks.length > 0 ? `
-        <div class="mb-4 space-y-2">
-            <h5 class="text-sm font-medium text-gray-700 mb-2">Rank Manpower:</h5>
-            ${group.ranks.map(rankItem => `
-                <div class="flex items-center justify-between bg-white rounded-lg p-2 border border-gray-200">
-                    <span class="text-sm text-gray-700">${rankItem.name}</span>
-                    <div class="flex items-center">
-                        <button type="button" class="w-6 h-6 flex items-center justify-center bg-white border border-gray-300 rounded-l-lg hover:bg-gray-50" onclick="window.dutyForm.decreaseGroupRankManpower('${group.id}', '${rankItem.id}')">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
-                            </svg>
-                        </button>
-                        <input type="number" min="1" value="${rankItem.manpower}"
-                            class="w-12 h-6 text-center border-t border-b border-gray-300 focus:outline-none text-xs"
-                            onchange="window.dutyForm.updateGroupRankManpower('${group.id}', '${rankItem.id}', this.value)">
-                        <button type="button" class="w-6 h-6 flex items-center justify-center bg-white border border-gray-300 rounded-r-lg hover:bg-gray-50" onclick="window.dutyForm.increaseGroupRankManpower('${group.id}', '${rankItem.id}')">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                        </button>
-                    </div>
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center flex-1">
+                <div class="flex items-center justify-center w-10 h-10 bg-purple-500 rounded-lg mr-3">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656-.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
                 </div>
-            `).join('')}
+                <div class="flex-1">
+                    <h4 class="font-semibold text-gray-800">OR Group</h4>
+                    <p class="text-xs text-gray-600">Any of these ranks can fulfill</p>
+                </div>
+            </div>
+            <button type="button" class="text-gray-400 hover:text-red-500 transition-colors" onclick="window.dutyForm.removeGroup('${group.id}')">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
         </div>
-    ` : ''}
 
-    <div class="flex justify-end">
-        <button type="button" class="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors" onclick="window.dutyForm.openGroupRankSelector('${group.id}')">
-            ${group.ranks.length > 0 ? 'Edit Ranks' : 'Add Ranks'}
-        </button>
-    </div>
+        <div class="mb-3">
+            <div class="bg-white rounded-lg p-3 min-h-[50px] border border-gray-200">
+                ${rankNames || '<span class="text-gray-400 text-sm">Click below to add ranks to this group</span>'}
+            </div>
+        </div>
 
-    ${group.ranks.map(rankItem => `
-        <input type="hidden" name="rank_groups[${group.id}][ranks][${rankItem.id}][rank_id]" value="${rankItem.id}">
-        <input type="hidden" name="rank_groups[${group.id}][ranks][${rankItem.id}][manpower]" value="${rankItem.manpower}" id="group-rank-manpower-${group.id}-${rankItem.id}">
-    `).join('')}
-`;
+        ${group.ranks.length > 0 ? `
+            <div class="mb-4 space-y-2">
+                <h5 class="text-sm font-medium text-gray-700 mb-2">Rank Manpower:</h5>
+                ${group.ranks.map(rankItem => `
+                    <div class="flex items-center justify-between bg-white rounded-lg p-2 border border-gray-200">
+                        <span class="text-sm text-gray-700">${rankItem.name}</span>
+                        <div class="flex items-center">
+                            <button type="button" class="w-6 h-6 flex items-center justify-center bg-white border border-gray-300 rounded-l-lg hover:bg-gray-50" onclick="window.dutyForm.decreaseGroupRankManpower('${group.id}', '${rankItem.id}')">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                                </svg>
+                            </button>
+                            <input type="number" min="1" value="${rankItem.manpower}"
+                                class="w-12 h-6 text-center border-t border-b border-gray-300 focus:outline-none text-xs"
+                                data-group-id="${group.id}"
+                                data-rank-id="${rankItem.id}"
+                                onchange="window.dutyForm.updateGroupRankManpower('${group.id}', '${rankItem.id}', this.value)">
+                            <button type="button" class="w-6 h-6 flex items-center justify-center bg-white border border-gray-300 rounded-r-lg hover:bg-gray-50" onclick="window.dutyForm.increaseGroupRankManpower('${group.id}', '${rankItem.id}')">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        ` : ''}
+
+        <div class="flex justify-end">
+            <button type="button" class="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors" onclick="window.dutyForm.openGroupRankSelector('${group.id}')">
+                ${group.ranks.length > 0 ? 'Edit Ranks' : 'Add Ranks'}
+            </button>
+        </div>
+
+        <!-- Hidden inputs for form submission - Fixed structure for Laravel -->
+        <input type="hidden" name="rank_groups[${group.id}][id]" value="${group.id}">
+        <input type="hidden" name="rank_groups[${group.id}][manpower]" value="${group.manpower}">
+        ${group.ranks.map(rankItem => `
+            <input type="hidden" name="rank_groups[${group.id}][ranks][]" value="${rankItem.id}">
+            <input type="hidden" name="rank_groups[${group.id}][rank_manpower][${rankItem.id}]" value="${rankItem.manpower}">
+        `).join('')}
+    `;
         return card;
     }
+
 
     // Rank Manpower Methods
     decreaseRankManpower(rankId) {
@@ -395,7 +478,7 @@ class DutyForm {
         this.updateTotalManpower();
     }
 
-    // Group Rank Selection Modal
+    // Update the openGroupRankSelector method to ensure hidden inputs are updated when ranks are added
     openGroupRankSelector(groupId) {
         const group = this.selectionData.orGroups.find(g => g.id === groupId);
         if (!group) return;
@@ -403,25 +486,25 @@ class DutyForm {
         const modal = document.createElement('div');
         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
         modal.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
-                <div class="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-pink-50">
-                    <h3 class="text-xl font-bold text-gray-800">Select Ranks for OR Group</h3>
-                    <p class="text-sm text-gray-600 mt-1">Select multiple ranks - any ONE of them can fulfill this duty</p>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div class="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-pink-50">
+                <h3 class="text-xl font-bold text-gray-800">Select Ranks for OR Group</h3>
+                <p class="text-sm text-gray-600 mt-1">Select multiple ranks - any ONE of them can fulfill this duty</p>
+            </div>
+
+            <div class="p-6 max-h-[50vh] overflow-y-auto">
+                <div class="relative mb-4">
+                    <input type="text" id="modal-rank-search" placeholder="Search ranks..."
+                        class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20">
+                    <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
                 </div>
 
-                <div class="p-6 max-h-[50vh] overflow-y-auto">
-                    <div class="relative mb-4">
-                        <input type="text" id="modal-rank-search" placeholder="Search ranks..."
-                            class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20">
-                        <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2" id="modal-rank-grid">
-                        ${Array.from(this.rankButtons).map(btn => {
+                <div class="grid grid-cols-2 gap-2" id="modal-rank-grid">
+                    ${Array.from(this.rankButtons).map(btn => {
             const rankId = btn.dataset.rankId;
             const rankName = btn.dataset.rankName;
 
@@ -435,37 +518,37 @@ class DutyForm {
                 );
 
             return `
-                                <button type="button"
-                                    class="modal-rank-btn px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all ${isSelected ? 'border-purple-500 bg-purple-100 text-purple-700' :
+                            <button type="button"
+                                class="modal-rank-btn px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all ${isSelected ? 'border-purple-500 bg-purple-100 text-purple-700' :
                     isDisabled ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed' :
                         'border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50'
                 }"
-                                    data-rank-id="${rankId}"
-                                    data-rank-name="${rankName}"
-                                    ${isDisabled ? 'disabled' : ''}>
-                                    ${rankName}
-                                    ${isSelected ? '<svg class="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
-                                </button>
-                            `;
+                                data-rank-id="${rankId}"
+                                data-rank-name="${rankName}"
+                                ${isDisabled ? 'disabled' : ''}>
+                                ${rankName}
+                                ${isSelected ? '<svg class="w-4 h-4 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                            </button>
+                        `;
         }).join('')}
-                    </div>
-                </div>
-
-                <div class="p-6 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
-                    <p class="text-sm text-gray-600">
-                        <span class="font-semibold" id="selected-count">${group.ranks.length}</span> rank(s) selected
-                    </p>
-                    <div class="flex space-x-3">
-                        <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors" onclick="this.closest('.fixed').remove()">
-                            Cancel
-                        </button>
-                        <button type="button" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors" id="confirm-group-ranks">
-                            Confirm Selection
-                        </button>
-                    </div>
                 </div>
             </div>
-        `;
+
+            <div class="p-6 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
+                <p class="text-sm text-gray-600">
+                    <span class="font-semibold" id="selected-count">${group.ranks.length}</span> rank(s) selected
+                </p>
+                <div class="flex space-x-3">
+                    <button type="button" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors" onclick="this.closest('.fixed').remove()">
+                        Cancel
+                    </button>
+                    <button type="button" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors" id="confirm-group-ranks">
+                        Confirm Selection
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
 
         document.body.appendChild(modal);
 
@@ -553,6 +636,9 @@ class DutyForm {
                 }
             });
 
+            // Update the hidden inputs directly
+            this.updateGroupHiddenInputs(groupId);
+
             this.renderSelectedItems();
             this.updateTotalManpower();
             this.updateRankButtonStates();
@@ -588,34 +674,64 @@ class DutyForm {
     }
 
     // Group Rank Individual Manpower Methods
+    // Update the decreaseGroupRankManpower method to update the hidden input directly
+    // Update the decreaseGroupRankManpower method to update the hidden input directly
     decreaseGroupRankManpower(groupId, rankId) {
         const group = this.selectionData.orGroups.find(g => g.id === groupId);
         if (group) {
             const rankItem = group.ranks.find(r => r.id === rankId);
             if (rankItem && rankItem.manpower > 1) {
                 rankItem.manpower--;
-                const input = document.getElementById(`group-rank-manpower-${groupId}-${rankId}`);
-                if (input) input.value = rankItem.manpower;
-                this.renderSelectedItems();
+
+                // Update the hidden input directly
+                const hiddenInput = document.querySelector(`input[name="rank_groups[${groupId}][rank_manpower][${rankId}]"]`);
+                if (hiddenInput) {
+                    hiddenInput.value = rankItem.manpower;
+                    console.log(`Updated hidden input for group ${groupId}, rank ${rankId} to ${rankItem.manpower}`);
+                } else {
+                    console.error(`Could not find hidden input for group ${groupId}, rank ${rankId}`);
+                }
+
+                // Update the visible input value
+                const visibleInput = document.querySelector(`input[data-group-id="${groupId}"][data-rank-id="${rankId}"]`);
+                if (visibleInput) {
+                    visibleInput.value = rankItem.manpower;
+                }
+
                 this.updateTotalManpower();
             }
         }
     }
 
+    // Update the increaseGroupRankManpower method to update the hidden input directly
     increaseGroupRankManpower(groupId, rankId) {
         const group = this.selectionData.orGroups.find(g => g.id === groupId);
         if (group) {
             const rankItem = group.ranks.find(r => r.id === rankId);
             if (rankItem) {
                 rankItem.manpower++;
-                const input = document.getElementById(`group-rank-manpower-${groupId}-${rankId}`);
-                if (input) input.value = rankItem.manpower;
-                this.renderSelectedItems();
+
+                // Update the hidden input directly
+                const hiddenInput = document.querySelector(`input[name="rank_groups[${groupId}][rank_manpower][${rankId}]"]`);
+                if (hiddenInput) {
+                    hiddenInput.value = rankItem.manpower;
+                    console.log(`Updated hidden input for group ${groupId}, rank ${rankId} to ${rankItem.manpower}`);
+                } else {
+                    console.error(`Could not find hidden input for group ${groupId}, rank ${rankId}`);
+                }
+
+                // Update the visible input value
+                const visibleInput = document.querySelector(`input[data-group-id="${groupId}"][data-rank-id="${rankId}"]`);
+                if (visibleInput) {
+                    visibleInput.value = rankItem.manpower;
+                }
+
                 this.updateTotalManpower();
             }
         }
     }
 
+    // Update the updateGroupRankManpower method to update the hidden input directly
     updateGroupRankManpower(groupId, rankId, value) {
         const group = this.selectionData.orGroups.find(g => g.id === groupId);
         if (group) {
@@ -623,47 +739,27 @@ class DutyForm {
             if (rankItem) {
                 const newValue = Math.max(1, parseInt(value) || 1);
                 rankItem.manpower = newValue;
-                const input = document.getElementById(`group-rank-manpower-${groupId}-${rankId}`);
-                if (input) input.value = rankItem.manpower;
-                this.renderSelectedItems();
+
+                // Update the hidden input directly
+                const hiddenInput = document.querySelector(`input[name="rank_groups[${groupId}][rank_manpower][${rankId}]"]`);
+                if (hiddenInput) {
+                    hiddenInput.value = newValue;
+                    console.log(`Updated hidden input for group ${groupId}, rank ${rankId} to ${newValue}`);
+                } else {
+                    console.error(`Could not find hidden input for group ${groupId}, rank ${rankId}`);
+                }
+
+                // Update the visible input value
+                const visibleInput = document.querySelector(`input[data-group-id="${groupId}"][data-rank-id="${rankId}"]`);
+                if (visibleInput) {
+                    visibleInput.value = newValue;
+                }
+
                 this.updateTotalManpower();
             }
         }
     }
 
-    // Group Default Manpower Methods (for new ranks)
-    decreaseGroupDefaultManpower(groupId) {
-        const group = this.selectionData.orGroups.find(g => g.id === groupId);
-        if (group && group.manpower > 1) {
-            group.manpower--;
-            const input = document.getElementById(`group-default-manpower-${groupId}`);
-            if (input) input.value = group.manpower;
-            this.renderSelectedItems();
-        }
-    }
-
-    increaseGroupDefaultManpower(groupId) {
-        const group = this.selectionData.orGroups.find(g => g.id === groupId);
-        if (group) {
-            group.manpower++;
-            const input = document.getElementById(`group-default-manpower-${groupId}`);
-            if (input) input.value = group.manpower;
-            this.renderSelectedItems();
-        }
-    }
-
-    updateGroupDefaultManpower(groupId, value) {
-        const group = this.selectionData.orGroups.find(g => g.id === groupId);
-        if (group) {
-            const newValue = Math.max(1, parseInt(value) || 1);
-            group.manpower = newValue;
-            const input = document.getElementById(`group-default-manpower-${groupId}`);
-            if (input) input.value = group.manpower;
-            this.renderSelectedItems();
-        }
-    }
-
-    // ... rest of the methods remain the same (Fixed Soldier, Duration Calculation, etc.)
     // Fixed Soldier Methods
     openSoldierSelectionModal() {
         if (this.soldierSelectionModal) {
@@ -951,8 +1047,26 @@ class DutyForm {
         if (this.totalManpowerDisplay) this.totalManpowerDisplay.textContent = total;
     }
 
-    // Form Submission
+    // Add a method to debug form data before submission
     handleFormSubmission(e) {
+        // Debug: Log all hidden inputs before submission
+        const allHiddenInputs = document.querySelectorAll('input[type="hidden"]');
+        console.log('All hidden inputs before submission:');
+        allHiddenInputs.forEach(input => {
+            if (input.name.includes('rank_groups')) {
+                console.log(`${input.name} = ${input.value}`);
+            }
+        });
+
+        // Create a FormData object to see how Laravel will parse the form
+        const formData = new FormData(this.dutyForm);
+        console.log('FormData entries:');
+        for (let [key, value] of formData.entries()) {
+            if (key.includes('rank_groups')) {
+                console.log(`${key} = ${value}`);
+            }
+        }
+
         // Clear previous errors
         document.querySelectorAll('.rank-error, .time-error').forEach(el => el.remove());
 
@@ -967,11 +1081,11 @@ class DutyForm {
             const errorEl = document.createElement('p');
             errorEl.className = 'text-rose-500 text-sm mt-2 flex items-center rank-error';
             errorEl.innerHTML = `
-                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                </svg>
-                Please select at least one rank or create an OR group with ranks, or assign fixed soldiers
-            `;
+            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            Please select at least one rank or create an OR group with ranks, or assign fixed soldiers
+        `;
             this.selectedItemsContainer.parentElement.appendChild(errorEl);
             return;
         }
@@ -984,11 +1098,11 @@ class DutyForm {
             const errorEl = document.createElement('p');
             errorEl.className = 'text-rose-500 text-sm mt-2 flex items-center rank-error';
             errorEl.innerHTML = `
-                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                </svg>
-                Please add ranks to all OR groups or remove empty groups
-            `;
+            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            Please add ranks to all OR groups or remove empty groups
+        `;
             this.selectedItemsContainer.parentElement.appendChild(errorEl);
             return;
         }
@@ -1013,14 +1127,61 @@ class DutyForm {
         const submitBtn = this.dutyForm ? this.dutyForm.querySelector('button[type="submit"]') : null;
         if (submitBtn) {
             submitBtn.innerHTML = `
-                <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                ${submitBtn.textContent.includes('Update') ? 'Updating...' : 'Saving...'}
-            `;
+            <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            ${submitBtn.textContent.includes('Update') ? 'Updating...' : 'Saving...'}
+        `;
             submitBtn.disabled = true;
         }
+    }
+    // Add a new method to update hidden inputs for a group
+    // Update the updateGroupHiddenInputs method to use correct form input names
+    updateGroupHiddenInputs(groupId) {
+        const group = this.selectionData.orGroups.find(g => g.id === groupId);
+        if (!group) return;
+
+        // Find the group card
+        const groupCard = document.querySelector(`#selected-items-container [data-group-id="${groupId}"]`);
+        if (!groupCard) return;
+
+        // Remove existing hidden inputs for this group
+        const existingInputs = groupCard.querySelectorAll(`input[name^="rank_groups[${groupId}"]`);
+        existingInputs.forEach(input => input.remove());
+
+        // Add new hidden inputs for each rank
+        group.ranks.forEach(rankItem => {
+            // Add group ID hidden input
+            const groupIdInput = document.createElement('input');
+            groupIdInput.type = 'hidden';
+            groupIdInput.name = `rank_groups[${groupId}][id]`;
+            groupIdInput.value = groupId;
+            groupCard.appendChild(groupIdInput);
+
+            // Add group manpower hidden input
+            const groupManpowerInput = document.createElement('input');
+            groupManpowerInput.type = 'hidden';
+            groupManpowerInput.name = `rank_groups[${groupId}][manpower]`;
+            groupManpowerInput.value = group.manpower;
+            groupCard.appendChild(groupManpowerInput);
+
+            // Add rank hidden input
+            const rankInput = document.createElement('input');
+            rankInput.type = 'hidden';
+            rankInput.name = `rank_groups[${groupId}][ranks][]`;
+            rankInput.value = rankItem.id;
+            groupCard.appendChild(rankInput);
+
+            // Add rank manpower hidden input
+            const rankManpowerInput = document.createElement('input');
+            rankManpowerInput.type = 'hidden';
+            rankManpowerInput.name = `rank_groups[${groupId}][rank_manpower][${rankItem.id}]`;
+            rankManpowerInput.value = rankItem.manpower;
+            groupCard.appendChild(rankManpowerInput);
+
+            console.log(`Created hidden input for group ${groupId}, rank ${rankItem.id} with value ${rankItem.manpower}`);
+        });
     }
 }
 
@@ -1029,16 +1190,3 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM Content Loaded - Initializing DutyForm');
     window.dutyForm = new DutyForm();
 });
-
-// Global functions for inline event handlers
-function selectSoldier(soldierId) {
-    if (window.dutyForm) {
-        window.dutyForm.selectSoldier(soldierId);
-    }
-}
-
-function closeSoldierModal() {
-    if (window.dutyForm) {
-        window.dutyForm.closeSoldierModal();
-    }
-}

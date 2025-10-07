@@ -18,13 +18,13 @@
                     <li>
                         <a href="{{ route('ranks.index') }}"
                             class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
-                            <i class="fas fa-tasks text-orange-500"></i> Rank
+                            <i class="fas fa-tasks text-orange-500"></i> Rks
                         </a>
                     </li>
                     <li>
                         <a href="{{ route('companies.index') }}"
                             class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
-                            <i class="fas fa-building text-orange-500"></i> Company
+                            <i class="fas fa-building text-orange-500"></i> Coy
                         </a>
                     </li>
                     <li>
@@ -60,7 +60,7 @@
                     <li>
                         <a href="{{ route('atts.index') }}"
                             class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
-                            <i class="fas fa-check-circle text-orange-500"></i> ATT
+                            <i class="fas fa-check-circle text-orange-500"></i> Att
                         </a>
                     </li>
                     <li>
@@ -69,12 +69,12 @@
                             <i class="fas fa-check-circle text-orange-500"></i> ERE
                         </a>
                     </li>
-                    <li>
+                    {{-- <li>
                         <a href="{{ route('filters.index') }}"
                             class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
                             <i class="fas fa-filter text-orange-500"></i> Filters
                         </a>
-                    </li>
+                    </li> --}}
                 </ul>
             </div>
 
@@ -97,11 +97,11 @@
                         </a></li> --}}
                     <li><a href="{{ route('appointments.index') }}"
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition">
-                            <i class="fas fa-layer-group text-blue-500"></i> Appointments
+                            <i class="fas fa-layer-group text-blue-500"></i> Appts
                         </a></li>
                     <li><a href="{{ route('leave-types.index') }}"
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition">
-                            <i class="fas fa-layer-group text-blue-500"></i> Leave Type
+                            <i class="fas fa-layer-group text-blue-500"></i> lve type
                         </a></li>
                 </ul>
             </div>

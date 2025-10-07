@@ -1151,7 +1151,8 @@ class DutyAssignmentService
                         'rank' => $assignment->soldier->rank->name ?? 'N/A',
                         'company' => $assignment->soldier->company->name ?? 'N/A',
                         'start_time' => $assignment->start_time,
-                        'end_time' => $assignment->end_time
+                        'end_time' => $assignment->end_time,
+                        'remarks' => $assignment->remarks
                     ];
                 })->toArray(),
                 'rank_requirements' => $duty->dutyRanks->map(function ($dutyRank) {
@@ -1174,7 +1175,7 @@ class DutyAssignmentService
         // Get fixed duties for the date
         $fixedDuties = DutyRank::with([
             'duty:id,duty_name,start_time,end_time',
-            'soldier:id,army_no,full_name,rank_id',
+            'soldier:id,army_no,full_name,rank_id,company_id',
             'soldier.rank:id,name',
             'soldier.company:id,name'
         ])
@@ -1373,6 +1374,7 @@ class DutyAssignmentService
                 'message' => 'Soldier assigned to duty successfully',
                 'assignment_details' => [
                     'soldier_id' => $soldierId,
+                    'remarks' => $duty->remarks,
                     'soldier_name' => $soldier->full_name,
                     'duty_id' => $dutyId,
                     'duty_name' => $duty->duty_name,

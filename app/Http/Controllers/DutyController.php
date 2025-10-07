@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use DB;
+use Illuminate\Support\Facades\Log;
 
 class DutyController extends Controller
 {
@@ -71,23 +72,152 @@ class DutyController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+    // In DutyController.php, update the store method
+
+    // In DutyController.php, update the store method
+
+    // In DutyController.php, update the store method
+
     public function store(StoreDutyRequest $request): RedirectResponse
     {
-        // dd($request->validated());
         try {
-            $this->dutyService->createDutyWithAssignments($request->validated());
+            DB::transaction(function () use ($request) {
+                $validated = $request->validated();
+
+                // Log the raw request data for debugging
+                Log::info('Raw request data:', $validated);
+
+                // Create the duty
+                $duty = Duty::create([
+                    'duty_name' => $validated['duty_name'],
+                    'start_time' => $validated['start_time'],
+                    'end_time' => $validated['end_time'],
+                    'duration_days' => $validated['duration_days'],
+                    'remark' => $validated['remark'] ?? null,
+                    'status' => $validated['status'],
+                    'manpower' => $validated['manpower'] ?? 0,
+                ]);
+
+                // Create a lookup array for individual rank manpower (from rank_manpower array)
+                $individualRankManpowerLookup = [];
+                if (!empty($validated['rank_manpower']) && is_array($validated['rank_manpower'])) {
+                    foreach ($validated['rank_manpower'] as $rankId => $rankData) {
+                        // Handle both indexed (rank_id as key) and sequential array formats
+                        if (is_array($rankData) && isset($rankData['rank_id'])) {
+                            $individualRankManpowerLookup[$rankData['rank_id']] = $rankData['manpower'];
+                        } else {
+                            // If the key itself is the rank_id
+                            $individualRankManpowerLookup[$rankId] = $rankData['manpower'] ?? 0;
+                        }
+                    }
+                }
+
+                Log::info("Individual rank manpower lookup:", $individualRankManpowerLookup);
+
+                // Track which ranks have been assigned to groups
+                $groupAssignedRanks = [];
+
+                // Process rank group assignments FIRST
+                if (!empty($validated['rank_groups'])) {
+                    foreach ($validated['rank_groups'] as $groupKey => $groupData) {
+                        Log::info("Processing group {$groupKey}:", $groupData);
+
+                        $groupId = $groupData['id'] ?? $groupKey;
+                        $groupManpower = $groupData['manpower'] ?? 1;
+                        $ranks = $groupData['ranks'] ?? [];
+                        $groupRankManpower = $groupData['rank_manpower'] ?? [];
+
+                        Log::info("Group {$groupId} data:", [
+                            'group_manpower' => $groupManpower,
+                            'ranks' => $ranks,
+                            'rank_manpower' => $groupRankManpower
+                        ]);
+
+                        foreach ($ranks as $rankId) {
+                            // Convert rankId to string for array key lookup
+                            $rankIdStr = (string)$rankId;
+
+                            // Priority: group's rank_manpower > individual rank_manpower > group manpower
+                            $manpower = $groupRankManpower[$rankIdStr]
+                                ?? $groupRankManpower[$rankId]
+                                ?? $individualRankManpowerLookup[$rankIdStr]
+                                ?? $individualRankManpowerLookup[$rankId]
+                                ?? $groupManpower;
+
+                            Log::info("Creating group rank assignment", [
+                                'rank_id' => $rankId,
+                                'manpower' => $manpower,
+                                'group_id' => $groupId,
+                                'source' => isset($groupRankManpower[$rankIdStr]) ? 'group_rank_manpower' : (isset($individualRankManpowerLookup[$rankIdStr]) ? 'individual_rank_manpower' : 'group_manpower')
+                            ]);
+
+                            $duty->dutyRanks()->create([
+                                'rank_id' => $rankId,
+                                'manpower' => $manpower,
+                                'assignment_type' => 'roster',
+                                'group_id' => $groupId,
+                            ]);
+
+                            // Mark this rank as assigned to a group
+                            $groupAssignedRanks[] = $rankIdStr;
+                        }
+                    }
+                }
+
+                // Process individual rank assignments (only those NOT in groups)
+                if (!empty($validated['rank_manpower'])) {
+                    foreach ($validated['rank_manpower'] as $rankId => $rankData) {
+                        // Extract rank_id and manpower
+                        if (is_array($rankData) && isset($rankData['rank_id'])) {
+                            $actualRankId = $rankData['rank_id'];
+                            $manpower = $rankData['manpower'] ?? 0;
+                        } else {
+                            $actualRankId = $rankId;
+                            $manpower = $rankData['manpower'] ?? 0;
+                        }
+
+                        // Skip if this rank is already assigned to a group
+                        if (in_array((string)$actualRankId, $groupAssignedRanks)) {
+                            Log::info("Skipping rank {$actualRankId} - already in group");
+                            continue;
+                        }
+
+                        Log::info("Creating individual rank assignment for rank {$actualRankId} with manpower {$manpower}");
+
+                        $duty->dutyRanks()->create([
+                            'rank_id' => $actualRankId,
+                            'manpower' => $manpower,
+                            'assignment_type' => 'roster',
+                            'group_id' => null,
+                        ]);
+                    }
+                }
+
+                // Process fixed soldier assignments
+                if (!empty($validated['fixed_soldiers'])) {
+                    foreach ($validated['fixed_soldiers'] as $soldierAssignment) {
+                        $duty->dutyRanks()->create([
+                            'soldier_id' => $soldierAssignment['soldier_id'],
+                            'assignment_type' => 'fixed',
+                            'priority' => $soldierAssignment['priority'] ?? null,
+                            'remarks' => $soldierAssignment['remarks'] ?? null,
+                        ]);
+                    }
+                }
+            });
 
             return redirect()
                 ->route('duty.index')
                 ->with('success', 'Duty record created successfully.');
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            Log::error('Error creating duty: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             return back()
                 ->withInput()
                 ->with('error', 'Failed to create duty: ' . $e->getMessage());
         }
     }
-
     /**
      * Display the specified resource.
      */
@@ -135,7 +265,7 @@ class DutyController extends Controller
             $ranks = Rank::orderBy('name')->get();
             $availableSoldiers = $this->dutyService->getAvailableSoldiersForDuty(excludeDutyId: $duty->id);
 
-            // Prepare data for the form - FIXED VERSION
+            // Prepare data for the form
             $individualRanks = [];
             $rankGroups = [];
             $fixedSoldiers = [];
@@ -157,7 +287,11 @@ class DutyController extends Controller
                             'ranks' => []
                         ];
                     }
-                    $rankGroups[$assignment->group_id]['ranks'][] = $assignment->rank_id;
+                    $rankGroups[$assignment->group_id]['ranks'][] = [
+                        'id' => $assignment->rank_id,
+                        'name' => $assignment->rank->name,
+                        'manpower' => $assignment->manpower
+                    ];
                 } elseif ($assignment->assignment_type === 'fixed') {
                     // Fixed soldier assignment
                     $fixedSoldiers[$assignment->soldier_id] = [
@@ -203,7 +337,67 @@ class DutyController extends Controller
     public function update(UpdateDutyRequest $request, Duty $duty): RedirectResponse
     {
         try {
-            $this->dutyService->updateDutyWithAssignments($duty, $request->validated());
+            DB::transaction(function () use ($request, $duty) {
+                $validated = $request->validated();
+
+                // Update the duty
+                $duty->update([
+                    'duty_name' => $validated['duty_name'],
+                    'start_time' => $validated['start_time'],
+                    'end_time' => $validated['end_time'],
+                    'duration_days' => $validated['duration_days'],
+                    'remark' => $validated['remark'] ?? null,
+                    'status' => $validated['status'],
+                    'manpower' => $validated['manpower'] ?? 0,
+                ]);
+
+                // Remove all existing assignments
+                $duty->dutyRanks()->delete();
+
+                // Process individual rank assignments
+                if (!empty($validated['rank_manpower'])) {
+                    foreach ($validated['rank_manpower'] as $rankAssignment) {
+                        $duty->dutyRanks()->create([
+                            'rank_id' => $rankAssignment['rank_id'],
+                            'manpower' => $rankAssignment['manpower'],
+                            'assignment_type' => 'roster',
+                            'group_id' => null,
+                        ]);
+                    }
+                }
+
+                // Process rank group assignments
+                if (!empty($validated['rank_groups'])) {
+                    foreach ($validated['rank_groups'] as $groupAssignment) {
+                        // Generate a unique group ID if not provided
+                        $groupId = $groupAssignment['id'] ?? 'group_' . uniqid();
+
+                        foreach ($groupAssignment['ranks'] as $rankId) {
+                            // Use the individual rank manpower if available, otherwise fall back to group manpower
+                            $manpower = $groupAssignment['rank_manpower'][$rankId] ?? $groupAssignment['manpower'];
+
+                            $duty->dutyRanks()->create([
+                                'rank_id' => $rankId,
+                                'manpower' => $manpower,
+                                'assignment_type' => 'roster',
+                                'group_id' => $groupId,
+                            ]);
+                        }
+                    }
+                }
+
+                // Process fixed soldier assignments
+                if (!empty($validated['fixed_soldiers'])) {
+                    foreach ($validated['fixed_soldiers'] as $soldierAssignment) {
+                        $duty->dutyRanks()->create([
+                            'soldier_id' => $soldierAssignment['soldier_id'],
+                            'assignment_type' => 'fixed',
+                            'priority' => $soldierAssignment['priority'] ?? null,
+                            'remarks' => $soldierAssignment['remarks'] ?? null,
+                        ]);
+                    }
+                }
+            });
 
             return redirect()
                 ->route('duty.index')

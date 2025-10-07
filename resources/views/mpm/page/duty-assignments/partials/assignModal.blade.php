@@ -27,7 +27,7 @@
                 @csrf
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
-                    <input type="date" name="date" required
+                    <input type="date" name="date" required min="<?php echo date('Y-m-d'); ?>"
                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
                 <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
@@ -40,12 +40,12 @@
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                        <input type="date" name="start_date" required
+                        <input type="date" name="start_date" required min="<?php echo date('Y-m-d'); ?>"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                        <input type="date" name="end_date" required
+                        <input type="date" name="end_date" required min="<?php echo date('Y-m-d'); ?>"
                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                     </div>
                 </div>
