@@ -1,6 +1,6 @@
 @extends('mpm.layouts.app')
 
-@section('title', 'appointments Manager')
+@section('title', 'Appt create Manager')
 
 @section('content')
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8">
@@ -39,11 +39,11 @@
                                         d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
                                     </path>
                                 </svg>
-                                Select Appointment
+                                Select Appt
                             </label>
                             <select name="appointment_id" id="appointment_id"
                                 class="w-full rounded-xl border-2 border-gray-200 bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 px-4 py-3 text-sm">
-                                <option value="">-- Choose Appointment --</option>
+                                <option value="">-- Choose Appt --</option>
                                 @foreach ($appointments as $appointment)
                                     <option value="{{ $appointment->id }}">{{ $appointment->name }}</option>
                                 @endforeach
@@ -87,7 +87,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                Leave empty for indefinite appointments
+                                Leave empty for indefinite appts
                             </p>
                         </div>
                     </div>
@@ -126,7 +126,7 @@
                                 <div>
                                     <select id="filter-rank"
                                         class="w-full rounded-lg border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 px-3 py-2 text-sm">
-                                        <option value="">🎖️ All Ranks</option>
+                                        <option value="">🎖️ All Rks</option>
                                         @foreach ($ranks as $rank)
                                             <option value="{{ $rank->id }}">{{ $rank->name }}</option>
                                         @endforeach
@@ -136,7 +136,7 @@
                                 <div>
                                     <select id="filter-company"
                                         class="w-full rounded-lg border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 px-3 py-2 text-sm">
-                                        <option value="">🏢 All Companies</option>
+                                        <option value="">🏢 All Coy</option>
                                         @foreach ($companies as $company)
                                             <option value="{{ $company->id }}">{{ $company->name }}</option>
                                         @endforeach
@@ -189,7 +189,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M5 13l4 4L19 7"></path>
                                 </svg>
-                                Save Appointment Manager
+                                Save Appt Manager
                             </button>
                         </div>
                     </div>

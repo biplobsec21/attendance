@@ -91,19 +91,19 @@
 
                         <!-- Rank Filter -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Rank</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">RK</label>
                             <select id="rank-filter"
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                <option value="">All Ranks</option>
+                                <option value="">All RK</option>
                             </select>
                         </div>
 
                         <!-- Company Filter -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Company</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Coy</label>
                             <select id="company-filter"
                                 class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                <option value="">All Companies</option>
+                                <option value="">All Coy</option>
                             </select>
                         </div>
 

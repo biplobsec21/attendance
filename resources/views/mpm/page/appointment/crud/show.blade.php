@@ -11,11 +11,11 @@
 
         <div class="bg-white/30 shadow-lg rounded-lg p-6 formBack w-full max-w-2xl mx-auto">
             <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold text-gray-800">appointment Details</h1>
+                <h1 class="text-2xl font-bold text-gray-800">Appts Details</h1>
                 <div class="flex space-x-2">
                     <a href="{{ route('appointments.edit', $appointment) }}"
                         class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-colors no-underline">Edit
-                        Appointment</a>
+                        Appt</a>
                     <a href="{{ route('appointments.index') }}"
                         class="bg-transparent text-black font-semibold py-2 px-4 border border-black rounded-lg hover:bg-black hover:text-white transition-colors no-underline">Back
                         to List</a>
@@ -30,7 +30,7 @@
                     </div>
 
                     <div class="bg-white/50 p-4 rounded-lg">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">appointment Name</label>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Appts Name</label>
                         <p class="text-gray-900 text-lg font-medium">{{ $appointment->name }}</p>
                     </div>
 

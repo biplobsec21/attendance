@@ -18,7 +18,7 @@
                     <li>
                         <a href="{{ route('ranks.index') }}"
                             class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
-                            <i class="fas fa-tasks text-orange-500"></i> Rks
+                            <i class="fas fa-tasks text-orange-500"></i> RK
                         </a>
                     </li>
                     <li>
@@ -148,7 +148,7 @@
                     <li>
                         <a href="{{ route('company_rank_manpower.index') }}"
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition">
-                            <i class="fas fa-user text-purple-500"></i> Authority Manpower
+                            <i class="fas fa-user text-purple-500"></i> Auth Manpower
                         </a>
                     </li>
 

@@ -16,7 +16,7 @@
                 {{-- appointment Name --}}
                 <div class="mb-4">
                     <label for="name" class="block text-gray-700 text-sm font-bold mb-2">
-                        appointment Name <span class="text-red-600">*</span>
+                        Appt Name <span class="text-red-600">*</span>
                     </label>
                     <input type="text" id="name" name="name" value="{{ old('name', $appointment->name) }}"
                         class="shadow-sm appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 @error('name') border-red-500 @enderror"
@@ -57,7 +57,7 @@
                     </a>
                     <button type="submit" data-submit
                         class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-colors">
-                        Update appointment
+                        Update Appt
                     </button>
                 </div>
             </form>

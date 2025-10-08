@@ -8,7 +8,7 @@
         @include('mpm.components.alerts')
 
         <div class="bg-white/30 shadow-lg rounded-lg p-4 sm:p-6 formBack">
-            <h1 class="text-2xl font-bold text-gray-800 mb-4 pb-2">appointments List</h1>
+            <h1 class="text-2xl font-bold text-gray-800 mb-4 pb-2">Appt List</h1>
 
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                 <form method="GET" action="{{ route('appointments.index') }}"

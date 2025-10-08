@@ -1,6 +1,6 @@
 @extends('mpm.layouts.app')
 
-@section('title', 'Appointments Manager')
+@section('title', 'Appts Manager')
 
 @section('content')
     <div class="container mx-auto p-4">
@@ -29,7 +29,7 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
-                        New Appointment
+                        New Appt
                     </a>
                 </div>
 
@@ -47,7 +47,7 @@
                         <button
                             class="tab-button active border-b-2 border-blue-500 py-2 px-1 text-sm font-medium text-blue-600"
                             data-tab="current">
-                            Current Appointments
+                            Current Appts
                             <span class="ml-2 bg-blue-100 text-blue-800 py-0.5 px-2 rounded-full text-xs">
                                 {{ $currentServices->count() }}
                             </span>
@@ -55,7 +55,7 @@
                         <button
                             class="tab-button border-b-2 border-transparent py-2 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
                             data-tab="previous">
-                            Completed Appointments
+                            Completed Appts
                             <span class="ml-2 bg-gray-100 text-gray-800 py-0.5 px-2 rounded-full text-xs">
                                 {{ $previousServices->count() }}
                             </span>
@@ -357,7 +357,7 @@
             <div class="mt-3">
                 <!-- Modal Header -->
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-medium text-gray-900">Edit Appointment</h3>
+                    <h3 class="text-lg font-medium text-gray-900">Edit Appt</h3>
                     <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
