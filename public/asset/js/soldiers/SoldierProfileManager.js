@@ -7,7 +7,7 @@ import { showToast } from "./soldierHelpers.js";
 
 export default class SoldierProfileManager {
     constructor() {
-        this.filters = { search: "", rank: "", company: "", status: "", skill: "", course: "", cadre: "", ere: "all" };
+        this.filters = { search: "", rank: "", company: "", status: "", skill: "", course: "", cadre: "", ere: "all", att: "", education: "" };
         this.selectedRows = new Set();
         this.soldiers = [];
         this.bulkActions = new SoldierBulkActions(this);
@@ -82,6 +82,8 @@ export default class SoldierProfileManager {
         const skills = new Set();
         const courses = new Set();
         const cadres = new Set();
+        const atts = new Set();
+        const educations = new Set();
 
         this.soldiers.forEach(s => {
             if (s.rank) ranks.add(s.rank);
@@ -103,6 +105,19 @@ export default class SoldierProfileManager {
             if (Array.isArray(s.cadres)) {
                 s.cadres.forEach(cadre => {
                     if (cadre.name) cadres.add(cadre.name);
+                });
+            }
+
+            // ATT
+            if (Array.isArray(s.att)) {
+                s.att.forEach(att => {
+                    if (att.name) atts.add(att.name);
+                });
+            }
+            // Education
+            if (Array.isArray(s.educations)) {
+                s.educations.forEach(education => {
+                    if (education.name) educations.add(education.name);
                 });
             }
 
@@ -162,6 +177,29 @@ export default class SoldierProfileManager {
                 option.value = cadre;
                 option.textContent = cadre;
                 cadreSelect.appendChild(option);
+            });
+        }
+
+        // ATT filter
+        const attSelect = document.getElementById('att-filter');
+        if (attSelect) {
+            attSelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
+            atts.forEach(att => {
+                const option = document.createElement('option');
+                option.value = att;
+                option.textContent = att;
+                attSelect.appendChild(option);
+            });
+        }
+        // Education filter
+        const educationSelect = document.getElementById('education-filter');
+        if (educationSelect) {
+            educationSelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
+            educations.forEach(education => {
+                const option = document.createElement('option');
+                option.value = education;
+                option.textContent = education;
+                educationSelect.appendChild(option);
             });
         }
     }
@@ -250,6 +288,26 @@ export default class SoldierProfileManager {
         } else {
             emptyState.classList.add('hidden');
         }
+        // ATT filter logic
+        if (this.filters.att) {
+            const filterValue = this.filters.att.toLowerCase().trim();
+            filtered = filtered.filter(soldier =>
+                soldier.att?.some(att =>
+                    att.name.toLowerCase().trim() === filterValue
+                )
+            );
+            console.log('After ATT filter:', filtered.length);
+        }
+        // Education filter logic
+        if (this.filters.education) {
+            const filterValue = this.filters.education.toLowerCase().trim();
+            filtered = filtered.filter(soldier =>
+                soldier.educations?.some(education =>
+                    education.name.toLowerCase().trim() === filterValue
+                )
+            );
+            console.log('After Education filter:', filtered.length);
+        }
 
         console.log('Final filtered count:', filtered.length);
         this.renderData(filtered);
@@ -264,7 +322,9 @@ export default class SoldierProfileManager {
             skill: "",
             course: "",
             cadre: "",
-            ere: "all" // Reset ERE filter to default value
+            ere: "all", // Reset ERE filter to default value
+            att: "",
+            education: ""
         };
 
         const searchInput = document.getElementById('search-input');
@@ -275,6 +335,8 @@ export default class SoldierProfileManager {
         const courseSelect = document.getElementById('course-filter');
         const cadreSelect = document.getElementById('cadre-filter');
         const ereSelect = document.getElementById('ere-filter');
+        const attSelect = document.getElementById('att-filter');
+        const educationSelect = document.getElementById('education-filter');
 
         if (searchInput) searchInput.value = '';
         if (rankSelect) rankSelect.value = '';
@@ -284,6 +346,8 @@ export default class SoldierProfileManager {
         if (courseSelect) courseSelect.value = '';
         if (cadreSelect) cadreSelect.value = '';
         if (ereSelect) ereSelect.value = 'all'; // Reset ERE filter to default
+        if (attSelect) attSelect.value = '';
+        if (educationSelect) educationSelect.value = '';
 
         console.log('All filters cleared');
         this.filterAndRender();
@@ -346,27 +410,7 @@ export default class SoldierProfileManager {
         this.bulkActions.updateBulkActionButton();
     }
 
-    clearFilters() {
-        this.filters = { search: "", rank: "", company: "", status: "", skill: "" };
 
-        const searchInput = document.getElementById('search-input');
-        const rankSelect = document.getElementById('rank-filter');
-        const companySelect = document.getElementById('company-filter');
-        const statusSelect = document.getElementById('status-filter');
-        const skillSelect = document.getElementById('skill-filter');
-        const courseSelect = document.getElementById('course-filter');
-        const cadreSelect = document.getElementById('cadre-filter');
-
-        if (searchInput) searchInput.value = '';
-        if (rankSelect) rankSelect.value = '';
-        if (companySelect) companySelect.value = '';
-        if (statusSelect) statusSelect.value = '';
-        if (skillSelect) skillSelect.value = '';
-        if (courseSelect) courseSelect.value = '';
-        if (cadreSelect) cadreSelect.value = '';
-
-        this.filterAndRender();
-    }
 
     // Tailwind Modal Functions
     showModal(title, content) {
