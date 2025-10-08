@@ -36,7 +36,7 @@ class SoldierDataFormatter
             'current_leave_details' => $profile->current_leave_details,
 
 
-            'is_leave' => $profile->is_on_leave ? 1 : 0, //$profile->is_leave
+            'is_leave' => $profile->is_on_leave ? true : false, //$profile->is_leave
             'is_sick' => $profile->is_sick,
             'status' => $profile->status,
             'mobile' => $profile->mobile,
