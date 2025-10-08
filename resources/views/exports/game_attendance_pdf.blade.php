@@ -8,9 +8,7 @@
         body {
             font-family: 'Arial', sans-serif;
             font-size: 12px;
-            /* Increased from 10px */
             margin: 15px;
-            /* Increased margin */
             line-height: 1.4;
         }
 
@@ -21,20 +19,17 @@
 
         .header h1 {
             font-size: 20px;
-            /* Increased from 18px */
             margin: 8px 0;
             text-transform: uppercase;
         }
 
         .header p {
             font-size: 14px;
-            /* Increased from 12px */
             margin: 5px 0;
         }
 
         .section-title {
             font-size: 16px;
-            /* Increased from 14px */
             font-weight: bold;
             margin-top: 30px;
             margin-bottom: 15px;
@@ -53,20 +48,16 @@
             background-color: #d3d3d3;
             border: 1px solid #333;
             padding: 10px;
-            /* Increased padding */
             text-align: center;
             font-weight: bold;
             font-size: 12px;
-            /* Increased from 10px */
         }
 
         table td {
             border: 1px solid #333;
             padding: 8px;
-            /* Increased padding */
             text-align: center;
             font-size: 11px;
-            /* Increased from 9px */
         }
 
         table td.text-left {
@@ -86,7 +77,6 @@
         .footer {
             margin-top: 30px;
             font-size: 11px;
-            /* Increased from 9px */
             text-align: center;
             color: #666;
         }
@@ -98,7 +88,6 @@
         /* Specific column widths */
         .col-explanation {
             width: 350px;
-            /* Wider for combined category + type */
         }
 
         .col-company {
@@ -107,6 +96,44 @@
 
         .col-total {
             width: 80px;
+        }
+
+        /* Format 3 specific styles */
+        .col-serial {
+            width: 40px;
+        }
+
+        .col-army-no {
+            width: 80px;
+        }
+
+        .col-rank {
+            width: 70px;
+        }
+
+        .col-name {
+            width: 150px;
+        }
+
+        .col-company-small {
+            width: 80px;
+        }
+
+        .col-category {
+            width: 100px;
+        }
+
+        .col-details {
+            width: 200px;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
@@ -157,7 +184,7 @@
     <table>
         <thead>
             <tr>
-                <th class="col-explanation">Explanation</th> <!-- Combined column -->
+                <th class="col-explanation">Explanation</th>
                 @foreach ($companies as $company)
                     <th class="col-company">{{ $company }}</th>
                 @endforeach
@@ -190,6 +217,49 @@
             @endforeach
         </tbody>
     </table>
+
+    <div class="page-break"></div>
+
+    <!-- Format 3: Detailed List of Excused Soldiers -->
+    <div class="section-title">Format 3: Detailed List of Excused Soldiers</div>
+
+    @if (count($format3Data) > 0)
+        <table>
+            <thead>
+                <tr>
+                    <th class="col-serial">S.No</th>
+                    <th class="col-army-no">Army No</th>
+                    <th class="col-rank">Rank</th>
+                    <th class="col-name">Name</th>
+                    <th class="col-company-small">Company</th>
+                    <th class="col-category">Excusal Category</th>
+                    <th class="col-details">Excusal Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($format3Data as $soldier)
+                    <tr>
+                        <td class="col-serial">{{ $soldier['sl_no'] }}</td>
+                        <td class="col-army-no">{{ $soldier['army_no'] }}</td>
+                        <td class="col-rank">{{ $soldier['rank'] }}</td>
+                        <td class="col-name text-left">{{ $soldier['name'] }}</td>
+                        <td class="col-company-small">{{ $soldier['company'] }}</td>
+                        <td class="col-category">{{ $soldier['excusal_category'] }}</td>
+                        <td class="col-details text-left">{{ $soldier['excusal_details'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <!-- Summary for Format 3 -->
+        <div style="margin-top: 20px; padding: 10px; background-color: #f0f0f0; border: 1px solid #ddd;">
+            <strong>Total Excused Soldiers: {{ count($format3Data) }}</strong>
+        </div>
+    @else
+        <div class="no-data">
+            No soldiers are excused for {{ $date }}
+        </div>
+    @endif
 
     <!-- Footer -->
     <div class="footer">

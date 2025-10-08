@@ -38,10 +38,12 @@ class GameAttendanceExcelExport implements FromView
                 }
             }
         }
+        $format3Data = $this->service->getFormat3Data($this->date); // Added Format 3 data
 
         return view('exports.game_attendance_excel_combined', [
             'format1Data' => $format1Data,
             'format2Data' => $format2Data,
+            'format3Data' => $format3Data, // Pass to view
             'rankTypes' => $rankTypes,
             'companies' => $companies,
             'date' => $formattedDate,

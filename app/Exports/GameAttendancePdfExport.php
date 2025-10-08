@@ -24,6 +24,7 @@ class GameAttendancePdfExport implements FromView
     {
         $format1Data = $this->service->getFormat1Data($this->date);
         $format2Data = $this->service->getFormat2Data($this->date);
+        $format3Data = $this->service->getFormat3Data($this->date); // Added Format 3 data
         $rankTypes = $this->service->getRankTypes();
         $formattedDate = Carbon::parse($this->date)->format('d M Y');
         $reportTitle = $this->service->getReportTitle();
@@ -42,6 +43,7 @@ class GameAttendancePdfExport implements FromView
         return view('exports.game_attendance_pdf', [
             'format1Data' => $format1Data,
             'format2Data' => $format2Data,
+            'format3Data' => $format3Data, // Pass to view
             'rankTypes' => $rankTypes,
             'companies' => $companies,
             'date' => $formattedDate,

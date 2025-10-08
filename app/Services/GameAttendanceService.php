@@ -698,6 +698,235 @@ class GameAttendanceService
     }
 
     /**
+     * Get Format 3 data - Detailed list of all excused soldiers
+     * Returns a list of all excused soldiers with their complete information
+     */
+    public function getFormat3Data($date)
+    {
+        Log::info("📝 GENERATING FORMAT3 DATA (EXCUSED SOLDIERS LIST) for {$this->reportType} report on date: {$date}");
+
+        $carbonDate = Carbon::parse($date);
+
+        // Get all soldiers (excluding ERE)
+        $allSoldiers = Soldier::where(function ($query) use ($date) {
+            $this->excludeSoldiersWithActiveEre($query, $date);
+        })
+            ->with(['company', 'rank'])
+            ->orderBy('company_id')
+            ->orderBy('army_no')
+            ->get();
+
+        Log::debug("👥 Total soldiers to check (excluding ERE): {$allSoldiers->count()}");
+
+        $excusedSoldiersList = [];
+        $serialNumber = 1;
+
+        foreach ($allSoldiers as $soldier) {
+            $excusalReason = $this->getSoldierExcusalReason($soldier, $date);
+
+            if ($excusalReason) {
+                $excusedSoldiersList[] = [
+                    'sl_no' => $serialNumber++,
+                    'army_no' => $soldier->army_no ?? 'N/A',
+                    'rank' => $soldier->rank->name ?? 'N/A',
+                    'name' => $soldier->full_name ?? 'N/A',
+                    'company' => $soldier->company->name ?? 'N/A',
+                    'excusal_category' => $excusalReason['reason'],
+                    'excusal_details' => $excusalReason['details'],
+                    'priority' => $excusalReason['priority'],
+                ];
+            }
+        }
+
+        Log::info("📝 FORMAT3 COMPLETED - Total excused soldiers: " . count($excusedSoldiersList));
+
+        return $excusedSoldiersList;
+    }
+
+    /**
+     * Get summary statistics for all formats
+     * Returns comprehensive statistics including counts from all formats
+     */
+    public function getSummaryStatistics($date)
+    {
+        Log::info("📊 GENERATING SUMMARY STATISTICS for {$this->reportType} report on date: {$date}");
+
+        // Get Format 1 data
+        $format1Data = $this->getFormat1Data($date);
+        $format1Totals = end($format1Data);
+
+        // Get Format 2 data
+        $format2Data = $this->getFormat2Data($date);
+        $format2Totals = end($format2Data);
+
+        // Get Format 3 data (detailed list)
+        $format3Data = $this->getFormat3Data($date);
+
+        // Calculate statistics
+        $totalStrength = $format1Totals['Total'] ?? 0;
+        $totalExcused = $format1Totals['Excused'] ?? 0;
+        $totalPresent = $format1Totals['All Total'] ?? 0;
+
+        $excusedByCategory = [];
+        foreach ($format2Data as $row) {
+            if ($row['category'] !== 'Total') {
+                $category = $row['category'];
+                if (!isset($excusedByCategory[$category])) {
+                    $excusedByCategory[$category] = 0;
+                }
+                $excusedByCategory[$category] += $row['Total'];
+            }
+        }
+
+        $statistics = [
+            'date' => $date,
+            'report_type' => $this->reportType,
+            'report_title' => $this->getReportTitle(),
+
+            // Overall counts
+            'total_strength' => $totalStrength,
+            'total_excused' => $totalExcused,
+            'total_present' => $totalPresent,
+            'excusal_percentage' => $totalStrength > 0 ? round(($totalExcused / $totalStrength) * 100, 2) : 0,
+
+            // Format verification
+            'format1_excused' => $format1Totals['Excused'] ?? 0,
+            'format2_total' => $format2Totals['Total'] ?? 0,
+            'format3_count' => count($format3Data),
+            'counts_match' => (
+                ($format1Totals['Excused'] ?? 0) === ($format2Totals['Total'] ?? 0) &&
+                ($format1Totals['Excused'] ?? 0) === count($format3Data)
+            ),
+
+            // Breakdown by category
+            'excused_by_category' => $excusedByCategory,
+
+            // Company breakdown
+            'companies' => $this->getCompanyBreakdown($format1Data),
+        ];
+
+        Log::info("📊 SUMMARY STATISTICS COMPLETED");
+        Log::info("   Total Strength: {$statistics['total_strength']}");
+        Log::info("   Total Excused: {$statistics['total_excused']}");
+        Log::info("   Total Present: {$statistics['total_present']}");
+        Log::info("   Counts Match: " . ($statistics['counts_match'] ? 'YES ✅' : 'NO ❌'));
+
+        return $statistics;
+    }
+
+    /**
+     * Get company-wise breakdown
+     */
+    private function getCompanyBreakdown($format1Data)
+    {
+        $companies = [];
+
+        foreach ($format1Data as $row) {
+            if ($row['company'] !== 'Total') {
+                $companies[] = [
+                    'name' => $row['company'],
+                    'total' => $row['Total'] ?? 0,
+                    'excused' => $row['Excused'] ?? 0,
+                    'present' => $row['All Total'] ?? 0,
+                ];
+            }
+        }
+
+        return $companies;
+    }
+
+    /**
+     * Get excused soldiers by company for Format 3
+     */
+    public function getFormat3DataByCompany($date)
+    {
+        Log::info("📝 GENERATING FORMAT3 DATA BY COMPANY for {$this->reportType} report on date: {$date}");
+
+        $allExcusedSoldiers = $this->getFormat3Data($date);
+
+        // Group by company
+        $groupedByCompany = [];
+        foreach ($allExcusedSoldiers as $soldier) {
+            $companyName = $soldier['company'];
+
+            if (!isset($groupedByCompany[$companyName])) {
+                $groupedByCompany[$companyName] = [
+                    'company_name' => $companyName,
+                    'soldiers' => [],
+                    'total_count' => 0,
+                ];
+            }
+
+            $groupedByCompany[$companyName]['soldiers'][] = $soldier;
+            $groupedByCompany[$companyName]['total_count']++;
+        }
+
+        // Sort by company name
+        ksort($groupedByCompany);
+
+        Log::info("📝 FORMAT3 BY COMPANY COMPLETED - " . count($groupedByCompany) . " companies");
+
+        return array_values($groupedByCompany);
+    }
+
+    /**
+     * Get excused soldiers by category for Format 3
+     */
+    public function getFormat3DataByCategory($date)
+    {
+        Log::info("📝 GENERATING FORMAT3 DATA BY CATEGORY for {$this->reportType} report on date: {$date}");
+
+        $allExcusedSoldiers = $this->getFormat3Data($date);
+
+        // Group by category
+        $groupedByCategory = [];
+        foreach ($allExcusedSoldiers as $soldier) {
+            $category = $soldier['excusal_category'];
+
+            if (!isset($groupedByCategory[$category])) {
+                $groupedByCategory[$category] = [
+                    'category_name' => $category,
+                    'soldiers' => [],
+                    'total_count' => 0,
+                ];
+            }
+
+            $groupedByCategory[$category]['soldiers'][] = $soldier;
+            $groupedByCategory[$category]['total_count']++;
+        }
+
+        // Sort by priority (lower priority number = higher priority)
+        uasort($groupedByCategory, function ($a, $b) {
+            $priorityA = $a['soldiers'][0]['priority'] ?? 999;
+            $priorityB = $b['soldiers'][0]['priority'] ?? 999;
+            return $priorityA - $priorityB;
+        });
+
+        Log::info("📝 FORMAT3 BY CATEGORY COMPLETED - " . count($groupedByCategory) . " categories");
+
+        return array_values($groupedByCategory);
+    }
+
+    /**
+     * Get complete report data - all formats combined
+     */
+    public function getCompleteReportData($date)
+    {
+        Log::info("📋 GENERATING COMPLETE REPORT DATA for {$this->reportType} report on date: {$date}");
+
+        return [
+            'statistics' => $this->getSummaryStatistics($date),
+            'format1' => $this->getFormat1Data($date),
+            'format2' => $this->getFormat2Data($date),
+            'format3' => [
+                'all_soldiers' => $this->getFormat3Data($date),
+                'by_company' => $this->getFormat3DataByCompany($date),
+                'by_category' => $this->getFormat3DataByCategory($date),
+            ],
+        ];
+    }
+
+    /**
      * Compare Format1 and Format2 totals for debugging
      */
     public function compareTotals($date)
@@ -710,19 +939,26 @@ class GameAttendanceService
         $format2Data = $this->getFormat2Data($date);
         $format2Total = end($format2Data)['Total'] ?? 0;
 
+        $format3Data = $this->getFormat3Data($date);
+        $format3Count = count($format3Data);
+
         $actualExcused = $this->getActualExcusedCount($date);
 
         Log::warning("📊 COMPARISON RESULTS:");
         Log::warning("   Format1 (Excused): {$format1Excused}");
         Log::warning("   Format2 (Total): {$format2Total}");
+        Log::warning("   Format3 (Count): {$format3Count}");
         Log::warning("   Actual Excused: {$actualExcused}");
 
-        if ($format1Excused === $format2Total && $format1Excused === $actualExcused) {
-            Log::info("🎉 SUCCESS: All counts match!");
+        if ($format1Excused === $format2Total && $format1Excused === $format3Count && $format1Excused === $actualExcused) {
+            Log::info("🎉 SUCCESS: All counts match perfectly!");
         } else {
             Log::error("❌ MISMATCH DETECTED:");
             if ($format1Excused !== $format2Total) {
                 Log::error("   Format1 ({$format1Excused}) ≠ Format2 ({$format2Total})");
+            }
+            if ($format1Excused !== $format3Count) {
+                Log::error("   Format1 ({$format1Excused}) ≠ Format3 ({$format3Count})");
             }
             if ($format1Excused !== $actualExcused) {
                 Log::error("   Format1 ({$format1Excused}) ≠ Actual ({$actualExcused})");
@@ -732,8 +968,9 @@ class GameAttendanceService
         return [
             'format1_excused' => $format1Excused,
             'format2_total' => $format2Total,
+            'format3_count' => $format3Count,
             'actual_excused' => $actualExcused,
-            'match' => ($format1Excused === $format2Total && $format1Excused === $actualExcused)
+            'match' => ($format1Excused === $format2Total && $format1Excused === $format3Count && $format1Excused === $actualExcused)
         ];
     }
 }

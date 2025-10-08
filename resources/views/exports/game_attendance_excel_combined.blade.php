@@ -8,87 +8,121 @@
         body {
             font-family: Arial, sans-serif;
             font-size: 12px;
-            margin: 15px;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-
-        .header h1 {
-            font-size: 20px;
-            margin: 8px 0;
-        }
-
-        .header p {
-            font-size: 14px;
-            margin: 5px 0;
-        }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: bold;
-            margin-top: 30px;
-            margin-bottom: 15px;
-            padding: 8px 12px;
-            background-color: #e0e0e0;
-            border-left: 4px solid #333;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
-        table th {
-            background-color: #d3d3d3;
-            border: 1px solid #333;
-            padding: 10px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        table td {
-            border: 1px solid #333;
+        th,
+        td {
+            border: 1px solid #ddd;
             padding: 8px;
             text-align: center;
-            font-size: 11px;
         }
 
-        table td.text-left {
-            text-align: left;
-        }
-
-        table tr.total-row {
-            background-color: #f0f0f0;
+        th {
+            background-color: #f2f2f2;
             font-weight: bold;
         }
 
-        table tr.category-row {
+        .header-row td {
+            border: none;
+            font-size: 14px;
+            font-weight: bold;
+            padding: 10px;
+        }
+
+        .note-row td {
+            background-color: #fffbeb;
+            border: 1px solid #ddd;
+            font-size: 11px;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .section-title-row td {
+            background-color: #f2f2f2;
+            border: 1px solid #ddd;
+            font-weight: bold;
+            font-size: 14px;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .total-row {
+            background-color: #f9f9f9;
+            font-weight: bold;
+        }
+
+        .category-row {
             background-color: #f5f5f5;
             font-weight: bold;
         }
 
-        .footer {
-            margin-top: 30px;
-            font-size: 11px;
+        .text-left {
+            text-align: left;
+        }
+
+        /* Format 3 specific styles */
+        .col-serial {
+            width: 40px;
+        }
+
+        .col-army-no {
+            width: 80px;
+        }
+
+        .col-rank {
+            width: 70px;
+        }
+
+        .col-name {
+            width: 150px;
+        }
+
+        .col-company-small {
+            width: 80px;
+        }
+
+        .col-category {
+            width: 100px;
+        }
+
+        .col-details {
+            width: 200px;
+        }
+
+        .no-data {
             text-align: center;
+            padding: 20px;
+            font-style: italic;
             color: #666;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
 
 <body>
-    <div class="header">
-        <h1>{{ $reportTitle }}</h1>
-        <p><strong>Date:</strong> {{ $date }}</p>
-    </div>
-
-    <div class="section-title">Format 1: Summary by Company and Rank Type</div>
+    <!-- Header Table -->
     <table>
+        <tr class="header-row">
+            <td colspan="100%" style="text-align: center;">
+                {{ $reportTitle }}<br>
+                Date: {{ $date }}<br>
+                Generated: {{ now()->format('d M Y H:i:s') }}
+            </td>
+        </tr>
+    </table>
+
+    <!-- Format 1: Summary by Company and Rank Type -->
+    <table>
+        <tr class="section-title-row">
+            <td colspan="100%"> Summary by Company and Rank Type</td>
+        </tr>
         <thead>
             <tr>
                 <th>Company</th>
@@ -115,11 +149,14 @@
         </tbody>
     </table>
 
-    <div class="section-title">Format 2: Exclusion by Duty / Appointment Type</div>
+    <!-- Format 2: Exclusion by Duty / Appointment Type -->
     <table>
+        <tr class="section-title-row">
+            <td colspan="100%"> Exclusion lists</td>
+        </tr>
         <thead>
             <tr>
-                <th style="width: 350px;">Explanation</th>
+                <th class="text-left">Explanation</th>
                 @foreach ($companies as $company)
                     <th>{{ $company }}</th>
                 @endforeach
@@ -127,12 +164,15 @@
             </tr>
         </thead>
         <tbody>
-            @php $currentCategory = ''; @endphp
+            @php
+                $currentCategory = '';
+            @endphp
             @foreach ($format2Data as $row)
                 @php
                     $isNewCategory = $row['category'] !== $currentCategory && $row['category'] !== 'Total';
                     $currentCategory = $row['category'];
                 @endphp
+
                 <tr class="{{ $row['category'] === 'Total' ? 'total-row' : ($isNewCategory ? 'category-row' : '') }}">
                     <td class="text-left">
                         @if ($row['category'] !== 'Total')
@@ -148,6 +188,61 @@
                 </tr>
             @endforeach
         </tbody>
+    </table>
+
+    <!-- Format 3: Detailed List of Excused Soldiers -->
+    <table>
+        <tr class="section-title-row">
+            <td colspan="100%"> Detailed List of Excused Soldiers</td>
+        </tr>
+        @if (count($format3Data) > 0)
+            <thead>
+                <tr>
+                    <th class="col-serial">S.No</th>
+                    <th class="col-army-no">Army No</th>
+                    <th class="col-rank">Rank</th>
+                    <th class="col-name text-left">Name</th>
+                    <th class="col-company-small">Company</th>
+                    <th class="col-category">Excusal Category</th>
+                    <th class="col-details text-left">Excusal Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($format3Data as $soldier)
+                    <tr>
+                        <td class="col-serial">{{ $soldier['sl_no'] }}</td>
+                        <td class="col-army-no">{{ $soldier['army_no'] }}</td>
+                        <td class="col-rank">{{ $soldier['rank'] }}</td>
+                        <td class="col-name text-left">{{ $soldier['name'] }}</td>
+                        <td class="col-company-small">{{ $soldier['company'] }}</td>
+                        <td class="col-category">{{ $soldier['excusal_category'] }}</td>
+                        <td class="col-details text-left">{{ $soldier['excusal_details'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="6" style="text-align: right;">Total Excused Soldiers:</td>
+                    <td><strong>{{ count($format3Data) }}</strong></td>
+                </tr>
+            </tfoot>
+        @else
+            <tr>
+                <td colspan="7" class="no-data">
+                    No soldiers are excused for {{ $date }}
+                </td>
+            </tr>
+        @endif
+    </table>
+
+    <!-- Footer Note -->
+    <table>
+        <tr class="note-row">
+            <td colspan="100%">
+                This report was automatically generated by the Attendance Report Module<br>
+                Confidential - For Official Use Only
+            </td>
+        </tr>
     </table>
 </body>
 
