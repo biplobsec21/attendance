@@ -7,54 +7,29 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            font-size: 12px;
+            font-size: 11px;
+            margin: 0;
+            padding: 0;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 0;
         }
 
         th,
         td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
+            border: 2px solid #000000;
+            padding: 0;
+            text-align: left !important;
+            line-height: 1;
         }
 
         th {
-            background-color: #f2f2f2;
+            background-color: #D9D9D9;
             font-weight: bold;
-        }
-
-        .header-row td {
-            border: none;
-            font-size: 14px;
-            font-weight: bold;
-            padding: 10px;
-        }
-
-        .note-row td {
-            background-color: #fffbeb;
-            border: 1px solid #ddd;
-            font-size: 11px;
-            text-align: center;
-            padding: 10px;
-        }
-
-        .section-title-row td {
-            background-color: #f2f2f2;
-            border: 1px solid #ddd;
-            font-weight: bold;
-            font-size: 14px;
-            padding: 8px;
-            text-align: center;
-        }
-
-        .total-row {
-            background-color: #f9f9f9;
-            font-weight: bold;
+            height: 100px;
         }
     </style>
 </head>
@@ -63,14 +38,12 @@
     <!-- Header Table -->
     <table>
         <tr class="header-row">
-            <td colspan="100%" style="text-align: center;">
-                Manpower Distribution Report<br>
-                {{ $formattedDate }}
+            <td style="padding:4px" colspan="100%">
+                <strong>Manpower Distribution Report {{ $date }}</strong><br>
+                <br>
             </td>
         </tr>
     </table>
-
-    <!-- Note Table -->
 
     <!-- Initialize all variables with defaults to prevent undefined errors -->
     @php
@@ -87,19 +60,19 @@
         $leaveTypeCompanyTotals = $leaveTypeCompanyTotals ?? [];
     @endphp
 
-    <!-- Planned Manpower Distribution Table -->
+    <!-- Common Header for Rank-based Tables -->
     <table>
-        <tr class="section-title-row">
-            <td colspan="100%">Planned Manpower Distribution</td>
-        </tr>
         <thead>
+            <tr class="section-title-row">
+                <td colspan="100%">Auth Manpower</td>
+            </tr>
             <tr>
-                <th>Company</th>
-                <th>Officers</th>
+                <th>Coy</th>
+                <th class="vertical-header">Officers</th>
                 @foreach ($otherRanks as $rank)
-                    <th>{{ $rank->name }}</th>
+                    <th class="vertical-header">{{ $rank->name }}</th>
                 @endforeach
-                <th>Total</th>
+                <th class="vertical-header">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -145,18 +118,8 @@
     <!-- Received Manpower Distribution Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="100%">Received Manpower Distribution</td>
+            <td colspan="100%">Received Manpower</td>
         </tr>
-        <thead>
-            <tr>
-                <th>Company</th>
-                <th>Officers</th>
-                @foreach ($otherRanks as $rank)
-                    <th>{{ $rank->name }}</th>
-                @endforeach
-                <th>Total</th>
-            </tr>
-        </thead>
         <tbody>
             @foreach ($companies as $company)
                 @php
@@ -201,18 +164,8 @@
     <!-- Manpower with Leave Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="100%">Manpower with Leave</td>
+            <td colspan="100%">Leave Manpower</td>
         </tr>
-        <thead>
-            <tr>
-                <th>Company</th>
-                <th>Officers</th>
-                @foreach ($otherRanks as $rank)
-                    <th>{{ $rank->name }}</th>
-                @endforeach
-                <th>Total</th>
-            </tr>
-        </thead>
         <tbody>
             @foreach ($companies as $company)
                 @php
@@ -257,18 +210,8 @@
     <!-- Manpower without Leave Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="100%">Manpower without Leave</td>
+            <td colspan="100%">Present Manpower</td>
         </tr>
-        <thead>
-            <tr>
-                <th>Company</th>
-                <th>Officers</th>
-                @foreach ($otherRanks as $rank)
-                    <th>{{ $rank->name }}</th>
-                @endforeach
-                <th>Total</th>
-            </tr>
-        </thead>
         <tbody>
             @foreach ($companies as $company)
                 @php
@@ -310,18 +253,19 @@
         </tfoot>
     </table>
 
-    <!-- NEW: Leave Types Distribution Table -->
+    <!-- Leave Types Distribution Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="100%">Leave Types Distribution</td>
+            <td colspan="100%">Leave Details
+            </td>
         </tr>
         <thead>
             <tr>
-                <th>Company</th>
+                <th>Coy</th>
                 @foreach ($leaveTypes as $leaveType)
-                    <th>{{ $leaveType->name }}</th>
+                    <th class="vertical-header">{{ $leaveType->name }}</th>
                 @endforeach
-                <th>Total</th>
+                <th class="vertical-header">Total</th>
             </tr>
         </thead>
         <tbody>
