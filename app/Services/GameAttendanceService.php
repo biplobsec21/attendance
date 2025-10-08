@@ -27,6 +27,15 @@ class GameAttendanceService
     const REPORT_ROLL_CALL = 'roll_call';
     const REPORT_PARADE = 'parade';
 
+    // Excusal priority constants (lower number = higher priority)
+    const PRIORITY_LEAVE = 1;
+    const PRIORITY_ROSTER_DUTY = 2;
+    const PRIORITY_FIXED_DUTY = 3;
+    const PRIORITY_APPOINTMENT = 4;
+    const PRIORITY_COURSE = 5;
+    const PRIORITY_CADRE = 6;
+    const PRIORITY_EXCUSAL_DUTY_YESTERDAY = 7;
+
     public function __construct($reportType = self::REPORT_GAME)
     {
         $this->reportType = $reportType;
@@ -49,41 +58,192 @@ class GameAttendanceService
     }
 
     /**
-     * Check if a soldier is excused from attendance on a given date for the current report type
+     * Get the primary excusal reason for a soldier (highest priority reason)
+     * Returns: ['reason' => string, 'priority' => int, 'details' => string] or null
      */
-    public function isSoldierExcused($soldier, $date)
+    public function getSoldierExcusalReason($soldier, $date)
     {
-        Log::debug("🔍 Checking if soldier {$soldier->id} is excused for {$this->reportType} report on date: {$date}");
+        Log::debug("🔍 Checking excusal reason for soldier {$soldier->id} on date: {$date}");
 
         // First check if soldier has ERE - if yes, they are automatically excused
         if ($this->hasActiveEreOnDate($soldier, $date)) {
             Log::debug("✅ Soldier {$soldier->id} has active ERE - AUTOMATICALLY EXCUSED");
-            return true;
+            return [
+                'reason' => 'ERE',
+                'priority' => 0,
+                'details' => 'Extra Regimental Employment'
+            ];
         }
 
         $carbonDate = Carbon::parse($date);
         $yesterday = $carbonDate->copy()->subDay();
 
-        // Check all excusal conditions
-        $excusalConditions = [
-            'Active Duty' => fn() => $this->hasActiveDutyOnDate($soldier, $carbonDate),
-            'Fixed Duty' => fn() => $this->hasFixedDuty($soldier),
-            'Active Course' => fn() => $this->hasActiveCourseOnDate($soldier, $carbonDate),
-            'Active Cadre' => fn() => $this->hasActiveCadreOnDate($soldier, $carbonDate),
-            'Active Appointment' => fn() => $this->hasActiveAppointmentOnDate($soldier, $carbonDate),
-            'Approved Leave' => fn() => $this->isOnApprovedLeaveOnDate($soldier, $carbonDate),
-            'Excusal Duty Yesterday' => fn() => $this->hadExcusalDutyYesterday($soldier, $yesterday),
+        // Check all excusal conditions with priority
+        $excusalChecks = [
+            [
+                'name' => 'Leave',
+                'priority' => self::PRIORITY_LEAVE,
+                'check' => fn() => $this->isOnApprovedLeaveOnDate($soldier, $carbonDate),
+                'details_fn' => fn() => $this->getLeaveDetails($soldier, $carbonDate)
+            ],
+            [
+                'name' => 'Roster Duty',
+                'priority' => self::PRIORITY_ROSTER_DUTY,
+                'check' => fn() => $this->hasActiveDutyOnDate($soldier, $carbonDate),
+                'details_fn' => fn() => $this->getRosterDutyDetails($soldier, $carbonDate)
+            ],
+            [
+                'name' => 'Fixed Duty',
+                'priority' => self::PRIORITY_FIXED_DUTY,
+                'check' => fn() => $this->hasFixedDuty($soldier),
+                'details_fn' => fn() => $this->getFixedDutyDetails($soldier)
+            ],
+            [
+                'name' => 'Appointment',
+                'priority' => self::PRIORITY_APPOINTMENT,
+                'check' => fn() => $this->hasActiveAppointmentOnDate($soldier, $carbonDate),
+                'details_fn' => fn() => $this->getAppointmentDetails($soldier, $carbonDate)
+            ],
+            [
+                'name' => 'Course',
+                'priority' => self::PRIORITY_COURSE,
+                'check' => fn() => $this->hasActiveCourseOnDate($soldier, $carbonDate),
+                'details_fn' => fn() => $this->getCourseDetails($soldier, $carbonDate)
+            ],
+            [
+                'name' => 'Cadre',
+                'priority' => self::PRIORITY_CADRE,
+                'check' => fn() => $this->hasActiveCadreOnDate($soldier, $carbonDate),
+                'details_fn' => fn() => $this->getCadreDetails($soldier, $carbonDate)
+            ],
+            [
+                'name' => 'Excusal Duty Yesterday',
+                'priority' => self::PRIORITY_EXCUSAL_DUTY_YESTERDAY,
+                'check' => fn() => $this->hadExcusalDutyYesterday($soldier, $yesterday),
+                'details_fn' => fn() => $this->getExcusalDutyYesterdayDetails($soldier, $yesterday)
+            ],
         ];
 
-        foreach ($excusalConditions as $conditionName => $condition) {
-            if ($condition()) {
-                Log::debug("✅ Soldier {$soldier->id} is excused due to: {$conditionName}");
-                return true;
+        // Find the highest priority (lowest number) excusal reason
+        $primaryReason = null;
+
+        foreach ($excusalChecks as $excusalCheck) {
+            if ($excusalCheck['check']()) {
+                if ($primaryReason === null || $excusalCheck['priority'] < $primaryReason['priority']) {
+                    $primaryReason = [
+                        'reason' => $excusalCheck['name'],
+                        'priority' => $excusalCheck['priority'],
+                        'details' => $excusalCheck['details_fn']()
+                    ];
+                }
             }
         }
 
-        Log::debug("❌ Soldier {$soldier->id} is NOT excused - no conditions met");
-        return false;
+        if ($primaryReason) {
+            Log::debug("✅ Soldier {$soldier->id} excused due to: {$primaryReason['reason']} - {$primaryReason['details']}");
+        } else {
+            Log::debug("❌ Soldier {$soldier->id} is NOT excused");
+        }
+
+        return $primaryReason;
+    }
+
+    /**
+     * Check if a soldier is excused (backward compatibility)
+     */
+    public function isSoldierExcused($soldier, $date)
+    {
+        return $this->getSoldierExcusalReason($soldier, $date) !== null;
+    }
+
+    // Detail getter methods for each excusal type
+    private function getLeaveDetails($soldier, $carbonDate)
+    {
+        $leave = LeaveApplication::where('soldier_id', $soldier->id)
+            ->where('application_current_status', 'approved')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->whereDate('end_date', '>=', $carbonDate)
+            ->with('leaveType')
+            ->first();
+
+        return $leave && $leave->leaveType ? $leave->leaveType->name : 'Leave';
+    }
+
+    private function getRosterDutyDetails($soldier, $carbonDate)
+    {
+        $duty = SoldierDuty::where('soldier_id', $soldier->id)
+            ->whereDate('assigned_date', $carbonDate)
+            ->with('duty')
+            ->first();
+
+        return $duty && $duty->duty ? $duty->duty->duty_name : 'Roster Duty';
+    }
+
+    private function getFixedDutyDetails($soldier)
+    {
+        $duty = DutyRank::where('soldier_id', $soldier->id)
+            ->where('assignment_type', 'fixed')
+            ->with('duty')
+            ->first();
+
+        return $duty && $duty->duty ? $duty->duty->duty_name : 'Fixed Duty';
+    }
+
+    private function getAppointmentDetails($soldier, $carbonDate)
+    {
+        $appointment = SoldierServices::where('soldier_id', $soldier->id)
+            ->where('status', 'active')
+            ->whereDate('appointments_from_date', '<=', $carbonDate)
+            ->where(function ($query) use ($carbonDate) {
+                $query->whereNull('appointments_to_date')
+                    ->orWhereDate('appointments_to_date', '>=', $carbonDate);
+            })
+            ->first();
+
+        return $appointment ? $appointment->appointments_name : 'Appointment';
+    }
+
+    private function getCourseDetails($soldier, $carbonDate)
+    {
+        $course = SoldierCourse::where('soldier_id', $soldier->id)
+            ->where('status', 'active')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($query) use ($carbonDate) {
+                $query->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->with('course')
+            ->first();
+
+        return $course && $course->course ? $course->course->name : 'Course';
+    }
+
+    private function getCadreDetails($soldier, $carbonDate)
+    {
+        $cadre = SoldierCadre::where('soldier_id', $soldier->id)
+            ->where('status', 'active')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($query) use ($carbonDate) {
+                $query->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->with('cadre')
+            ->first();
+
+        return $cadre && $cadre->cadre ? $cadre->cadre->name : 'Cadre';
+    }
+
+    private function getExcusalDutyYesterdayDetails($soldier, $yesterday)
+    {
+        $duty = SoldierDuty::where('soldier_id', $soldier->id)
+            ->whereDate('assigned_date', $yesterday)
+            ->whereHas('duty', function ($query) {
+                $query->where($this->excusalField, true);
+            })
+            ->with('duty')
+            ->first();
+
+        return $duty && $duty->duty ? $duty->duty->duty_name . " (Yesterday)" : 'Excusal Duty Yesterday';
     }
 
     /**
@@ -135,8 +295,6 @@ class GameAttendanceService
 
         return $fileNames[$this->reportType] ?? "attendance_report_{$formattedDate}";
     }
-
-    // All other methods remain the same until getFormat1Data...
 
     /**
      * Get Format 1 data - Summary by Company and Rank Type
@@ -198,14 +356,13 @@ class GameAttendanceService
 
             Log::debug("   ✅ Company {$company->name}: {$companyExcused} excused soldiers (IDs: " . implode(', ', $excusedSoldiers) . ")");
 
-            // CORRECTED: Total - Excused = All Total
             $row['Total'] = $companyTotal;
             $row['Excused'] = $companyExcused;
-            $row['All Total'] = $companyTotal - $companyExcused; // Changed from + to -
+            $row['All Total'] = $companyTotal - $companyExcused;
 
             $totals['total'] += $companyTotal;
             $totals['excused'] += $companyExcused;
-            $totals['all_total'] += ($companyTotal - $companyExcused); // Changed from + to -
+            $totals['all_total'] += ($companyTotal - $companyExcused);
 
             $data[] = $row;
         }
@@ -226,8 +383,118 @@ class GameAttendanceService
         return $data;
     }
 
-    // All other methods remain exactly the same as before...
-    // Only the getFormat1Data method was modified
+    /**
+     * Get Format 2 data - Exclusion by Duty / Appointment Type (with priority-based unique counting)
+     */
+    public function getFormat2Data($date)
+    {
+        Log::info("📋 GENERATING FORMAT2 DATA (PRIORITY-BASED) for {$this->reportType} report on date: {$date}");
+
+        $carbonDate = Carbon::parse($date);
+        $companies = Company::orderBy('name')->get();
+        $companyNames = $companies->pluck('name')->toArray();
+
+        // Get all soldiers (excluding ERE)
+        $allSoldiers = Soldier::where(function ($query) use ($date) {
+            $this->excludeSoldiersWithActiveEre($query, $date);
+        })
+            ->with('company')
+            ->get();
+
+        Log::debug("👥 Total soldiers to process (excluding ERE): {$allSoldiers->count()}");
+
+        // Categorize each soldier by their PRIMARY excusal reason
+        $categorizedSoldiers = [];
+        $totalExcused = 0;
+
+        foreach ($allSoldiers as $soldier) {
+            $excusalReason = $this->getSoldierExcusalReason($soldier, $date);
+
+            if ($excusalReason) {
+                $totalExcused++;
+                $category = $excusalReason['reason'];
+                $details = $excusalReason['details'];
+
+                if (!isset($categorizedSoldiers[$category])) {
+                    $categorizedSoldiers[$category] = [];
+                }
+
+                if (!isset($categorizedSoldiers[$category][$details])) {
+                    $categorizedSoldiers[$category][$details] = [];
+                }
+
+                $categorizedSoldiers[$category][$details][] = $soldier;
+            }
+        }
+
+        Log::debug("📊 Total excused soldiers: {$totalExcused}");
+        Log::debug("📋 Categories found: " . implode(', ', array_keys($categorizedSoldiers)));
+
+        // Build the data rows
+        $data = [];
+        $grandTotal = array_fill_keys($companyNames, 0);
+
+        // Define category order for output
+        $categoryOrder = [
+            'Leave' => 'Leave',
+            'Roster Duty' => 'Roster Duties',
+            'Fixed Duty' => 'Fixed Duties',
+            'Appointment' => 'Appointments',
+            'Course' => 'Courses',
+            'Cadre' => 'Cadres',
+            'Excusal Duty Yesterday' => 'Excusal Duties (Yesterday)',
+        ];
+
+        foreach ($categoryOrder as $categoryKey => $categoryDisplay) {
+            if (isset($categorizedSoldiers[$categoryKey])) {
+                foreach ($categorizedSoldiers[$categoryKey] as $typeName => $soldiers) {
+                    $row = [
+                        'category' => $categoryDisplay,
+                        'type' => $typeName,
+                    ];
+
+                    $counts = array_fill_keys($companyNames, 0);
+
+                    foreach ($soldiers as $soldier) {
+                        if ($soldier->company) {
+                            $companyName = $soldier->company->name;
+                            if (in_array($companyName, $companyNames)) {
+                                $counts[$companyName]++;
+                                $grandTotal[$companyName]++;
+                            }
+                        }
+                    }
+
+                    foreach ($companies as $company) {
+                        $row[$company->name] = $counts[$company->name];
+                    }
+
+                    $row['Total'] = count($soldiers);
+                    $data[] = $row;
+
+                    Log::debug("   📝 {$categoryDisplay} - {$typeName}: " . count($soldiers) . " soldiers");
+                }
+            }
+        }
+
+        // Add totals row
+        $totalRow = [
+            'category' => 'Total',
+            'type' => '',
+        ];
+
+        foreach ($companies as $company) {
+            $totalRow[$company->name] = $grandTotal[$company->name];
+        }
+
+        $totalRow['Total'] = $totalExcused;
+        $data[] = $totalRow;
+
+        Log::info("📋 FORMAT2 COMPLETED (PRIORITY-BASED) - Total excused: {$totalExcused}");
+        Log::info("📊 NO DUPLICATES - Each soldier counted only once in their highest priority category");
+
+        return $data;
+    }
 
     /**
      * Check if a soldier has active ERE on a given date
@@ -401,311 +668,7 @@ class GameAttendanceService
     }
 
     /**
-     * Get Format 2 data - Exclusion by Duty / Appointment Type (with unique soldier counting)
-     */
-    public function getFormat2Data($date)
-    {
-        Log::info("📋 GENERATING FORMAT2 DATA for {$this->reportType} report on date: {$date}");
-
-        $carbonDate = Carbon::parse($date);
-        $companies = Company::orderBy('name')->get();
-        $companyNames = $companies->pluck('name')->toArray();
-        $data = [];
-
-        Log::debug("🏢 Processing exclusions for {$companies->count()} companies");
-
-        // We'll track unique soldiers per category to avoid duplicates
-        $categoryData = [];
-        $allSoldierIds = collect();
-
-        // Process Roster Duties
-        Log::debug("🎯 Processing Roster Duties...");
-        $rosterDuties = SoldierDuty::whereDate('assigned_date', $carbonDate)
-            ->whereHas('soldier', function ($query) use ($date) {
-                $this->excludeSoldiersWithActiveEre($query, $date);
-            })
-            ->with(['soldier.company', 'duty'])
-            ->get();
-
-        Log::debug("   Found {$rosterDuties->count()} roster duty records");
-
-        $rosterGroups = $rosterDuties->groupBy('duty.duty_name');
-        foreach ($rosterGroups as $dutyName => $duties) {
-            $uniqueSoldiers = $duties->unique('soldier_id');
-            $counts = array_fill_keys($companyNames, 0);
-
-            foreach ($uniqueSoldiers as $duty) {
-                if ($duty->soldier && $duty->soldier->company) {
-                    $counts[$duty->soldier->company->name]++;
-                }
-            }
-
-            $soldierIds = $uniqueSoldiers->pluck('soldier_id')->toArray();
-            $allSoldierIds = $allSoldierIds->merge($soldierIds);
-
-            $categoryData[] = [
-                'category' => 'Roster Duties',
-                'type' => $dutyName,
-                'counts' => $counts,
-                'soldier_ids' => $soldierIds
-            ];
-
-            Log::debug("   📝 Roster Duty '{$dutyName}': " . count($soldierIds) . " unique soldiers");
-        }
-
-        // Process Fixed Duties
-        Log::debug("📌 Processing Fixed Duties...");
-        $fixedDuties = DutyRank::where('assignment_type', 'fixed')
-            ->whereHas('soldier', function ($query) use ($date) {
-                $this->excludeSoldiersWithActiveEre($query, $date);
-            })
-            ->with(['soldier.company', 'duty'])
-            ->get();
-
-        Log::debug("   Found {$fixedDuties->count()} fixed duty records");
-
-        $fixedGroups = $fixedDuties->groupBy('duty.duty_name');
-        foreach ($fixedGroups as $dutyName => $duties) {
-            $uniqueSoldiers = $duties->unique('soldier_id');
-            $counts = array_fill_keys($companyNames, 0);
-
-            foreach ($uniqueSoldiers as $duty) {
-                if ($duty->soldier && $duty->soldier->company) {
-                    $counts[$duty->soldier->company->name]++;
-                }
-            }
-
-            $soldierIds = $uniqueSoldiers->pluck('soldier_id')->toArray();
-            $allSoldierIds = $allSoldierIds->merge($soldierIds);
-
-            $categoryData[] = [
-                'category' => 'Fixed Duties',
-                'type' => $dutyName,
-                'counts' => $counts,
-                'soldier_ids' => $soldierIds
-            ];
-
-            Log::debug("   📝 Fixed Duty '{$dutyName}': " . count($soldierIds) . " unique soldiers");
-        }
-
-        // Process Appointments
-        Log::debug("💼 Processing Appointments...");
-        $appointments = SoldierServices::where('status', 'active')
-            ->whereDate('appointments_from_date', '<=', $carbonDate)
-            ->where(function ($query) use ($carbonDate) {
-                $query->whereNull('appointments_to_date')
-                    ->orWhereDate('appointments_to_date', '>=', $carbonDate);
-            })
-            ->whereHas('soldier', function ($query) use ($date) {
-                $this->excludeSoldiersWithActiveEre($query, $date);
-            })
-            ->with(['soldier.company'])
-            ->get();
-
-        Log::debug("   Found {$appointments->count()} appointment records");
-
-        $appointmentGroups = $appointments->groupBy('appointments_name');
-        foreach ($appointmentGroups as $serviceName => $services) {
-            $uniqueSoldiers = $services->unique('soldier_id');
-            $counts = array_fill_keys($companyNames, 0);
-
-            foreach ($uniqueSoldiers as $service) {
-                if ($service->soldier && $service->soldier->company) {
-                    $counts[$service->soldier->company->name]++;
-                }
-            }
-
-            $soldierIds = $uniqueSoldiers->pluck('soldier_id')->toArray();
-            $allSoldierIds = $allSoldierIds->merge($soldierIds);
-
-            $categoryData[] = [
-                'category' => 'Appointments',
-                'type' => $serviceName,
-                'counts' => $counts,
-                'soldier_ids' => $soldierIds
-            ];
-
-            Log::debug("   📝 Appointment '{$serviceName}': " . count($soldierIds) . " unique soldiers");
-        }
-
-        // Process Courses
-        Log::debug("📚 Processing Courses...");
-        $courses = SoldierCourse::where('status', 'active')
-            ->whereDate('start_date', '<=', $carbonDate)
-            ->where(function ($query) use ($carbonDate) {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $carbonDate);
-            })
-            ->whereHas('soldier', function ($query) use ($date) {
-                $this->excludeSoldiersWithActiveEre($query, $date);
-            })
-            ->with(['soldier.company', 'course'])
-            ->get();
-
-        Log::debug("   Found {$courses->count()} course records");
-
-        $courseGroups = $courses->groupBy('course.name');
-        foreach ($courseGroups as $courseName => $courseRecords) {
-            $uniqueSoldiers = $courseRecords->unique('soldier_id');
-            $counts = array_fill_keys($companyNames, 0);
-
-            foreach ($uniqueSoldiers as $courseRecord) {
-                if ($courseRecord->soldier && $courseRecord->soldier->company) {
-                    $counts[$courseRecord->soldier->company->name]++;
-                }
-            }
-
-            $soldierIds = $uniqueSoldiers->pluck('soldier_id')->toArray();
-            $allSoldierIds = $allSoldierIds->merge($soldierIds);
-
-            $categoryData[] = [
-                'category' => 'Courses',
-                'type' => $courseName,
-                'counts' => $counts,
-                'soldier_ids' => $soldierIds
-            ];
-
-            Log::debug("   📝 Course '{$courseName}': " . count($soldierIds) . " unique soldiers");
-        }
-
-        // Process Cadres
-        Log::debug("👥 Processing Cadres...");
-        $cadres = SoldierCadre::where('status', 'active')
-            ->whereDate('start_date', '<=', $carbonDate)
-            ->where(function ($query) use ($carbonDate) {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $carbonDate);
-            })
-            ->whereHas('soldier', function ($query) use ($date) {
-                $this->excludeSoldiersWithActiveEre($query, $date);
-            })
-            ->with(['soldier.company', 'cadre'])
-            ->get();
-
-        Log::debug("   Found {$cadres->count()} cadre records");
-
-        $cadreGroups = $cadres->groupBy('cadre.name');
-        foreach ($cadreGroups as $cadreName => $cadreRecords) {
-            $uniqueSoldiers = $cadreRecords->unique('soldier_id');
-            $counts = array_fill_keys($companyNames, 0);
-
-            foreach ($uniqueSoldiers as $cadreRecord) {
-                if ($cadreRecord->cadre && $cadreRecord->soldier && $cadreRecord->soldier->company) {
-                    $counts[$cadreRecord->soldier->company->name]++;
-                }
-            }
-
-            $soldierIds = $uniqueSoldiers->pluck('soldier_id')->toArray();
-            $allSoldierIds = $allSoldierIds->merge($soldierIds);
-
-            $categoryData[] = [
-                'category' => 'Cadres',
-                'type' => $cadreName,
-                'counts' => $counts,
-                'soldier_ids' => $soldierIds
-            ];
-
-            Log::debug("   📝 Cadre '{$cadreName}': " . count($soldierIds) . " unique soldiers");
-        }
-
-        // Process Leaves
-        Log::debug("🏖️  Processing Leaves...");
-        $leaves = LeaveApplication::where('application_current_status', 'approved')
-            ->whereDate('start_date', '<=', $carbonDate)
-            ->whereDate('end_date', '>=', $carbonDate)
-            ->whereHas('soldier', function ($query) use ($date) {
-                $this->excludeSoldiersWithActiveEre($query, $date);
-            })
-            ->with(['soldier.company', 'leaveType'])
-            ->get();
-
-        Log::debug("   Found {$leaves->count()} leave records");
-
-        $leaveGroups = $leaves->groupBy(function ($leave) {
-            return $leave->leaveType->name ?? 'Leave';
-        });
-
-        foreach ($leaveGroups as $leaveTypeName => $leaveRecords) {
-            $uniqueSoldiers = $leaveRecords->unique('soldier_id');
-            $counts = array_fill_keys($companyNames, 0);
-
-            foreach ($uniqueSoldiers as $leaveRecord) {
-                if ($leaveRecord->soldier && $leaveRecord->soldier->company) {
-                    $counts[$leaveRecord->soldier->company->name]++;
-                }
-            }
-
-            $soldierIds = $uniqueSoldiers->pluck('soldier_id')->toArray();
-            $allSoldierIds = $allSoldierIds->merge($soldierIds);
-
-            $categoryData[] = [
-                'category' => 'Leave',
-                'type' => $leaveTypeName,
-                'counts' => $counts,
-                'soldier_ids' => $soldierIds
-            ];
-
-            Log::debug("   📝 Leave '{$leaveTypeName}': " . count($soldierIds) . " unique soldiers");
-        }
-
-        // Build final data rows
-        Log::debug("📊 Building final data rows...");
-        foreach ($categoryData as $category) {
-            $row = [
-                'category' => $category['category'],
-                'type' => $category['type'],
-            ];
-
-            foreach ($companies as $company) {
-                $row[$company->name] = $category['counts'][$company->name];
-            }
-
-            $row['Total'] = array_sum($category['counts']);
-            $data[] = $row;
-        }
-
-        // Add totals row - count unique soldiers across all categories
-        $uniqueExcusedSoldiers = $allSoldierIds->unique();
-
-        Log::debug("🔢 Calculating unique totals:");
-        Log::debug("   Raw soldier IDs count: " . $allSoldierIds->count());
-        Log::debug("   Unique soldier IDs count: " . $uniqueExcusedSoldiers->count());
-        Log::debug("   Duplicate entries: " . ($allSoldierIds->count() - $uniqueExcusedSoldiers->count()));
-
-        // Get company distribution of unique excused soldiers
-        $uniqueSoldiersData = Soldier::whereIn('id', $uniqueExcusedSoldiers)
-            ->with('company')
-            ->get()
-            ->groupBy('company.name');
-
-        $totals = array_fill_keys($companyNames, 0);
-        foreach ($uniqueSoldiersData as $companyName => $soldiers) {
-            if (in_array($companyName, $companyNames)) {
-                $totals[$companyName] = $soldiers->count();
-                Log::debug("   📍 Company {$companyName}: {$soldiers->count()} unique excused soldiers");
-            }
-        }
-
-        $totalRow = [
-            'category' => 'Total',
-            'type' => '',
-        ];
-
-        foreach ($companies as $company) {
-            $totalRow[$company->name] = $totals[$company->name];
-        }
-
-        $totalRow['Total'] = $uniqueExcusedSoldiers->count();
-        $data[] = $totalRow;
-
-        Log::info("📋 FORMAT2 COMPLETED - Total unique excused soldiers: {$totalRow['Total']}");
-        Log::info("📋 FORMAT2 BREAKDOWN - Raw entries: {$allSoldierIds->count()}, Unique: {$uniqueExcusedSoldiers->count()}, Duplicates: " . ($allSoldierIds->count() - $uniqueExcusedSoldiers->count()));
-
-        return $data;
-    }
-
-    /**
-     * NEW METHOD: Get actual unique excused count for verification
+     * Get actual unique excused count for verification
      */
     public function getActualExcusedCount($date)
     {
@@ -735,7 +698,7 @@ class GameAttendanceService
     }
 
     /**
-     * NEW METHOD: Compare Format1 and Format2 totals for debugging
+     * Compare Format1 and Format2 totals for debugging
      */
     public function compareTotals($date)
     {
