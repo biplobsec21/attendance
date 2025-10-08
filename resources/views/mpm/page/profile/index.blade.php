@@ -175,6 +175,17 @@
                                     <option value="">All Education</option>
                                 </select>
                             </div>
+                            {{-- Leave Filter --}}
+                            <div>
+                                <label for="leave-filter" class="block text-sm font-medium text-gray-700 mb-2">Leave
+                                    Status</label>
+                                <select id="leave-filter"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                    <option value="">All Soldiers</option>
+                                    <option value="on-leave">On Leave</option>
+                                    <option value="not-on-leave">Not On Leave</option>
+                                </select>
+                            </div>
                         </div>
 
                         <!-- Action Buttons -->

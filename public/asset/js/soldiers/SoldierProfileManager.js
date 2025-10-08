@@ -7,7 +7,19 @@ import { showToast } from "./soldierHelpers.js";
 
 export default class SoldierProfileManager {
     constructor() {
-        this.filters = { search: "", rank: "", company: "", status: "", skill: "", course: "", cadre: "", ere: "all", att: "", education: "" };
+        this.filters = {
+            search: "",
+            rank: "",
+            company: "",
+            status: "",
+            skill: "",
+            course: "",
+            cadre: "",
+            ere: "all",
+            att: "",
+            education: "",
+            leave: ""
+        };
         this.selectedRows = new Set();
         this.soldiers = [];
         this.bulkActions = new SoldierBulkActions(this);
@@ -309,6 +321,24 @@ export default class SoldierProfileManager {
             console.log('After Education filter:', filtered.length);
         }
 
+        // Leave filter logic
+        if (this.filters.leave) {
+            console.log('Applying Leave filter:', this.filters.leave);
+
+            const beforeLeaveFilter = filtered.length;
+
+            filtered = filtered.filter(soldier => {
+                const isOnLeave = soldier.is_leave === true;
+                const shouldInclude = this.filters.leave === "on-leave" ? isOnLeave : !isOnLeave;
+
+                console.log(`Soldier ${soldier.id}: is_leave=${soldier.is_leave}, shouldInclude=${shouldInclude}`);
+
+                return shouldInclude;
+            });
+
+            console.log('After Leave filter:', filtered.length, '(removed', beforeLeaveFilter - filtered.length, 'soldiers)');
+        }
+
         console.log('Final filtered count:', filtered.length);
         this.renderData(filtered);
     }
@@ -324,7 +354,9 @@ export default class SoldierProfileManager {
             cadre: "",
             ere: "all", // Reset ERE filter to default value
             att: "",
-            education: ""
+            education: "",
+            leave: ""   // Reset Leave filter
+
         };
 
         const searchInput = document.getElementById('search-input');
@@ -348,7 +380,8 @@ export default class SoldierProfileManager {
         if (ereSelect) ereSelect.value = 'all'; // Reset ERE filter to default
         if (attSelect) attSelect.value = '';
         if (educationSelect) educationSelect.value = '';
-
+        const leaveSelect = document.getElementById('leave-filter');
+        if (leaveSelect) leaveSelect.value = '';
         console.log('All filters cleared');
         this.filterAndRender();
     }

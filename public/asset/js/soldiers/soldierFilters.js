@@ -11,7 +11,7 @@ export function initFilters(manager) {
     });
 
     // Add ERE filter to the list of filters
-    const filterIds = ['rank-filter', 'company-filter', 'status-filter', 'skill-filter', 'course-filter', 'cadre-filter', 'ere-filter', 'att-filter', 'education-filter'];
+    const filterIds = ['rank-filter', 'company-filter', 'status-filter', 'skill-filter', 'course-filter', 'cadre-filter', 'ere-filter', 'att-filter', 'education-filter', 'leave-filter'];
     filterIds.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
