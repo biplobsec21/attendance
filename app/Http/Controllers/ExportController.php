@@ -177,7 +177,8 @@ class ExportController extends Controller
             $pdf = PDF::loadView('exports.game_attendance_pdf', $data);
 
             // Set paper size to legal landscape for better table visibility
-            $pdf->setPaper('legal', 'landscape');
+            $pdf->setPaper('legal', 'portrait');
+
 
             return $pdf->download($fileName);
         } else {

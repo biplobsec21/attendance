@@ -5,97 +5,173 @@
     <meta charset="utf-8">
     <title>{{ $reportTitle }}</title>
     <style>
+        @page {
+            margin: 10mm;
+            size: legal portrait;
+        }
+
         body {
-            font-family: 'Arial', sans-serif;
-            font-size: 12px;
-            margin: 15px;
-            line-height: 1.4;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-
-        .header h1 {
-            font-size: 20px;
-            margin: 8px 0;
-            text-transform: uppercase;
-        }
-
-        .header p {
-            font-size: 14px;
-            margin: 5px 0;
-        }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: bold;
-            margin-top: 30px;
-            margin-bottom: 15px;
-            padding: 8px 12px;
-            background-color: #e0e0e0;
-            border-left: 4px solid #333;
+            font-family: 'DejaVu Sans', Arial, sans-serif;
+            font-size: 10px;
+            margin: 10px;
+            padding: 0;
+            line-height: 1.1;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 25px;
+            margin-bottom: 4px;
+            table-layout: fixed;
         }
 
-        table th {
-            background-color: #d3d3d3;
-            border: 1px solid #333;
-            padding: 10px;
+        th,
+        td {
+            border: 1px solid #000000;
             text-align: center;
-            font-weight: bold;
-            font-size: 12px;
+            vertical-align: middle;
         }
 
-        table td {
-            border: 1px solid #333;
+        /* Data cells with proper padding */
+        td:not(:first-child) {
+            padding: 4px 2px;
+        }
+
+        th {
+            background-color: #bdbdbd;
+            font-weight: bold;
+            padding: 8px 4px;
+        }
+
+        /* Vertical header container */
+        .vertical-header {
+            position: relative;
+            height: 80px;
+            width: 100%;
+            margin: 0;
+            padding: 8px 0;
+        }
+
+        /* Vertical text using transform - Bottom to Top */
+        .vertical-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-90deg);
+            transform-origin: center center;
+            white-space: nowrap;
+            font-size: 10px;
+            font-weight: bold;
+            width: 80px;
+            text-align: center;
+        }
+
+        .header-row td {
+            border: 1px solid #000000;
+            font-size: 13px;
+            font-weight: bold;
             padding: 8px;
+            background-color: #E7E6E6;
             text-align: center;
+        }
+
+        .section-title-row td {
+            background-color: #D9D9D9;
+            border: 1px solid #000000;
+            font-weight: bold;
             font-size: 11px;
+            padding: 6px;
+            text-align: center;
         }
 
-        table td.text-left {
-            text-align: left;
-        }
-
-        table tr.total-row {
-            background-color: #f0f0f0;
+        .total-row {
+            background-color: #F2F2F2;
             font-weight: bold;
         }
 
-        table tr.category-row {
+        .total-row td {
+            font-weight: bold;
+        }
+
+        .category-row {
             background-color: #f5f5f5;
             font-weight: bold;
         }
 
-        .footer {
-            margin-top: 30px;
+        /* Company column */
+        td:first-child,
+        th:first-child {
+            text-align: left;
+            padding-left: 8px;
+            width: 80px;
+            min-width: 80px;
             font-size: 11px;
+        }
+
+        /* Data columns - proper sizing */
+        td:not(:first-child) {
+            width: auto;
+            min-width: 28px;
+            font-size: 11px;
+        }
+
+        th:not(:first-child) {
+            width: auto;
+            min-width: 28px;
+            height: 80px;
+        }
+
+        /* Summary columns styling */
+        th.summary-col {
+            height: auto;
+            padding: 8px 4px;
+        }
+
+        .main-header {
             text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #E7E6E6;
+        }
+
+        .date-header {
+            text-align: center;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            text-align: right;
+            font-size: 9px;
+            margin-top: 10px;
+            padding: 4px 8px;
             color: #666;
         }
 
-        .page-break {
-            page-break-after: always;
+        /* Format 2 specific styles */
+        table.format2-table {
+            table-layout: auto;
         }
 
-        /* Specific column widths */
-        .col-explanation {
-            width: 350px;
+        table.format2-table th:first-child,
+        table.format2-table td:first-child {
+            text-align: left;
+            padding-left: 8px;
+            width: 40%;
+            min-width: 200px;
         }
 
-        .col-company {
-            width: 80px;
+        table.format2-table th:not(:first-child):not(:last-child),
+        table.format2-table td:not(:first-child):not(:last-child) {
+            width: auto;
+            min-width: 50px;
         }
 
-        .col-total {
-            width: 80px;
+        table.format2-table th:last-child,
+        table.format2-table td:last-child {
+            width: 60px;
+            min-width: 60px;
+            font-weight: bold;
         }
 
         /* Format 3 specific styles */
@@ -113,6 +189,8 @@
 
         .col-name {
             width: 150px;
+            text-align: left;
+            padding-left: 8px;
         }
 
         .col-company-small {
@@ -125,6 +203,8 @@
 
         .col-details {
             width: 200px;
+            text-align: left;
+            padding-left: 8px;
         }
 
         .no-data {
@@ -133,38 +213,114 @@
             font-style: italic;
             color: #666;
             background-color: #f9f9f9;
-            border: 1px solid #ddd;
+            border: 1px solid #000;
+        }
+
+        /* Ensure single page fit */
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            table {
+                page-break-inside: auto;
+            }
+
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+
+            thead {
+                display: table-header-group;
+            }
+
+            tfoot {
+                display: table-footer-group;
+            }
+        }
+
+        /* Proper row spacing */
+        tbody tr {
+            height: auto;
+        }
+
+        tbody td {
+            height: auto;
+            padding: 4px 2px;
+        }
+
+        tfoot tr {
+            height: auto;
+        }
+
+        tfoot td {
+            height: auto;
+            padding: 4px 2px;
+        }
+
+        thead th {
+            padding: 8px 4px;
+        }
+
+        .page-break {
+            page-break-after: always;
+        }
+
+        /* Text alignment utilities */
+        .text-left {
+            text-align: left;
+            padding-left: 8px;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        /* Spacing control */
+        .spacing-small {
+            margin-bottom: 2px;
+        }
+
+        .spacing-medium {
+            margin-bottom: 6px;
         }
     </style>
 </head>
 
 <body>
     <!-- Header -->
-    <div class="header">
-        <h1>{{ $reportTitle }}</h1>
-        <p><strong>Date:</strong> {{ $date }}</p>
-        <p><strong>Generated:</strong> {{ now()->format('d M Y H:i:s') }}</p>
-    </div>
+    <table class="spacing-small">
+        <tr class="header-row">
+            <td colspan="100%">
+                {{ $reportTitle }}<br>
+                Date: {{ $date }}
+            </td>
+        </tr>
+    </table>
 
     <!-- Format 1: Summary by Company and Rank Type -->
-    <div class="section-title">Format 1: Summary by Company and Rank Type</div>
-
-    <table>
+    <table class="spacing-medium">
         <thead>
             <tr>
-                <th>Company</th>
+                <th>Coy</th>
                 @foreach ($rankTypes as $rankType)
-                    <th>{{ $rankType }}</th>
+                    <th>
+                        <div class="vertical-header">
+                            <div class="vertical-text">{{ $rankType }}</div>
+                        </div>
+                    </th>
                 @endforeach
-                <th>Total</th>
-                <th>Excused</th>
-                <th>All Total</th>
+                <th class="summary-col">Total</th>
+                <th class="summary-col">Excused</th>
+                <th class="summary-col">All Total</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($format1Data as $row)
                 <tr class="{{ $row['company'] === 'Total' ? 'total-row' : '' }}">
-                    <td class="text-left">{{ $row['company'] }}</td>
+                    <td>{{ $row['company'] }}</td>
                     @foreach ($rankTypes as $rankType)
                         <td>{{ $row[$rankType] ?? 0 }}</td>
                     @endforeach
@@ -176,19 +332,18 @@
         </tbody>
     </table>
 
-    <div class="page-break"></div>
-
     <!-- Format 2: Exclusion by Duty / Appointment Type -->
-    <div class="section-title">Format 2: Exclusion lists</div>
-
-    <table>
+    <table class="format2-table spacing-medium">
+        <tr class="">
+            <td colspan="{{ count($companies) + 2 }}" style="text-align: center;font-weight:bold">Exclusion lists</td>
+        </tr>
         <thead>
             <tr>
-                <th class="col-explanation">Explanation</th>
+                <th>Explanation</th>
                 @foreach ($companies as $company)
-                    <th class="col-company">{{ $company }}</th>
+                    <th>{{ $company }}</th>
                 @endforeach
-                <th class="col-total">Total</th>
+                <th>Total</th>
             </tr>
         </thead>
         <tbody>
@@ -202,7 +357,7 @@
                 @endphp
 
                 <tr class="{{ $row['category'] === 'Total' ? 'total-row' : ($isNewCategory ? 'category-row' : '') }}">
-                    <td class="text-left col-explanation">
+                    <td>
                         @if ($row['category'] !== 'Total')
                             {{ $row['category'] }} - {{ $row['type'] }}
                         @else
@@ -210,21 +365,20 @@
                         @endif
                     </td>
                     @foreach ($companies as $company)
-                        <td class="col-company">{{ $row[$company] ?? 0 }}</td>
+                        <td>{{ $row[$company] ?? 0 }}</td>
                     @endforeach
-                    <td class="col-total">{{ $row['Total'] }}</td>
+                    <td>{{ $row['Total'] }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
-    <div class="page-break"></div>
-
     <!-- Format 3: Detailed List of Excused Soldiers -->
-    <div class="section-title">Format 3: Detailed List of Excused Soldiers</div>
-
-    @if (count($format3Data) > 0)
-        <table>
+    <table class="spacing-medium">
+        <tr class="">
+            <td colspan="7" style="text-align: center;font-weight:bold">Detailed List of Excused Soldiers</td>
+        </tr>
+        @if (count($format3Data) > 0)
             <thead>
                 <tr>
                     <th class="col-serial">S.No</th>
@@ -242,29 +396,32 @@
                         <td class="col-serial">{{ $soldier['sl_no'] }}</td>
                         <td class="col-army-no">{{ $soldier['army_no'] }}</td>
                         <td class="col-rank">{{ $soldier['rank'] }}</td>
-                        <td class="col-name text-left">{{ $soldier['name'] }}</td>
+                        <td class="col-name">{{ $soldier['name'] }}</td>
                         <td class="col-company-small">{{ $soldier['company'] }}</td>
                         <td class="col-category">{{ $soldier['excusal_category'] }}</td>
-                        <td class="col-details text-left">{{ $soldier['excusal_details'] }}</td>
+                        <td class="col-details">{{ $soldier['excusal_details'] }}</td>
                     </tr>
                 @endforeach
             </tbody>
-        </table>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="6" class="text-left">Total Excused Soldiers:</td>
+                    <td><strong>{{ count($format3Data) }}</strong></td>
+                </tr>
+            </tfoot>
+        @else
+            <tbody>
+                <tr>
+                    <td colspan="7" class="no-data">
+                        No soldiers are excused for {{ $date }}
+                    </td>
+                </tr>
+            </tbody>
+        @endif
+    </table>
 
-        <!-- Summary for Format 3 -->
-        <div style="margin-top: 20px; padding: 10px; background-color: #f0f0f0; border: 1px solid #ddd;">
-            <strong>Total Excused Soldiers: {{ count($format3Data) }}</strong>
-        </div>
-    @else
-        <div class="no-data">
-            No soldiers are excused for {{ $date }}
-        </div>
-    @endif
-
-    <!-- Footer -->
     <div class="footer">
-        <p>This report was automatically generated by the Attendance Report Module</p>
-        <p>Confidential - For Official Use Only</p>
+        Generated: {{ now()->format('d M Y H:i:s') }} | Confidential - For Official Use Only
     </div>
 </body>
 
