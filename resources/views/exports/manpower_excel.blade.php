@@ -38,7 +38,7 @@
     <!-- Header Table -->
     <table>
         <tr class="header-row">
-            <td style="padding:4px" colspan="100%">
+            <td style="padding:4px" colspan="5">
                 <strong>Manpower Distribution Report {{ $date }}</strong><br>
                 <br>
             </td>
@@ -64,7 +64,7 @@
     <table>
         <thead>
             <tr class="section-title-row">
-                <td colspan="100%">Auth Manpower</td>
+                <td colspan="5">Auth Manpower</td>
             </tr>
             <tr>
                 <th>Coy</th>
@@ -118,7 +118,7 @@
     <!-- Received Manpower Distribution Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="100%">Received Manpower</td>
+            <td colspan="5">Received Manpower</td>
         </tr>
         <tbody>
             @foreach ($companies as $company)
@@ -164,7 +164,7 @@
     <!-- Manpower with Leave Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="100%">Leave Manpower</td>
+            <td colspan="5">Leave Manpower</td>
         </tr>
         <tbody>
             @foreach ($companies as $company)
@@ -210,7 +210,7 @@
     <!-- Manpower without Leave Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="100%">Present Manpower</td>
+            <td colspan="5">Present Manpower</td>
         </tr>
         <tbody>
             @foreach ($companies as $company)
@@ -256,7 +256,7 @@
     <!-- Leave Types Distribution Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="100%">Leave Details
+            <td colspan="5">Leave Details
             </td>
         </tr>
         <thead>

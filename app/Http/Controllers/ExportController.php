@@ -118,10 +118,12 @@ class ExportController extends Controller
             $view = $manpowerPdfExport->view();
             $data = $view->getData();
 
-            $pdf = PDF::loadView('exports.manpower_pdf', $data);
+            $pdf = PDF::loadView('exports.manpower_pdf', $data)
+                ->setPaper('legal', 'portrait')
+                ->setOption('enable-local-file-access', true)
+                ->setOption('isHtml5ParserEnabled', true)
+                ->setOption('isRemoteEnabled', true);
 
-            // Set paper size to legal
-            $pdf->setPaper('legal', 'landscape');
 
             return $pdf->download($fileName);
         } else {

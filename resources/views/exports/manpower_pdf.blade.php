@@ -3,84 +3,188 @@
 
 <head>
     <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>Manpower Distribution Report</title>
     <style>
+        @page {
+            margin: 10;
+            size: legal portrait;
+        }
+
+
+
         body {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
+            font-family: 'DejaVu Sans', Arial, sans-serif;
+            font-size: 10px;
+            margin: 10;
+            padding: 0;
+            line-height: 1.1;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 8px;
+            table-layout: fixed;
         }
 
         th,
         td {
-            border: 1px solid #ddd;
-            padding: 8px;
+            border: 1px solid #000000;
             text-align: center;
+            vertical-align: middle;
+        }
+
+        /* Data cells with proper padding */
+        td:not(:first-child) {
+            padding: 4px 2px;
         }
 
         th {
-            background-color: #f2f2f2;
+            background-color: #bdbdbd;
             font-weight: bold;
+            padding: 8px 4px;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .header h1 {
+        /* Vertical header container */
+        .vertical-header {
+            position: relative;
+            height: 80px;
+            width: 100%;
             margin: 0;
-            font-size: 18px;
+            padding: 8px 0;
         }
 
-        .header p {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-
-        .section-title {
+        /* Vertical text using transform - Bottom to Top */
+        .vertical-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-90deg);
+            transform-origin: center center;
+            white-space: nowrap;
+            font-size: 10px;
             font-weight: bold;
-            font-size: 14px;
-            background-color: #f2f2f2;
-            border: 1px solid #ddd;
-            padding: 8px;
+            width: 80px;
             text-align: center;
-            margin-bottom: 10px;
         }
 
-        .note-box {
-            background-color: #fffbeb;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-left: 4px solid #f59e0b;
+        .header-row td {
+            border: 1px solid #000000;
+            font-size: 13px;
+            font-weight: bold;
+            padding: 8px;
+            background-color: #E7E6E6;
+            text-align: center;
+        }
+
+        .section-title-row td {
+            background-color: #D9D9D9;
+            border: 1px solid #000000;
+            font-weight: bold;
             font-size: 11px;
+            padding: 6px;
+            text-align: center;
+        }
+
+        .total-row {
+            background-color: #F2F2F2;
+            font-weight: bold;
+        }
+
+        .total-row td {
+            font-weight: bold;
+        }
+
+        /* Company column */
+        td:first-child,
+        th:first-child {
+            text-align: left;
+            padding-left: 8px;
+            width: 80px;
+            min-width: 80px;
+            font-size: 11px;
+        }
+
+        /* Data columns - proper sizing */
+        td:not(:first-child) {
+            width: auto;
+            min-width: 28px;
+            font-size: 11px;
+        }
+
+        th:not(:first-child) {
+            width: auto;
+            min-width: 28px;
+            height: 80px;
+        }
+
+        .main-header {
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #E7E6E6;
+        }
+
+        .date-header {
+            text-align: center;
+            font-size: 12px;
+            margin-bottom: 10px;
         }
 
         .footer {
             text-align: right;
-            font-size: 10px;
-            margin-top: 20px;
+            font-size: 9px;
+            margin-top: 10px;
+            padding: 4px 8px;
+            color: #666;
         }
 
-        .total-row {
-            background-color: #f9f9f9;
-            font-weight: bold;
+        /* Ensure single page fit */
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            table {
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Proper row spacing */
+        tbody tr {
+            height: auto;
+        }
+
+        tbody td {
+            height: auto;
+            padding: 4px 2px;
+        }
+
+        tfoot tr {
+            height: auto;
+        }
+
+        tfoot td {
+            height: auto;
+            padding: 4px 2px;
+        }
+
+        thead th {
+            padding: 8px 4px;
         }
     </style>
 </head>
 
 <body>
-    <div class="header">
-        <h1>Manpower Distribution Report</h1>
-        <p>Date: {{ $formattedDate }}</p>
+    <!-- Main Header -->
+    <div style="text-align: center;font-weight:bold;">
+        Manpower Distribution Report
     </div>
-
-
+    <div style="text-align: center;font-weight:bold;">
+        {{ $formattedDate ?? '' }}
+    </div>
 
     <!-- Initialize all variables with defaults to prevent undefined errors -->
     @php
@@ -97,22 +201,37 @@
         $leaveTypeCompanyTotals = $leaveTypeCompanyTotals ?? [];
     @endphp
 
-    <div class="section-title">Planned Manpower Distribution</div>
+    <!-- Auth Manpower Section -->
     <table>
+        <tr class="" style="text-align: left;">
+            <td colspan="{{ count($otherRanks) + 3 }}">Auth Manpower</td>
+        </tr>
         <thead>
             <tr>
-                <th>Company</th>
-                <th>Officers</th>
+                <th style="text-align: left;">Coy</th>
+                <th>
+                    <div class="vertical-header">
+                        <div class="vertical-text">Officers</div>
+                    </div>
+                </th>
                 @foreach ($otherRanks as $rank)
-                    <th>{{ $rank->name }}</th>
+                    <th>
+                        <div class="vertical-header">
+                            <div class="vertical-text">{{ $rank->name }}</div>
+                        </div>
+                    </th>
                 @endforeach
-                <th>Total</th>
+                <th>
+                    <div class="vertical-header">
+                        <div class="vertical-text">Total</div>
+                    </div>
+                </th>
             </tr>
         </thead>
         <tbody>
             @foreach ($companies as $company)
                 <tr>
-                    <td>{{ $company->name }}</td>
+                    <td style="text-align: left;">{{ $company->name }}</td>
                     <td>{{ $officerTotals[$company->id] ?? 0 }}</td>
                     @foreach ($otherRanks as $rank)
                         <td>{{ $manpower[$company->id][$rank->id]->manpower_number ?? 0 }}</td>
@@ -128,7 +247,7 @@
         </tbody>
         <tfoot>
             <tr class="total-row">
-                <td>Total</td>
+                <td style="text-align: left;">Total</td>
                 <td>{{ array_sum($officerTotals) }}</td>
                 @foreach ($otherRanks as $rank)
                     <td>
@@ -148,19 +267,16 @@
             </tr>
         </tfoot>
     </table>
-
-    <div class="section-title">Received Manpower Distribution (Without ERE record)</div>
+    <div style="text-align: center;font-weight:bold;">
+        Received Manpower
+    </div>
+    <!-- Received Manpower Distribution Table -->
     <table>
-        <thead>
-            <tr>
-                <th>Company</th>
-                <th>Officers</th>
-                @foreach ($otherRanks as $rank)
-                    <th>{{ $rank->name }}</th>
-                @endforeach
-                <th>Total</th>
+        {{-- <thead>
+            <tr class="" style="text-align: center;">
+                <td colspan="{{ count($otherRanks) + 3 }}"></td>
             </tr>
-        </thead>
+        </thead> --}}
         <tbody>
             @foreach ($companies as $company)
                 @php
@@ -168,7 +284,7 @@
                     $companyReceivedData = $receivedManpower[$companyId] ?? null;
                 @endphp
                 <tr>
-                    <td>{{ $company->name }}</td>
+                    <td style="text-align: left;">{{ $company->name }}</td>
                     <td>{{ $receivedOfficerTotals[$companyId] ?? 0 }}</td>
                     @foreach ($otherRanks as $rank)
                         @php
@@ -188,7 +304,7 @@
         </tbody>
         <tfoot>
             <tr class="total-row">
-                <td>Total</td>
+                <td style="text-align: left;">Total</td>
                 <td>{{ array_sum($receivedOfficerTotals) }}</td>
                 @foreach ($otherRanks as $rank)
                     <td>
@@ -202,18 +318,17 @@
         </tfoot>
     </table>
 
-    <div class="section-title">Manpower with Leave</div>
+    <!-- Manpower with Leave Table -->
+    <div style="text-align: center;font-weight:bold;">
+        Leave Manpower
+    </div>
     <table>
-        <thead>
-            <tr>
-                <th>Company</th>
-                <th>Officers</th>
-                @foreach ($otherRanks as $rank)
-                    <th>{{ $rank->name }}</th>
-                @endforeach
-                <th>Total</th>
+
+        {{-- <thead>
+            <tr class="" style="text-align: center;">
+                <td colspan="{{ count($otherRanks) + 3 }}">Leave Manpower</td>
             </tr>
-        </thead>
+        </thead> --}}
         <tbody>
             @foreach ($companies as $company)
                 @php
@@ -221,7 +336,7 @@
                     $companyLeaveData = $leaveManpower[$companyId] ?? null;
                 @endphp
                 <tr>
-                    <td>{{ $company->name }}</td>
+                    <td style="text-align: left;">{{ $company->name }}</td>
                     <td>{{ $leaveOfficerTotals[$companyId] ?? 0 }}</td>
                     @foreach ($otherRanks as $rank)
                         @php
@@ -241,7 +356,7 @@
         </tbody>
         <tfoot>
             <tr class="total-row">
-                <td>Total</td>
+                <td style="text-align: left;">Total</td>
                 <td>{{ array_sum($leaveOfficerTotals) }}</td>
                 @foreach ($otherRanks as $rank)
                     <td>
@@ -255,18 +370,17 @@
         </tfoot>
     </table>
 
-    <div class="section-title">Manpower without Leave</div>
+    <!-- Present Manpower Table -->
+    <div style="text-align: center;font-weight:bold;">
+        Present Manpower
+    </div>
     <table>
-        <thead>
-            <tr>
-                <th>Company</th>
-                <th>Officers</th>
-                @foreach ($otherRanks as $rank)
-                    <th>{{ $rank->name }}</th>
-                @endforeach
-                <th>Total</th>
+
+        {{-- <thead>
+            <tr class="" style="text-align: center;">
+                <td colspan="{{ count($otherRanks) + 3 }}">Present Manpower</td>
             </tr>
-        </thead>
+        </thead> --}}
         <tbody>
             @foreach ($companies as $company)
                 @php
@@ -274,7 +388,7 @@
                     $companyWithoutLeaveData = $withoutLeaveManpower[$companyId] ?? null;
                 @endphp
                 <tr>
-                    <td>{{ $company->name }}</td>
+                    <td style="text-align: left;">{{ $company->name }}</td>
                     <td>{{ $withoutLeaveOfficerTotals[$companyId] ?? 0 }}</td>
                     @foreach ($otherRanks as $rank)
                         @php
@@ -294,7 +408,7 @@
         </tbody>
         <tfoot>
             <tr class="total-row">
-                <td>Total</td>
+                <td style="text-align: left;">Total</td>
                 <td>{{ array_sum($withoutLeaveOfficerTotals) }}</td>
                 @foreach ($otherRanks as $rank)
                     <td>
@@ -308,22 +422,36 @@
         </tfoot>
     </table>
 
-    <!-- NEW: Leave Types Distribution Table -->
-    <div class="section-title">Leave Types Distribution</div>
+    <!-- Leave Types Distribution Table -->
+    <div style="text-align: center;font-weight:bold;">
+        Leave Manpower
+    </div>
+
     <table>
+        {{-- <tr class="" style="text-align: center;">
+            <td colspan="{{ count($leaveTypes) + 2 }}">Leave Details</td>
+        </tr> --}}
         <thead>
             <tr>
-                <th>Company</th>
+                <th style="text-align: left;">Coy</th>
                 @foreach ($leaveTypes as $leaveType)
-                    <th>{{ $leaveType->name }}</th>
+                    <th>
+                        <div class="vertical-header">
+                            <div class="vertical-text">{{ $leaveType->name }}</div>
+                        </div>
+                    </th>
                 @endforeach
-                <th>Total</th>
+                <th>
+                    <div class="vertical-header">
+                        <div class="vertical-text">Total</div>
+                    </div>
+                </th>
             </tr>
         </thead>
         <tbody>
             @foreach ($companies as $company)
                 <tr>
-                    <td>{{ $company->name }}</td>
+                    <td style="text-align: left;">{{ $company->name }}</td>
                     @foreach ($leaveTypes as $leaveType)
                         <td>{{ $leaveTypeManpower[$company->id][$leaveType->id]->count ?? 0 }}</td>
                     @endforeach
@@ -333,7 +461,7 @@
         </tbody>
         <tfoot>
             <tr class="total-row">
-                <td>Total</td>
+                <td style="text-align: left;">Total</td>
                 @foreach ($leaveTypes as $leaveType)
                     <td>{{ $leaveTypeTotals[$leaveType->id] ?? 0 }}</td>
                 @endforeach
@@ -343,7 +471,7 @@
     </table>
 
     <div class="footer">
-        <p>Generated on: {{ now()->format('F d, Y H:i:s') }}</p>
+        Generated on: {{ now()->format('F d, Y H:i:s') }}
     </div>
 </body>
 

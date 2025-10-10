@@ -24,7 +24,7 @@ class ManpowerDataService
         $currentDate = $date ? Carbon::parse($date)->toDateString() : now()->toDateString();
 
         $companies = Company::active()->orderBy('name')->get();
-        $ranks = Rank::active()->orderBy('name')->get();
+        $ranks = Rank::active()->orderBy('id')->get();
         $leaveTypes = LeaveType::active()->orderBy('name')->get();
 
         // Separate officer ranks from other ranks
