@@ -69,3 +69,31 @@ tbody tr:hover {
         transition-duration: 0.01ms !important;
     }
 }
+/* Ensure modal appears below navigation */
+#profile-modal {
+    z-index: 50;
+    margin-top: 80px; /* Adjust based on your navigation height */
+}
+
+/* Backdrop styling */
+#profile-modal .fixed.inset-0 {
+    z-index: -1;
+}
+
+/* Modal content positioning */
+#profile-modal .inline-block {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 640px) {
+    #profile-modal {
+        margin-top: 60px;
+    }
+
+    #profile-modal .inline-block {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+}

@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Soldier;
+use App\Models\LeaveApplication;
+use App\Models\SoldierServices;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
 
@@ -12,11 +14,12 @@ class SoldierDataFormatter
     {
         return $profiles->map(fn($profile) => $this->format($profile));
     }
+
     public function format($profile): array
     {
         $current  = $profile->services->where('appointment_type', 'current')->last();
         $previous = $profile->services->where('appointment_type', 'previous');
-        // dd($previous);
+
         return [
             'id'        => $profile->id,
             'name'      => $profile->full_name,
@@ -35,8 +38,7 @@ class SoldierDataFormatter
             'is_on_leave' => $profile->is_on_leave,
             'current_leave_details' => $profile->current_leave_details,
 
-
-            'is_leave' => $profile->is_on_leave ? true : false, //$profile->is_leave
+            'is_leave' => $profile->is_on_leave ? true : false,
             'is_sick' => $profile->is_sick,
             'status' => $profile->status,
             'mobile' => $profile->mobile,
@@ -58,9 +60,15 @@ class SoldierDataFormatter
             'good_behavior'    => $this->formatGoodDiscipline($profile),
             'bad_behavior'     => $this->formatBadDiscipline($profile),
 
-            'actions'   => view('mpm.page.profile.partials.actions', compact('profile'))->render(),
+            // NEW: Added histories
+            'duties_history'   => $this->formatDutiesHistory($profile),
+            'leave_history'    => $this->formatLeaveHistory($profile),
+            'appointment_history' => $this->formatAppointmentHistory($profile),
+
+            // 'actions'   => view('mpm.page.profile.partials.actions', compact('profile'))->render(),
         ];
     }
+
     public function addressInfo($district, $address)
     {
         $fullAddress = trim("{$address}, {$district}", ', ');
@@ -100,7 +108,6 @@ class SoldierDataFormatter
         return $info;
     }
 
-
     public function duration($joining_date)
     {
         if (!$joining_date) {
@@ -117,6 +124,7 @@ class SoldierDataFormatter
         // Return formatted duration
         return "{$diff->y} years, {$diff->m} months, {$diff->d} days";
     }
+
     public function formatEducations(Soldier $profile)
     {
         return $profile->educations->map(function ($edu) {
@@ -146,7 +154,7 @@ class SoldierDataFormatter
     {
         return $profile->cadres->map(function ($data) {
             return [
-                'name'       => $data->name, // consider $data->name if available
+                'name'       => $data->name,
                 'status'     => $data->pivot->course_status,
                 'start_date' => $data->pivot->start_date,
                 'end_date'   => $data->pivot->end_date,
@@ -159,7 +167,7 @@ class SoldierDataFormatter
     {
         return $profile->skills->map(function ($data) {
             return [
-                'name'   => $data->name, // consider $data->name
+                'name'   => $data->name,
                 'result' => $data->pivot->remarks,
             ];
         });
@@ -230,5 +238,199 @@ class SoldierDataFormatter
                 'remarks'    => $data->remarks,
             ];
         });
+    }
+
+    /**
+     * NEW: Format duties history including fixed duties, courses, cadres, and active assignments
+     */
+    public function formatDutiesHistory(Soldier $profile): array
+    {
+        $dutiesHistory = [];
+
+        // Get fixed duties history
+        $fixedDuties = $profile->dutyRanks()
+            ->where('assignment_type', 'fixed')
+            ->with(['duty' => function ($query) {
+                $query->select('id', 'duty_name', 'start_time', 'end_time', 'duration_days', 'status');
+            }])
+            ->get();
+
+        foreach ($fixedDuties as $dutyAssignment) {
+            $duty = $dutyAssignment->duty;
+
+            // Calculate hours
+            $dailyHours = 0;
+            if ($duty && $duty->start_time && $duty->end_time) {
+                try {
+                    $start = Carbon::createFromTimeString($duty->start_time);
+                    $end = Carbon::createFromTimeString($duty->end_time);
+                    if ($end->lt($start)) {
+                        $end->addDay();
+                    }
+                    $dailyHours = $end->diffInHours($start);
+                } catch (\Exception $e) {
+                    // Handle invalid time format
+                }
+            }
+
+            $dutiesHistory[] = [
+                'type' => 'fixed_duty',
+                'name' => $duty ? $duty->duty_name : 'Unknown Duty',
+                'duty_name' => $duty ? $duty->duty_name : 'Unknown Duty',
+                'start_time' => $duty->start_time ?? null,
+                'end_time' => $duty->end_time ?? null,
+                'duration_days' => $duty->duration_days ?? 0,
+                'daily_hours' => $dailyHours,
+                'total_hours' => $dailyHours * ($duty->duration_days ?? 0),
+                'priority' => $dutyAssignment->priority,
+                'remarks' => $dutyAssignment->remarks,
+                'status' => $duty->status ?? 'unknown',
+                'assignment_type' => 'fixed',
+                'assignment_date' => $dutyAssignment->created_at?->toDateString(),
+            ];
+        }
+
+        // Get courses as duties
+        foreach ($profile->courses as $course) {
+            $dutiesHistory[] = [
+                'type' => 'course_duty',
+                'name' => $course->name,
+                'course_name' => $course->name,
+                'start_date' => $course->pivot->start_date,
+                'end_date' => $course->pivot->end_date,
+                'status' => $course->pivot->course_status,
+                'result' => $course->pivot->remarks,
+                'assignment_type' => 'course',
+                'duration_days' => $course->pivot->start_date && $course->pivot->end_date ?
+                    Carbon::parse($course->pivot->start_date)->diffInDays(Carbon::parse($course->pivot->end_date)) : null,
+            ];
+        }
+
+        // Get cadres as duties
+        foreach ($profile->cadres as $cadre) {
+            $dutiesHistory[] = [
+                'type' => 'cadre_duty',
+                'name' => $cadre->name,
+                'cadre_name' => $cadre->name,
+                'start_date' => $cadre->pivot->start_date,
+                'end_date' => $cadre->pivot->end_date,
+                'status' => $cadre->pivot->course_status,
+                'result' => $cadre->pivot->remarks,
+                'assignment_type' => 'cadre',
+                'duration_days' => $cadre->pivot->start_date && $cadre->pivot->end_date ?
+                    Carbon::parse($cadre->pivot->start_date)->diffInDays(Carbon::parse($cadre->pivot->end_date)) : null,
+            ];
+        }
+
+        // Get active assignments
+        $activeAssignments = $profile->getActiveAssignments();
+        foreach ($activeAssignments as $assignment) {
+            if ($assignment['type'] === 'fixed_duty') {
+                $dutiesHistory[] = array_merge($assignment, [
+                    'is_active' => true,
+                    'assignment_type' => 'fixed_duty'
+                ]);
+            }
+        }
+
+        // Sort by start date (most recent first)
+        usort($dutiesHistory, function ($a, $b) {
+            $dateA = $this->getDutyStartDate($a);
+            $dateB = $this->getDutyStartDate($b);
+            return $dateB <=> $dateA; // Descending order
+        });
+
+        return $dutiesHistory;
+    }
+
+    /**
+     * Helper method to extract start date from duty record
+     */
+    private function getDutyStartDate(array $duty): ?string
+    {
+        return $duty['start_date'] ??
+            $duty['assignment_date'] ??
+            (isset($duty['created_at']) ? $duty['created_at'] : null);
+    }
+
+    /**
+     * NEW: Format leave history
+     */
+    public function formatLeaveHistory(Soldier $profile): array
+    {
+        $leaveHistory = [];
+
+        // Get all leave applications, ordered by most recent first
+        $leaveApplications = $profile->leaveApplications()
+            ->with('leaveType')
+            ->orderBy('start_date', 'desc')
+            ->get();
+
+        foreach ($leaveApplications as $leave) {
+            $leaveType = $leave->leaveType;
+
+            // Calculate duration
+            $duration = 0;
+            if ($leave->start_date && $leave->end_date) {
+                $duration = Carbon::parse($leave->start_date)->diffInDays(Carbon::parse($leave->end_date)) + 1;
+            }
+
+            $leaveHistory[] = [
+                'id' => $leave->id,
+                'leave_type' => $leaveType ? $leaveType->name : 'Unknown',
+                'reason' => $leave->reason,
+                'start_date' => $leave->start_date?->toDateString(),
+                'end_date' => $leave->end_date?->toDateString(),
+                'duration_days' => $duration,
+                'status' => $leave->application_current_status,
+                'hard_copy' => $leave->hard_copy,
+                'application_date' => $leave->created_at?->toDateString(),
+                'is_current' => $leave->application_current_status === 'approved' &&
+                    $leave->start_date && $leave->end_date &&
+                    Carbon::today()->between($leave->start_date, $leave->end_date),
+            ];
+        }
+
+        return $leaveHistory;
+    }
+
+    /**
+     * NEW: Format appointment history (services history)
+     */
+    public function formatAppointmentHistory(Soldier $profile): array
+    {
+        $appointmentHistory = [];
+
+        // Get all services, ordered by most recent first
+        $services = $profile->services()
+            ->orderBy('appointments_from_date', 'desc')
+            ->get();
+
+        foreach ($services as $service) {
+            // Calculate duration
+            $duration = null;
+            if ($service->appointments_from_date && $service->appointments_to_date) {
+                $duration = Carbon::parse($service->appointments_from_date)
+                    ->diffInDays(Carbon::parse($service->appointments_to_date)) + 1;
+            }
+
+            $appointmentHistory[] = [
+                'id' => $service->id,
+                'appointment_name' => $service->appointments_name,
+                'appointment_type' => $service->appointment_type,
+                'appointment_id' => $service->appointment_id,
+                'from_date' => $service->appointments_from_date?->toDateString(),
+                'to_date' => $service->appointments_to_date?->toDateString(),
+                'duration_days' => $duration,
+                'status' => $service->status,
+                'note' => $service->note,
+                'is_current' => $service->appointment_type === 'current' &&
+                    $service->status === 'active',
+                'is_active' => $service->status === 'active',
+                'is_completed' => $service->status === 'completed',
+            ];
+        }
+
+        return $appointmentHistory;
     }
 }

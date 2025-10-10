@@ -95,6 +95,21 @@ export function renderTableRow(soldier) {
                     <p> <strong>Academic:</strong> ${educations}</p>
                     <p> <strong>Skill: </strong>${skills}</p>
 
+                  <!-- History Buttons Section - Subtle Gradients -->
+<div class="mt-3 flex flex-wrap gap-1">
+    <button class="btn-duty-history px-2 py-1 bg-gradient-to-r from-blue-300 to-blue-400 text-white text-xs rounded hover:from-blue-400 hover:to-blue-500 transition-all duration-200 shadow-sm hover:shadow-md"
+            data-id="${soldier.id}" title="Duty History">
+        <i class="fas fa-tasks mr-1"></i>Duty
+    </button>
+    <button class="btn-leave-history px-2 py-1 bg-gradient-to-r from-amber-300 to-amber-400 text-white text-xs rounded hover:from-amber-400 hover:to-amber-500 transition-all duration-200 shadow-sm hover:shadow-md"
+            data-id="${soldier.id}" title="Leave History">
+        <i class="fas fa-umbrella-beach mr-1"></i>Leave
+    </button>
+    <button class="btn-appointment-history px-2 py-1 bg-gradient-to-r from-violet-300 to-violet-400 text-white text-xs rounded hover:from-violet-400 hover:to-violet-500 transition-all duration-200 shadow-sm hover:shadow-md"
+            data-id="${soldier.id}" title="Appointment History">
+        <i class="fas fa-briefcase mr-1"></i>Appointment
+    </button>
+</div>
 
                 </td>
 

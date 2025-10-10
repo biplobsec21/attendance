@@ -94,6 +94,9 @@
 
         /* end loader css */
     </style>
+
+    @stack('styles')
+
 </head>
 
 <body class="bg-gray-200">

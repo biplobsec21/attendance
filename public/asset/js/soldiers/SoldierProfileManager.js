@@ -4,7 +4,7 @@ import { SoldierBulkActions } from "./soldierBulkActions.js";
 import { openProfileModal, closeProfileModal } from "./soldierProfileModal.js";
 import { initExportAndBulkActions } from "./soldierExportActions.js";
 import { showToast } from "./soldierHelpers.js";
-
+import { formatDate } from "./soldierHelpers.js";
 export default class SoldierProfileManager {
     constructor() {
         this.filters = {
@@ -399,6 +399,32 @@ export default class SoldierProfileManager {
                 if (soldier) openProfileModal(soldier, "Leave details");
             });
         });
+
+        // NEW: History buttons event listeners
+        tbody.querySelectorAll(".btn-duty-history").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const id = btn.dataset.id;
+                const soldier = soldiers.find((s) => s.id == id);
+                if (soldier) this.showHistoryModal(soldier, 'duty');
+            });
+        });
+
+        tbody.querySelectorAll(".btn-leave-history").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const id = btn.dataset.id;
+                const soldier = soldiers.find((s) => s.id == id);
+                if (soldier) this.showHistoryModal(soldier, 'leave');
+            });
+        });
+
+        tbody.querySelectorAll(".btn-appointment-history").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const id = btn.dataset.id;
+                const soldier = soldiers.find((s) => s.id == id);
+                if (soldier) this.showHistoryModal(soldier, 'appointment');
+            });
+        });
+
         // Attach event listeners
         tbody.querySelectorAll(".view-btn").forEach((btn) => {
             btn.addEventListener("click", () => {
@@ -487,5 +513,144 @@ export default class SoldierProfileManager {
     showError(msg) {
         // alert(msg);
         showToast(msg, 'error');
+    }
+    showHistoryModal(soldier, type) {
+        const title = document.getElementById('modal-title');
+        const modal = document.getElementById('profile-modal');
+        const content = document.getElementById('modal-content');
+
+        if (!modal || !content) {
+            console.warn("Profile modal elements not found in DOM");
+            return;
+        }
+
+        const typeTitles = {
+            'duty': 'Duty History',
+            'leave': 'Leave History',
+            'appointment': 'Appointment History'
+        };
+
+        title.innerHTML = `${typeTitles[type]} - ${soldier.name}`;
+        content.innerHTML = this.generateHistoryContent(soldier, type);
+        modal.classList.remove('hidden');
+    }
+
+    generateHistoryContent(soldier, type) {
+        const historyData = soldier[`${type}_history`] || [];
+
+        if (!historyData || historyData.length === 0) {
+            return `
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-${this.getHistoryIcon(type)} text-3xl mb-3 text-gray-300"></i>
+                <p class="text-lg">No ${type} history found</p>
+            </div>
+        `;
+        }
+
+        return `
+        <div class="space-y-4 max-h-96 overflow-y-auto">
+            <h4 class="text-lg font-semibold text-gray-800 mb-4">${this.getHistoryTitle(type)} (${historyData.length})</h4>
+            ${historyData.map(item => this.renderHistoryItem(type, item)).join('')}
+        </div>
+    `;
+    }
+
+    getHistoryIcon(type) {
+        const icons = {
+            'duty': 'tasks',
+            'leave': 'umbrella-beach',
+            'appointment': 'briefcase'
+        };
+        return icons[type] || 'history';
+    }
+
+    getHistoryTitle(type) {
+        const titles = {
+            'duty': 'Duty History',
+            'leave': 'Leave History',
+            'appointment': 'Appointment History'
+        };
+        return titles[type] || 'History';
+    }
+
+    renderHistoryItem(type, item) {
+        switch (type) {
+            case 'duty':
+                return this.renderDutyItem(item);
+            case 'leave':
+                return this.renderLeaveItem(item);
+            case 'appointment':
+                return this.renderAppointmentItem(item);
+            default:
+                return `<div class="border border-gray-200 rounded-lg p-4">Unknown history type</div>`;
+        }
+    }
+
+    renderDutyItem(duty) {
+        return `
+        <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
+            <div class="flex justify-between items-start mb-2">
+                <h5 class="font-medium text-gray-900">${duty.name || 'Unnamed Duty'}</h5>
+                <span class="px-2 py-1 text-xs rounded-full ${duty.is_active ? 'bg-green-100 text-green-800' :
+                duty.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                    'bg-blue-100 text-blue-800'
+            }">
+                    ${duty.is_active ? 'Active' : (duty.status || 'Unknown')}
+                </span>
+            </div>
+            ${duty.type ? `<p class="text-sm text-gray-600 mb-1"><strong>Type:</strong> ${duty.type}</p>` : ''}
+            ${duty.start_date ? `<p class="text-sm text-gray-600 mb-1"><strong>Start:</strong> ${formatDate(duty.start_date)}</p>` : ''}
+            ${duty.end_date ? `<p class="text-sm text-gray-600 mb-1"><strong>End:</strong> ${formatDate(duty.end_date)}</p>` : ''}
+            ${duty.duration_days ? `<p class="text-sm text-gray-600 mb-1"><strong>Duration:</strong> ${duty.duration_days} days</p>` : ''}
+            ${duty.remarks ? `<p class="text-sm text-gray-600"><strong>Remarks:</strong> ${duty.remarks}</p>` : ''}
+        </div>
+    `;
+    }
+
+    renderLeaveItem(leave) {
+        return `
+        <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
+            <div class="flex justify-between items-start mb-2">
+                <h5 class="font-medium text-gray-900">${leave.leave_type || 'Unknown Leave Type'}</h5>
+                <span class="px-2 py-1 text-xs rounded-full ${leave.status === 'approved' ? 'bg-green-100 text-green-800' :
+                leave.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    leave.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+            }">
+                    ${leave.status || 'Unknown'}
+                </span>
+            </div>
+            ${leave.reason ? `<p class="text-sm text-gray-600 mb-1"><strong>Reason:</strong> ${leave.reason}</p>` : ''}
+            ${leave.start_date ? `<p class="text-sm text-gray-600 mb-1"><strong>From:</strong> ${formatDate(leave.start_date)}</p>` : ''}
+            ${leave.end_date ? `<p class="text-sm text-gray-600 mb-1"><strong>To:</strong> ${formatDate(leave.end_date)}</p>` : ''}
+            ${leave.duration_days ? `<p class="text-sm text-gray-600 mb-1"><strong>Duration:</strong> ${leave.duration_days} days</p>` : ''}
+            ${leave.application_date ? `<p class="text-sm text-gray-600"><strong>Applied:</strong> ${formatDate(leave.application_date)}</p>` : ''}
+        </div>
+    `;
+    }
+
+    renderAppointmentItem(appointment) {
+        return `
+        <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
+            <div class="flex justify-between items-start mb-2">
+                <h5 class="font-medium text-gray-900">${appointment.appointment_name || 'Unknown Appointment'}</h5>
+                <span class="px-2 py-1 text-xs rounded-full ${appointment.is_current ? 'bg-green-100 text-green-800' :
+                appointment.is_active ? 'bg-blue-100 text-blue-800' :
+                    appointment.is_completed ? 'bg-gray-100 text-gray-800' :
+                        'bg-yellow-100 text-yellow-800'
+            }">
+                    ${appointment.is_current ? 'Current' :
+                appointment.is_active ? 'Active' :
+                    appointment.is_completed ? 'Completed' :
+                        appointment.status || 'Unknown'}
+                </span>
+            </div>
+            ${appointment.appointment_type ? `<p class="text-sm text-gray-600 mb-1"><strong>Type:</strong> ${appointment.appointment_type}</p>` : ''}
+            ${appointment.from_date ? `<p class="text-sm text-gray-600 mb-1"><strong>From:</strong> ${formatDate(appointment.from_date)}</p>` : ''}
+            ${appointment.to_date ? `<p class="text-sm text-gray-600 mb-1"><strong>To:</strong> ${formatDate(appointment.to_date)}</p>` : ''}
+            ${appointment.duration_days ? `<p class="text-sm text-gray-600 mb-1"><strong>Duration:</strong> ${appointment.duration_days} days</p>` : ''}
+            ${appointment.note ? `<p class="text-sm text-gray-600"><strong>Note:</strong> ${appointment.note}</p>` : ''}
+        </div>
+    `;
     }
 }
