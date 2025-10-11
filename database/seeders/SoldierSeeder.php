@@ -17,7 +17,7 @@ class SoldierSeeder extends Seeder
         $courses = Course::all();
 
         Soldier::factory()
-            ->count(50)
+            ->count(700)
             ->create()
             ->each(function (Soldier $soldier) use ($skills, $courses, $proficiencyLevels) {
                 $skillIds = $skills->random(rand(2, 5))->pluck('id')->all();

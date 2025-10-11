@@ -456,7 +456,7 @@
                                     <div>
                                         <div class="flex items-center mb-2">
                                             <span class="font-semibold text-blue-700">Excused Next Day:</span>
-                                            <span class="text-sm text-gray-600 ml-2">Select activities for which soldiers
+                                            <span class="text-sm text-gray-600 ml-2">Select activities for which duities
                                                 should be excused the day after the duty ends:</span>
                                         </div>
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">

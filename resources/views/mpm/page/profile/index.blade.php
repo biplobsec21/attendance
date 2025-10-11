@@ -288,6 +288,33 @@
                 </div>
             </div>
         </div>
+
+        <!-- Add this after the existing profile modal in your index.blade.php -->
+
+        <!-- History Modal -->
+        <div id="history-modal" class="fixed inset-0 z-50 hidden overflow-y-auto pt-16">
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                <div
+                    class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full max-h-[80vh] relative">
+                    <div class="bg-white px-6 pt-6 pb-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900" id="history-modal-title">History</h3>
+                            <button id="close-history-modal"
+                                class="text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        <div id="history-modal-content" class="overflow-y-auto max-h-[60vh]">
+                            <!-- History content will be loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     @endsection
 
     @push('scripts')
@@ -298,6 +325,8 @@
                 edit: "{{ route('soldier.personalForm', ['profile' => ':id']) }}",
                 bulkDelete: "{{ route('soldier.bulkDelete') }}",
                 view: "{{ route('soldier.details', ['id' => ':id']) }}",
+                getHistory: "{{ route('soldier.history', ['id' => ':id']) }}", // Add this route
+
             };
 
             // Debug ERE filter

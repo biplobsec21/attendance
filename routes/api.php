@@ -22,3 +22,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::get('/filters', [FilterController::class, 'index']);
 Route::post('/filters/apply', [FilterController::class, 'apply']);
 Route::get('/soldier/data', [SoldierAPIController::class, 'index'])->name('soldier.getAllData');
+Route::get('/soldier/{id}/history', [SoldierAPIController::class, 'getHistory'])->name('soldier.history');

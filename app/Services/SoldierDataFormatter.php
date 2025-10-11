@@ -10,24 +10,88 @@ use Carbon\Carbon;
 
 class SoldierDataFormatter
 {
+    /**
+     * Cache for Carbon instances to avoid repeated parsing
+     */
+    private array $carbonCache = [];
+
     public function formatCollection(Collection $profiles): Collection
     {
         return $profiles->map(fn($profile) => $this->format($profile));
     }
 
+    /**
+     * Get optimized query with all necessary eager loading
+     * Call this BEFORE passing soldiers to formatCollection
+     */
+    public static function getOptimizedQuery($query)
+    {
+        return $query->with([
+            'rank:id,name',
+            'company:id,name',
+            'district:id,name',
+            'services' => function ($q) {
+                $q->select(
+                    'id',
+                    'soldier_id',
+                    'appointments_name',
+                    'appointment_type',
+                    'appointment_id',
+                    'appointments_from_date',
+                    'appointments_to_date',
+                    'status',
+                    'note'
+                )
+                    ->orderBy('appointments_from_date', 'desc');
+            },
+            'educations:id,name',
+            'courses:id,name',
+            'cadres:id,name',
+            'skills:id,name',
+            'att:id,name',
+            'ere:id,name',
+            'medicalCategory:id,name',
+            'sickness:id,name',
+            'goodDiscipline:id,discipline_name,remarks',
+            'punishmentDiscipline:id,discipline_name,start_date,remarks',
+            'dutyRanks' => function ($q) {
+                $q->where('assignment_type', 'fixed')
+                    ->with(['duty:id,duty_name,start_time,end_time,duration_days,status'])
+                    ->select('id', 'soldier_id', 'duty_id', 'assignment_type', 'priority', 'remarks', 'created_at');
+            },
+            'leaveApplications' => function ($q) {
+                $q->with('leaveType:id,name')
+                    ->orderBy('start_date', 'desc')
+                    ->select(
+                        'id',
+                        'soldier_id',
+                        'leave_type_id',
+                        'reason',
+                        'start_date',
+                        'end_date',
+                        'application_current_status',
+                        'hard_copy',
+                        'created_at'
+                    );
+            }
+        ]);
+    }
+
     public function format($profile): array
     {
-        $current  = $profile->services->where('appointment_type', 'current')->last();
-        $previous = $profile->services->where('appointment_type', 'previous');
+        // Pre-filter services for better performance
+        $services = $profile->services ?? collect();
+        $current = $services->where('appointment_type', 'current')->last();
+        $previous = $services->where('appointment_type', 'previous');
 
         return [
             'id'        => $profile->id,
             'name'      => $profile->full_name,
             'joining_date'      => $profile->joining_date,
             'army_no'      => $profile->army_no,
-            'rank'      => optional($profile->rank)->name,
-            'unit'      => optional($profile->company)->name,
-            'current'   => optional($current)->appointments_name ?? 'N/A',
+            'rank'      => $profile->rank?->name,
+            'unit'      => $profile->company?->name,
+            'current'   => $current?->appointments_name ?? 'N/A',
             'previous'  => $previous->pluck('appointments_name')->implode(', '),
             'personal_completed' => $profile->personal_completed,
             'service_completed' => $profile->service_completed,
@@ -38,7 +102,7 @@ class SoldierDataFormatter
             'is_on_leave' => $profile->is_on_leave,
             'current_leave_details' => $profile->current_leave_details,
 
-            'is_leave' => $profile->is_on_leave ? true : false,
+            'is_leave' => (bool) $profile->is_on_leave,
             'is_sick' => $profile->is_sick,
             'status' => $profile->status,
             'mobile' => $profile->mobile,
@@ -46,9 +110,9 @@ class SoldierDataFormatter
             'image' => $profile->image ?? asset('/images/default-avatar.png'),
             'service_duration' => $this->duration($profile->joining_date),
             'marital_status' => $this->maritalinfo($profile->marital_status, $profile->num_boys, $profile->num_girls),
-            'address' => $this->addressInfo($profile->district->name, $profile->permanent_address),
+            'address' => $this->addressInfo($profile->district?->name, $profile->permanent_address),
 
-            // Extended Details
+            // Extended Details - Using cached collections
             'educations'       => $this->formatEducations($profile),
             'courses'          => $this->formatCourses($profile),
             'cadres'           => $this->formatCadres($profile),
@@ -60,12 +124,10 @@ class SoldierDataFormatter
             'good_behavior'    => $this->formatGoodDiscipline($profile),
             'bad_behavior'     => $this->formatBadDiscipline($profile),
 
-            // NEW: Added histories
-            'duties_history'   => $this->formatDutiesHistory($profile),
-            'leave_history'    => $this->formatLeaveHistory($profile),
-            'appointment_history' => $this->formatAppointmentHistory($profile),
-
-            // 'actions'   => view('mpm.page.profile.partials.actions', compact('profile'))->render(),
+            // Histories
+            // 'duties_history'   => $this->formatDutiesHistory($profile),
+            // 'leave_history'    => $this->formatLeaveHistory($profile),
+            // 'appointment_history' => $this->formatAppointmentHistory($profile),
         ];
     }
 
@@ -85,10 +147,8 @@ class SoldierDataFormatter
 
     public function maritalinfo($status, $boys = 0, $girls = 0)
     {
-        // Base marital status
         $info = $status;
 
-        // If married/divorced/widowed, include children info
         if (in_array($status, ['Married', 'Divorced', 'Widowed'])) {
             $children = [];
 
@@ -114,19 +174,24 @@ class SoldierDataFormatter
             return 'N/A';
         }
 
-        // Parse the date
-        $joinDate = Carbon::parse($joining_date);
-        $now = Carbon::now();
+        // Use cached Carbon instance
+        $cacheKey = (string) $joining_date;
+        if (!isset($this->carbonCache[$cacheKey])) {
+            $this->carbonCache[$cacheKey] = Carbon::parse($joining_date);
+        }
 
-        // Calculate the difference
-        $diff = $joinDate->diff($now);
+        $joinDate = $this->carbonCache[$cacheKey];
+        $diff = $joinDate->diff(Carbon::now());
 
-        // Return formatted duration
         return "{$diff->y} years, {$diff->m} months, {$diff->d} days";
     }
 
     public function formatEducations(Soldier $profile)
     {
+        if (!$profile->relationLoaded('educations') || $profile->educations->isEmpty()) {
+            return collect([]);
+        }
+
         return $profile->educations->map(function ($edu) {
             return [
                 'name'   => $edu->name,
@@ -139,6 +204,10 @@ class SoldierDataFormatter
 
     public function formatCourses(Soldier $profile)
     {
+        if (!$profile->relationLoaded('courses') || $profile->courses->isEmpty()) {
+            return collect([]);
+        }
+
         return $profile->courses->map(function ($data) {
             return [
                 'name'       => $data->name,
@@ -152,6 +221,10 @@ class SoldierDataFormatter
 
     public function formatCadres(Soldier $profile)
     {
+        if (!$profile->relationLoaded('cadres') || $profile->cadres->isEmpty()) {
+            return collect([]);
+        }
+
         return $profile->cadres->map(function ($data) {
             return [
                 'name'       => $data->name,
@@ -165,6 +238,10 @@ class SoldierDataFormatter
 
     public function formatSkills(Soldier $profile)
     {
+        if (!$profile->relationLoaded('skills') || $profile->skills->isEmpty()) {
+            return collect([]);
+        }
+
         return $profile->skills->map(function ($data) {
             return [
                 'name'   => $data->name,
@@ -175,6 +252,10 @@ class SoldierDataFormatter
 
     public function formatAtt(Soldier $profile)
     {
+        if (!$profile->relationLoaded('att') || $profile->att->isEmpty()) {
+            return collect([]);
+        }
+
         return $profile->att->map(function ($data) {
             return [
                 'name'       => $data->name,
@@ -186,6 +267,10 @@ class SoldierDataFormatter
 
     public function formatEre(Soldier $profile)
     {
+        if (!$profile->relationLoaded('ere') || $profile->ere->isEmpty()) {
+            return collect([]);
+        }
+
         return $profile->ere->map(function ($data) {
             return [
                 'name'       => $data->name,
@@ -197,6 +282,10 @@ class SoldierDataFormatter
 
     public function formatMedical(Soldier $profile)
     {
+        if (!$profile->relationLoaded('medicalCategory') || $profile->medicalCategory->isEmpty()) {
+            return collect([]);
+        }
+
         return $profile->medicalCategory->map(function ($data) {
             return [
                 'category'   => $data->name,
@@ -209,6 +298,10 @@ class SoldierDataFormatter
 
     public function formatSickness(Soldier $profile)
     {
+        if (!$profile->relationLoaded('sickness') || $profile->sickness->isEmpty()) {
+            return collect([]);
+        }
+
         return $profile->sickness->map(function ($data) {
             return [
                 'category'   => $data->name,
@@ -221,6 +314,10 @@ class SoldierDataFormatter
 
     public function formatGoodDiscipline(Soldier $profile)
     {
+        if (!$profile->relationLoaded('goodDiscipline') || $profile->goodDiscipline->isEmpty()) {
+            return collect([]);
+        }
+
         return $profile->goodDiscipline->map(function ($data) {
             return [
                 'name'    => $data->discipline_name,
@@ -231,6 +328,10 @@ class SoldierDataFormatter
 
     public function formatBadDiscipline(Soldier $profile)
     {
+        if (!$profile->relationLoaded('punishmentDiscipline') || $profile->punishmentDiscipline->isEmpty()) {
+            return collect([]);
+        }
+
         return $profile->punishmentDiscipline->map(function ($data) {
             return [
                 'name'       => $data->discipline_name,
@@ -240,112 +341,136 @@ class SoldierDataFormatter
         });
     }
 
-    /**
-     * NEW: Format duties history including fixed duties, courses, cadres, and active assignments
-     */
     public function formatDutiesHistory(Soldier $profile): array
     {
         $dutiesHistory = [];
 
-        // Get fixed duties history
-        $fixedDuties = $profile->dutyRanks()
-            ->where('assignment_type', 'fixed')
-            ->with(['duty' => function ($query) {
-                $query->select('id', 'duty_name', 'start_time', 'end_time', 'duration_days', 'status');
-            }])
-            ->get();
+        // Fixed duties - already eager loaded
+        if ($profile->relationLoaded('dutyRanks')) {
+            $fixedDuties = $profile->dutyRanks;
 
-        foreach ($fixedDuties as $dutyAssignment) {
-            $duty = $dutyAssignment->duty;
+            foreach ($fixedDuties as $dutyAssignment) {
+                $duty = $dutyAssignment->duty;
 
-            // Calculate hours
-            $dailyHours = 0;
-            if ($duty && $duty->start_time && $duty->end_time) {
-                try {
-                    $start = Carbon::createFromTimeString($duty->start_time);
-                    $end = Carbon::createFromTimeString($duty->end_time);
-                    if ($end->lt($start)) {
-                        $end->addDay();
-                    }
-                    $dailyHours = $end->diffInHours($start);
-                } catch (\Exception $e) {
-                    // Handle invalid time format
+                $dailyHours = 0;
+                if ($duty && $duty->start_time && $duty->end_time) {
+                    $dailyHours = $this->calculateDailyHours($duty->start_time, $duty->end_time);
+                }
+
+                $dutiesHistory[] = [
+                    'type' => 'fixed_duty',
+                    'name' => $duty ? $duty->duty_name : 'Unknown Duty',
+                    'duty_name' => $duty ? $duty->duty_name : 'Unknown Duty',
+                    'start_time' => $duty->start_time ?? null,
+                    'end_time' => $duty->end_time ?? null,
+                    'duration_days' => $duty->duration_days ?? 0,
+                    'daily_hours' => $dailyHours,
+                    'total_hours' => $dailyHours * ($duty->duration_days ?? 0),
+                    'priority' => $dutyAssignment->priority,
+                    'remarks' => $dutyAssignment->remarks,
+                    'status' => $duty->status ?? 'unknown',
+                    'assignment_type' => 'fixed',
+                    'assignment_date' => $dutyAssignment->created_at?->toDateString(),
+                ];
+            }
+        }
+
+        // Courses - already eager loaded
+        if ($profile->relationLoaded('courses')) {
+            foreach ($profile->courses as $course) {
+                $durationDays = null;
+                if ($course->pivot->start_date && $course->pivot->end_date) {
+                    $durationDays = $this->calculateDaysDiff($course->pivot->start_date, $course->pivot->end_date);
+                }
+
+                $dutiesHistory[] = [
+                    'type' => 'course_duty',
+                    'name' => $course->name,
+                    'course_name' => $course->name,
+                    'start_date' => $course->pivot->start_date,
+                    'end_date' => $course->pivot->end_date,
+                    'status' => $course->pivot->course_status,
+                    'result' => $course->pivot->remarks,
+                    'assignment_type' => 'course',
+                    'duration_days' => $durationDays,
+                ];
+            }
+        }
+
+        // Cadres - already eager loaded
+        if ($profile->relationLoaded('cadres')) {
+            foreach ($profile->cadres as $cadre) {
+                $durationDays = null;
+                if ($cadre->pivot->start_date && $cadre->pivot->end_date) {
+                    $durationDays = $this->calculateDaysDiff($cadre->pivot->start_date, $cadre->pivot->end_date);
+                }
+
+                $dutiesHistory[] = [
+                    'type' => 'cadre_duty',
+                    'name' => $cadre->name,
+                    'cadre_name' => $cadre->name,
+                    'start_date' => $cadre->pivot->start_date,
+                    'end_date' => $cadre->pivot->end_date,
+                    'status' => $cadre->pivot->course_status,
+                    'result' => $cadre->pivot->remarks,
+                    'assignment_type' => 'cadre',
+                    'duration_days' => $durationDays,
+                ];
+            }
+        }
+
+        // Active assignments - only if method exists
+        if (method_exists($profile, 'getActiveAssignments')) {
+            $activeAssignments = $profile->getActiveAssignments();
+            foreach ($activeAssignments as $assignment) {
+                if ($assignment['type'] === 'fixed_duty') {
+                    $dutiesHistory[] = array_merge($assignment, [
+                        'is_active' => true,
+                        'assignment_type' => 'fixed_duty'
+                    ]);
                 }
             }
-
-            $dutiesHistory[] = [
-                'type' => 'fixed_duty',
-                'name' => $duty ? $duty->duty_name : 'Unknown Duty',
-                'duty_name' => $duty ? $duty->duty_name : 'Unknown Duty',
-                'start_time' => $duty->start_time ?? null,
-                'end_time' => $duty->end_time ?? null,
-                'duration_days' => $duty->duration_days ?? 0,
-                'daily_hours' => $dailyHours,
-                'total_hours' => $dailyHours * ($duty->duration_days ?? 0),
-                'priority' => $dutyAssignment->priority,
-                'remarks' => $dutyAssignment->remarks,
-                'status' => $duty->status ?? 'unknown',
-                'assignment_type' => 'fixed',
-                'assignment_date' => $dutyAssignment->created_at?->toDateString(),
-            ];
         }
 
-        // Get courses as duties
-        foreach ($profile->courses as $course) {
-            $dutiesHistory[] = [
-                'type' => 'course_duty',
-                'name' => $course->name,
-                'course_name' => $course->name,
-                'start_date' => $course->pivot->start_date,
-                'end_date' => $course->pivot->end_date,
-                'status' => $course->pivot->course_status,
-                'result' => $course->pivot->remarks,
-                'assignment_type' => 'course',
-                'duration_days' => $course->pivot->start_date && $course->pivot->end_date ?
-                    Carbon::parse($course->pivot->start_date)->diffInDays(Carbon::parse($course->pivot->end_date)) : null,
-            ];
-        }
-
-        // Get cadres as duties
-        foreach ($profile->cadres as $cadre) {
-            $dutiesHistory[] = [
-                'type' => 'cadre_duty',
-                'name' => $cadre->name,
-                'cadre_name' => $cadre->name,
-                'start_date' => $cadre->pivot->start_date,
-                'end_date' => $cadre->pivot->end_date,
-                'status' => $cadre->pivot->course_status,
-                'result' => $cadre->pivot->remarks,
-                'assignment_type' => 'cadre',
-                'duration_days' => $cadre->pivot->start_date && $cadre->pivot->end_date ?
-                    Carbon::parse($cadre->pivot->start_date)->diffInDays(Carbon::parse($cadre->pivot->end_date)) : null,
-            ];
-        }
-
-        // Get active assignments
-        $activeAssignments = $profile->getActiveAssignments();
-        foreach ($activeAssignments as $assignment) {
-            if ($assignment['type'] === 'fixed_duty') {
-                $dutiesHistory[] = array_merge($assignment, [
-                    'is_active' => true,
-                    'assignment_type' => 'fixed_duty'
-                ]);
-            }
-        }
-
-        // Sort by start date (most recent first)
+        // Sort by start date
         usort($dutiesHistory, function ($a, $b) {
             $dateA = $this->getDutyStartDate($a);
             $dateB = $this->getDutyStartDate($b);
-            return $dateB <=> $dateA; // Descending order
+            return $dateB <=> $dateA;
         });
 
         return $dutiesHistory;
     }
 
     /**
-     * Helper method to extract start date from duty record
+     * Calculate daily hours between two times
      */
+    private function calculateDailyHours($startTime, $endTime): float
+    {
+        try {
+            $start = Carbon::createFromTimeString($startTime);
+            $end = Carbon::createFromTimeString($endTime);
+            if ($end->lt($start)) {
+                $end->addDay();
+            }
+            return $end->diffInHours($start);
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Calculate days difference between two dates
+     */
+    private function calculateDaysDiff($startDate, $endDate): ?int
+    {
+        try {
+            return Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate));
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     private function getDutyStartDate(array $duty): ?string
     {
         return $duty['start_date'] ??
@@ -353,26 +478,27 @@ class SoldierDataFormatter
             (isset($duty['created_at']) ? $duty['created_at'] : null);
     }
 
-    /**
-     * NEW: Format leave history
-     */
     public function formatLeaveHistory(Soldier $profile): array
     {
+        if (!$profile->relationLoaded('leaveApplications') || $profile->leaveApplications->isEmpty()) {
+            return [];
+        }
+
         $leaveHistory = [];
+        $today = Carbon::today();
 
-        // Get all leave applications, ordered by most recent first
-        $leaveApplications = $profile->leaveApplications()
-            ->with('leaveType')
-            ->orderBy('start_date', 'desc')
-            ->get();
-
-        foreach ($leaveApplications as $leave) {
+        foreach ($profile->leaveApplications as $leave) {
             $leaveType = $leave->leaveType;
 
-            // Calculate duration
             $duration = 0;
+            $isCurrent = false;
+
             if ($leave->start_date && $leave->end_date) {
-                $duration = Carbon::parse($leave->start_date)->diffInDays(Carbon::parse($leave->end_date)) + 1;
+                $duration = $this->calculateDaysDiff($leave->start_date, $leave->end_date) + 1;
+
+                if ($leave->application_current_status === 'approved') {
+                    $isCurrent = $today->between($leave->start_date, $leave->end_date);
+                }
             }
 
             $leaveHistory[] = [
@@ -385,33 +511,28 @@ class SoldierDataFormatter
                 'status' => $leave->application_current_status,
                 'hard_copy' => $leave->hard_copy,
                 'application_date' => $leave->created_at?->toDateString(),
-                'is_current' => $leave->application_current_status === 'approved' &&
-                    $leave->start_date && $leave->end_date &&
-                    Carbon::today()->between($leave->start_date, $leave->end_date),
+                'is_current' => $isCurrent,
             ];
         }
 
         return $leaveHistory;
     }
 
-    /**
-     * NEW: Format appointment history (services history)
-     */
     public function formatAppointmentHistory(Soldier $profile): array
     {
+        if (!$profile->relationLoaded('services') || $profile->services->isEmpty()) {
+            return [];
+        }
+
         $appointmentHistory = [];
 
-        // Get all services, ordered by most recent first
-        $services = $profile->services()
-            ->orderBy('appointments_from_date', 'desc')
-            ->get();
-
-        foreach ($services as $service) {
-            // Calculate duration
+        foreach ($profile->services as $service) {
             $duration = null;
             if ($service->appointments_from_date && $service->appointments_to_date) {
-                $duration = Carbon::parse($service->appointments_from_date)
-                    ->diffInDays(Carbon::parse($service->appointments_to_date)) + 1;
+                $duration = $this->calculateDaysDiff(
+                    $service->appointments_from_date,
+                    $service->appointments_to_date
+                ) + 1;
             }
 
             $appointmentHistory[] = [

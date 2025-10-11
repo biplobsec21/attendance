@@ -114,7 +114,7 @@ export function showToast(message, type) {
     const icon = type === 'success' ? 'check' : 'exclamation-triangle';
 
     toast.className =
-        `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
+        `fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
     toast.innerHTML = `
     <div class="flex items-center">
         <i class="fas fa-${icon} mr-2"></i>

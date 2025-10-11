@@ -5,6 +5,8 @@ import { openProfileModal, closeProfileModal } from "./soldierProfileModal.js";
 import { initExportAndBulkActions } from "./soldierExportActions.js";
 import { showToast } from "./soldierHelpers.js";
 import { formatDate } from "./soldierHelpers.js";
+import { openHistoryModal, closeHistoryModal } from "./soldierHistoryModal.js";
+
 export default class SoldierProfileManager {
     constructor() {
         this.filters = {
@@ -23,6 +25,12 @@ export default class SoldierProfileManager {
         this.selectedRows = new Set();
         this.soldiers = [];
         this.bulkActions = new SoldierBulkActions(this);
+        this.isLoading = false;
+        this.renderBatchSize = 50;
+
+        // Bind methods for event listeners
+        this.handleTableClick = this.handleTableClick.bind(this);
+        this.handleCheckboxChange = this.handleCheckboxChange.bind(this);
     }
 
     async init() {
@@ -36,16 +44,128 @@ export default class SoldierProfileManager {
             this.bulkActions.toggleSelectAll(e.target.checked);
         });
 
-        // Close modal button (profile modal)
+        // Close modal buttons
         document.getElementById("close-modal")?.addEventListener("click", () => {
             closeProfileModal();
+        });
+
+        document.getElementById('close-history-modal')?.addEventListener('click', () => {
+            closeHistoryModal();
+        });
+
+        // Setup event delegation
+        this.setupEventDelegation();
+
+        // Add debounced search for better performance
+        this.setupDebouncedSearch();
+    }
+
+    /**
+     * Setup event delegation for table interactions
+     */
+    setupEventDelegation() {
+        const tbody = document.getElementById('soldiers-tbody');
+        if (!tbody) return;
+
+        // Remove existing listeners to prevent duplicates
+        tbody.removeEventListener('click', this.handleTableClick);
+
+        // Add single event listener for all table clicks
+        tbody.addEventListener('click', this.handleTableClick);
+
+        // Add event listener for checkbox changes
+        tbody.addEventListener('change', this.handleCheckboxChange);
+    }
+
+    /**
+     * Handle all table clicks using event delegation
+     */
+    handleTableClick(event) {
+        const target = event.target;
+
+        // Find the closest button element
+        const button = target.closest('button');
+        if (!button) return;
+
+        const soldierId = button.dataset.id;
+        if (!soldierId) return;
+
+        // Handle different button types
+        if (button.classList.contains('btn-duty-history')) {
+            openHistoryModal(soldierId, 'duty');
+        }
+        else if (button.classList.contains('btn-leave-history')) {
+            openHistoryModal(soldierId, 'leave');
+        }
+        else if (button.classList.contains('btn-appointment-history')) {
+            openHistoryModal(soldierId, 'appointment');
+        }
+        else if (button.classList.contains('btn-leave')) {
+            const soldier = this.soldiers.find((s) => s.id == soldierId);
+            if (soldier) openProfileModal(soldier, "Leave details");
+        }
+        else if (button.classList.contains('view-btn')) {
+            const url = routes.view.replace(':id', soldierId);
+            window.open(url, "_blank");
+        }
+        else if (button.classList.contains('edit-btn')) {
+            const url = routes.edit.replace(':id', soldierId);
+            window.open(url, "_blank");
+        }
+        else if (button.classList.contains('delete-btn')) {
+            this.bulkActions.deleteProfile(soldierId);
+        }
+    }
+
+    /**
+     * Handle checkbox changes using event delegation
+     */
+    handleCheckboxChange(event) {
+        const target = event.target;
+
+        if (target.classList.contains('row-select')) {
+            const soldierId = target.value;
+            if (target.checked) {
+                this.selectedRows.add(soldierId);
+            } else {
+                this.selectedRows.delete(soldierId);
+                document.getElementById("select-all").checked = false;
+            }
+            this.bulkActions.updateBulkActionButton();
+        }
+    }
+
+    /**
+     * Setup debounced search to avoid re-rendering on every keystroke
+     */
+    setupDebouncedSearch() {
+        const searchInput = document.getElementById('search-input');
+        if (!searchInput) return;
+
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+
+            // Show a subtle loading indicator
+            searchInput.classList.add('opacity-50');
+
+            searchTimeout = setTimeout(() => {
+                this.filters.search = e.target.value;
+                this.filterAndRender();
+                searchInput.classList.remove('opacity-50');
+            }, 300);
         });
     }
 
     async loadData() {
+        if (this.isLoading) return;
+        this.isLoading = true;
+
         const loadingState = document.getElementById('loading-state');
         const emptyState = document.getElementById('empty-state');
         const tbody = document.getElementById('soldiers-tbody');
+
+        const startTime = performance.now();
 
         loadingState.classList.remove('hidden');
         emptyState.classList.add('hidden');
@@ -64,28 +184,155 @@ export default class SoldierProfileManager {
             const data = await response.json();
             this.soldiers = data.data || [];
 
+            const fetchTime = performance.now() - startTime;
+            console.log(`✅ Data fetched in ${(fetchTime / 1000).toFixed(2)}s`);
+
+            this.updateStats(data.stats);
             this.generateFiltersFromData();
 
             loadingState.classList.add('hidden');
 
             if (!this.soldiers.length) {
                 emptyState.classList.remove('hidden');
+                this.isLoading = false;
                 return;
             }
 
-            this.filterAndRender();
+            const renderStartTime = performance.now();
+            await this.progressiveRender();
 
-            // Update stats
-            document.getElementById('total-count').textContent = data.stats?.total || 0;
-            document.getElementById('active-count').textContent = data.stats?.active || 0;
-            document.getElementById('leave-count').textContent = data.stats?.leave || 0;
-            document.getElementById('ere-count').textContent = data.stats?.with_ere || 0;
+            const totalTime = performance.now() - startTime;
+            const renderTime = performance.now() - renderStartTime;
+
+            console.log(`✅ Rendered ${this.soldiers.length} soldiers in ${(renderTime / 1000).toFixed(2)}s`);
+            console.log(`✅ Total time: ${(totalTime / 1000).toFixed(2)}s`);
+
+            setTimeout(() => {
+                this.showSuccess(`✨ Loaded ${this.soldiers.length} soldiers in ${(totalTime / 1000).toFixed(1)}s`);
+            }, 100);
 
         } catch (e) {
             console.error("Error loading soldiers", e);
             loadingState.classList.add('hidden');
             emptyState.classList.remove('hidden');
+            showToast('Failed to load soldier data', 'error');
+        } finally {
+            this.isLoading = false;
         }
+    }
+
+    updateStats(stats) {
+        if (!stats) return;
+
+        document.getElementById('total-count').textContent = stats.total || 0;
+        document.getElementById('active-count').textContent = stats.active || 0;
+        document.getElementById('leave-count').textContent = stats.leave || 0;
+        document.getElementById('ere-count').textContent = stats.with_ere || 0;
+    }
+
+    /**
+     * Progressive rendering - renders soldiers in batches with small delays
+     */
+    async progressiveRender() {
+        const filtered = this.applyFilters(this.soldiers);
+
+        if (filtered.length === 0) {
+            document.getElementById('empty-state').classList.remove('hidden');
+            return;
+        }
+
+        document.getElementById('empty-state').classList.add('hidden');
+        const tbody = document.getElementById('soldiers-tbody');
+        tbody.innerHTML = '';
+
+        // Show initial message
+        const loadingRow = this.createLoadingRow(0, filtered.length);
+        tbody.appendChild(loadingRow);
+
+        let currentIndex = 0;
+
+        const renderNextBatch = async () => {
+            if (currentIndex >= filtered.length) {
+                const finalLoadingRow = document.getElementById('progressive-loading');
+                if (finalLoadingRow) {
+                    finalLoadingRow.remove();
+                }
+                this.bulkActions.updateBulkActionButton();
+                return;
+            }
+
+            const batch = filtered.slice(currentIndex, currentIndex + this.renderBatchSize);
+
+            // Create document fragment for batch rendering
+            const fragment = document.createDocumentFragment();
+            batch.forEach(soldier => {
+                const row = this.createSoldierRow(soldier);
+                fragment.appendChild(row);
+            });
+
+            const loadingRowRef = document.getElementById('progressive-loading');
+            if (loadingRowRef) {
+                tbody.removeChild(loadingRowRef);
+            }
+
+            tbody.appendChild(fragment);
+
+            currentIndex += this.renderBatchSize;
+
+            if (currentIndex < filtered.length) {
+                const newLoadingRow = this.createLoadingRow(currentIndex, filtered.length);
+                tbody.appendChild(newLoadingRow);
+            }
+
+            if (currentIndex < filtered.length) {
+                requestAnimationFrame(() => {
+                    setTimeout(renderNextBatch, 0);
+                });
+            } else {
+                this.bulkActions.updateBulkActionButton();
+            }
+        };
+
+        requestAnimationFrame(renderNextBatch);
+    }
+
+    /**
+     * Create loading indicator row
+     */
+    createLoadingRow(current, total) {
+        const loadingRow = document.createElement('tr');
+        loadingRow.id = 'progressive-loading';
+        loadingRow.innerHTML = `
+            <td colspan="5" class="text-center py-4">
+                <div class="flex items-center justify-center space-x-2 text-gray-500">
+                    <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Loading soldiers... <strong>${current}</strong>/<strong>${total}</strong></span>
+                </div>
+            </td>
+        `;
+        return loadingRow;
+    }
+
+    /**
+     * Create a single soldier row element
+     */
+    createSoldierRow(soldier) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = renderTableRow(soldier);
+        tr.className = 'hover:bg-gray-50 transition-colors duration-150';
+        tr.dataset.soldierId = soldier.id;
+
+        const actualRow = tr.querySelector('tr');
+        if (actualRow) {
+            actualRow.className = tr.className;
+            actualRow.dataset.soldierId = soldier.id;
+            return actualRow;
+        }
+
+        return tr;
     }
 
     generateFiltersFromData() {
@@ -101,126 +348,61 @@ export default class SoldierProfileManager {
             if (s.rank) ranks.add(s.rank);
             if (s.unit) companies.add(s.unit);
 
-            //skill
             if (Array.isArray(s.cocurricular)) {
                 s.cocurricular.forEach(skill => {
                     if (skill.name) skills.add(skill.name);
                 });
             }
-            // courses
+
             if (Array.isArray(s.courses)) {
                 s.courses.forEach(course => {
                     if (course.name) courses.add(course.name);
                 });
             }
-            //cadres
+
             if (Array.isArray(s.cadres)) {
                 s.cadres.forEach(cadre => {
                     if (cadre.name) cadres.add(cadre.name);
                 });
             }
 
-            // ATT
             if (Array.isArray(s.att)) {
                 s.att.forEach(att => {
                     if (att.name) atts.add(att.name);
                 });
             }
-            // Education
+
             if (Array.isArray(s.educations)) {
                 s.educations.forEach(education => {
                     if (education.name) educations.add(education.name);
                 });
             }
-
         });
 
-        const rankSelect = document.getElementById('rank-filter');
-        const companySelect = document.getElementById('company-filter');
-
-        if (rankSelect) {
-            rankSelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
-            ranks.forEach(rank => {
-                const option = document.createElement('option');
-                option.value = rank;
-                option.textContent = rank;
-                rankSelect.appendChild(option);
-            });
-        }
-
-        if (companySelect) {
-            companySelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
-            companies.forEach(company => {
-                const option = document.createElement('option');
-                option.value = company;
-                option.textContent = company;
-                companySelect.appendChild(option);
-            });
-        }
-        // Skill filter
-        const skillSelect = document.getElementById('skill-filter');
-        if (skillSelect) {
-            skillSelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
-            skills.forEach(skill => {
-                const option = document.createElement('option');
-                option.value = skill;
-                option.textContent = skill;
-                skillSelect.appendChild(option);
-            });
-        }
-
-        // Course filter
-        const courseSelect = document.getElementById('course-filter');
-        if (courseSelect) {
-            courseSelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
-            courses.forEach(course => {
-                const option = document.createElement('option');
-                option.value = course;
-                option.textContent = course;
-                courseSelect.appendChild(option);
-            });
-        }
-        // Cadre filter
-        const cadreSelect = document.getElementById('cadre-filter');
-        if (cadreSelect) {
-            cadreSelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
-            cadres.forEach(cadre => {
-                const option = document.createElement('option');
-                option.value = cadre;
-                option.textContent = cadre;
-                cadreSelect.appendChild(option);
-            });
-        }
-
-        // ATT filter
-        const attSelect = document.getElementById('att-filter');
-        if (attSelect) {
-            attSelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
-            atts.forEach(att => {
-                const option = document.createElement('option');
-                option.value = att;
-                option.textContent = att;
-                attSelect.appendChild(option);
-            });
-        }
-        // Education filter
-        const educationSelect = document.getElementById('education-filter');
-        if (educationSelect) {
-            educationSelect.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
-            educations.forEach(education => {
-                const option = document.createElement('option');
-                option.value = education;
-                option.textContent = education;
-                educationSelect.appendChild(option);
-            });
-        }
+        this.populateSelect('rank-filter', ranks);
+        this.populateSelect('company-filter', companies);
+        this.populateSelect('skill-filter', skills);
+        this.populateSelect('course-filter', courses);
+        this.populateSelect('cadre-filter', cadres);
+        this.populateSelect('att-filter', atts);
+        this.populateSelect('education-filter', educations);
     }
 
-    filterAndRender() {
-        let filtered = this.soldiers;
+    populateSelect(selectId, items) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
 
-        console.log('Initial soldiers count:', filtered.length);
-        console.log('Current filters:', this.filters);
+        select.querySelectorAll('option:not([value=""])').forEach(opt => opt.remove());
+        items.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item;
+            option.textContent = item;
+            select.appendChild(option);
+        });
+    }
+
+    applyFilters(soldiers) {
+        let filtered = [...soldiers];
 
         if (this.filters.search) {
             const term = this.filters.search.toLowerCase();
@@ -228,17 +410,14 @@ export default class SoldierProfileManager {
                 s.name?.toLowerCase().includes(term) ||
                 (s.army_no && s.army_no.toLowerCase().includes(term))
             );
-            console.log('After search filter:', filtered.length);
         }
 
         if (this.filters.rank) {
             filtered = filtered.filter(s => s.rank === this.filters.rank);
-            console.log('After rank filter:', filtered.length);
         }
 
         if (this.filters.company) {
             filtered = filtered.filter(s => s.unit === this.filters.company);
-            console.log('After company filter:', filtered.length);
         }
 
         if (this.filters.status) {
@@ -246,14 +425,12 @@ export default class SoldierProfileManager {
                 const status = s.is_leave ? 'leave' : (s.is_sick ? 'medical' : 'active');
                 return status === this.filters.status;
             });
-            console.log('After status filter:', filtered.length);
         }
 
         if (this.filters.skill) {
             filtered = filtered.filter(soldier =>
                 soldier.cocurricular?.some(skill => skill.name === this.filters.skill)
             );
-            console.log('After skill filter:', filtered.length);
         }
 
         if (this.filters.course) {
@@ -263,7 +440,6 @@ export default class SoldierProfileManager {
                     course.name.toLowerCase().trim() === filterValue
                 )
             );
-            console.log('After course filter:', filtered.length);
         }
 
         if (this.filters.cadre) {
@@ -273,34 +449,15 @@ export default class SoldierProfileManager {
                     cadre.name.toLowerCase().trim() === filterValue
                 )
             );
-            console.log('After cadre filter:', filtered.length);
         }
 
-        // ERE filter logic with better debugging
         if (this.filters.ere && this.filters.ere !== "all") {
-            console.log('Applying ERE filter:', this.filters.ere);
-
-            const beforeEreFilter = filtered.length;
-
             filtered = filtered.filter(soldier => {
                 const hasEre = soldier.has_ere === true;
-                const shouldInclude = this.filters.ere === "with-ere" ? hasEre : !hasEre;
-
-                console.log(`Soldier ${soldier.id}: has_ere=${soldier.has_ere}, shouldInclude=${shouldInclude}`);
-
-                return shouldInclude;
+                return this.filters.ere === "with-ere" ? hasEre : !hasEre;
             });
-
-            console.log('After ERE filter:', filtered.length, '(removed', beforeEreFilter - filtered.length, 'soldiers)');
         }
 
-        const emptyState = document.getElementById('empty-state');
-        if (filtered.length === 0) {
-            emptyState.classList.remove('hidden');
-        } else {
-            emptyState.classList.add('hidden');
-        }
-        // ATT filter logic
         if (this.filters.att) {
             const filterValue = this.filters.att.toLowerCase().trim();
             filtered = filtered.filter(soldier =>
@@ -308,9 +465,8 @@ export default class SoldierProfileManager {
                     att.name.toLowerCase().trim() === filterValue
                 )
             );
-            console.log('After ATT filter:', filtered.length);
         }
-        // Education filter logic
+
         if (this.filters.education) {
             const filterValue = this.filters.education.toLowerCase().trim();
             filtered = filtered.filter(soldier =>
@@ -318,29 +474,20 @@ export default class SoldierProfileManager {
                     education.name.toLowerCase().trim() === filterValue
                 )
             );
-            console.log('After Education filter:', filtered.length);
         }
 
-        // Leave filter logic
         if (this.filters.leave) {
-            console.log('Applying Leave filter:', this.filters.leave);
-
-            const beforeLeaveFilter = filtered.length;
-
             filtered = filtered.filter(soldier => {
                 const isOnLeave = soldier.is_leave === true;
-                const shouldInclude = this.filters.leave === "on-leave" ? isOnLeave : !isOnLeave;
-
-                console.log(`Soldier ${soldier.id}: is_leave=${soldier.is_leave}, shouldInclude=${shouldInclude}`);
-
-                return shouldInclude;
+                return this.filters.leave === "on-leave" ? isOnLeave : !isOnLeave;
             });
-
-            console.log('After Leave filter:', filtered.length, '(removed', beforeLeaveFilter - filtered.length, 'soldiers)');
         }
 
-        console.log('Final filtered count:', filtered.length);
-        this.renderData(filtered);
+        return filtered;
+    }
+
+    async filterAndRender() {
+        await this.progressiveRender();
     }
 
     clearFilters() {
@@ -352,126 +499,42 @@ export default class SoldierProfileManager {
             skill: "",
             course: "",
             cadre: "",
-            ere: "all", // Reset ERE filter to default value
+            ere: "all",
             att: "",
             education: "",
-            leave: ""   // Reset Leave filter
-
+            leave: ""
         };
 
-        const searchInput = document.getElementById('search-input');
-        const rankSelect = document.getElementById('rank-filter');
-        const companySelect = document.getElementById('company-filter');
-        const statusSelect = document.getElementById('status-filter');
-        const skillSelect = document.getElementById('skill-filter');
-        const courseSelect = document.getElementById('course-filter');
-        const cadreSelect = document.getElementById('cadre-filter');
-        const ereSelect = document.getElementById('ere-filter');
-        const attSelect = document.getElementById('att-filter');
-        const educationSelect = document.getElementById('education-filter');
+        const inputs = {
+            'search-input': '',
+            'rank-filter': '',
+            'company-filter': '',
+            'status-filter': '',
+            'skill-filter': '',
+            'course-filter': '',
+            'cadre-filter': '',
+            'ere-filter': 'all',
+            'att-filter': '',
+            'education-filter': '',
+            'leave-filter': ''
+        };
 
-        if (searchInput) searchInput.value = '';
-        if (rankSelect) rankSelect.value = '';
-        if (companySelect) companySelect.value = '';
-        if (statusSelect) statusSelect.value = '';
-        if (skillSelect) skillSelect.value = '';
-        if (courseSelect) courseSelect.value = '';
-        if (cadreSelect) cadreSelect.value = '';
-        if (ereSelect) ereSelect.value = 'all'; // Reset ERE filter to default
-        if (attSelect) attSelect.value = '';
-        if (educationSelect) educationSelect.value = '';
-        const leaveSelect = document.getElementById('leave-filter');
-        if (leaveSelect) leaveSelect.value = '';
-        console.log('All filters cleared');
+        Object.entries(inputs).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) element.value = value;
+        });
+
         this.filterAndRender();
     }
-    renderData(soldiers) {
-        const tbody = document.getElementById("soldiers-tbody");
-        if (!tbody) return;
 
-        tbody.innerHTML = soldiers.map((s) => renderTableRow(s)).join("");
-
-
-        tbody.querySelectorAll(".btn-leave").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const id = btn.dataset.id;
-                const soldier = soldiers.find((s) => s.id == id);
-                if (soldier) openProfileModal(soldier, "Leave details");
-            });
-        });
-
-        // NEW: History buttons event listeners
-        tbody.querySelectorAll(".btn-duty-history").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const id = btn.dataset.id;
-                const soldier = soldiers.find((s) => s.id == id);
-                if (soldier) this.showHistoryModal(soldier, 'duty');
-            });
-        });
-
-        tbody.querySelectorAll(".btn-leave-history").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const id = btn.dataset.id;
-                const soldier = soldiers.find((s) => s.id == id);
-                if (soldier) this.showHistoryModal(soldier, 'leave');
-            });
-        });
-
-        tbody.querySelectorAll(".btn-appointment-history").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const id = btn.dataset.id;
-                const soldier = soldiers.find((s) => s.id == id);
-                if (soldier) this.showHistoryModal(soldier, 'appointment');
-            });
-        });
-
-        // Attach event listeners
-        tbody.querySelectorAll(".view-btn").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const id = btn.dataset.id;
-                // const soldier = soldiers.find((s) => s.id == id);
-                const url = routes.view.replace(':id', id);
-                window.open(url, "_blank"); // opens in a new tab
-                //if (soldier) openProfileModal(soldier);
-            });
-        });
-
-        // Attach event listeners
-        tbody.querySelectorAll(".delete-btn").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const id = btn.dataset.id;
-                if (id) this.bulkActions.deleteProfile(id);
-            });
-        });
-
-        tbody.querySelectorAll(".edit-btn").forEach((btn) => {
-            btn.addEventListener("click", () => {
-                const id = btn.dataset.id;
-                const url = routes.edit.replace(':id', id);
-                window.open(url, "_blank"); // opens in a new tab
-            });
-        });
-
-
-        tbody.querySelectorAll(".row-select").forEach((checkbox) => {
-            checkbox.addEventListener("change", (e) => {
-                const soldierId = checkbox.value;
-                if (checkbox.checked) {
-                    this.selectedRows.add(soldierId);
-                } else {
-                    this.selectedRows.delete(soldierId);
-                    document.getElementById("select-all").checked = false;
-                }
-                this.bulkActions.updateBulkActionButton();
-            });
-        });
-
-        this.bulkActions.updateBulkActionButton();
+    retryLoadHistory(soldierId, type) {
+        openHistoryModal(soldierId, type);
     }
 
+    renderData(soldiers) {
+        this.progressiveRender();
+    }
 
-
-    // Tailwind Modal Functions
     showModal(title, content) {
         let modal = document.getElementById('bulk-modal');
         if (!modal) {
@@ -505,152 +568,10 @@ export default class SoldierProfileManager {
     }
 
     showSuccess(msg) {
-        // alert(msg);
         showToast(msg, 'success');
     }
 
-
     showError(msg) {
-        // alert(msg);
         showToast(msg, 'error');
-    }
-    showHistoryModal(soldier, type) {
-        const title = document.getElementById('modal-title');
-        const modal = document.getElementById('profile-modal');
-        const content = document.getElementById('modal-content');
-
-        if (!modal || !content) {
-            console.warn("Profile modal elements not found in DOM");
-            return;
-        }
-
-        const typeTitles = {
-            'duty': 'Duty History',
-            'leave': 'Leave History',
-            'appointment': 'Appointment History'
-        };
-
-        title.innerHTML = `${typeTitles[type]} - ${soldier.name}`;
-        content.innerHTML = this.generateHistoryContent(soldier, type);
-        modal.classList.remove('hidden');
-    }
-
-    generateHistoryContent(soldier, type) {
-        const historyData = soldier[`${type}_history`] || [];
-
-        if (!historyData || historyData.length === 0) {
-            return `
-            <div class="text-center py-8 text-gray-500">
-                <i class="fas fa-${this.getHistoryIcon(type)} text-3xl mb-3 text-gray-300"></i>
-                <p class="text-lg">No ${type} history found</p>
-            </div>
-        `;
-        }
-
-        return `
-        <div class="space-y-4 max-h-96 overflow-y-auto">
-            <h4 class="text-lg font-semibold text-gray-800 mb-4">${this.getHistoryTitle(type)} (${historyData.length})</h4>
-            ${historyData.map(item => this.renderHistoryItem(type, item)).join('')}
-        </div>
-    `;
-    }
-
-    getHistoryIcon(type) {
-        const icons = {
-            'duty': 'tasks',
-            'leave': 'umbrella-beach',
-            'appointment': 'briefcase'
-        };
-        return icons[type] || 'history';
-    }
-
-    getHistoryTitle(type) {
-        const titles = {
-            'duty': 'Duty History',
-            'leave': 'Leave History',
-            'appointment': 'Appointment History'
-        };
-        return titles[type] || 'History';
-    }
-
-    renderHistoryItem(type, item) {
-        switch (type) {
-            case 'duty':
-                return this.renderDutyItem(item);
-            case 'leave':
-                return this.renderLeaveItem(item);
-            case 'appointment':
-                return this.renderAppointmentItem(item);
-            default:
-                return `<div class="border border-gray-200 rounded-lg p-4">Unknown history type</div>`;
-        }
-    }
-
-    renderDutyItem(duty) {
-        return `
-        <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
-            <div class="flex justify-between items-start mb-2">
-                <h5 class="font-medium text-gray-900">${duty.name || 'Unnamed Duty'}</h5>
-                <span class="px-2 py-1 text-xs rounded-full ${duty.is_active ? 'bg-green-100 text-green-800' :
-                duty.status === 'completed' ? 'bg-gray-100 text-gray-800' :
-                    'bg-blue-100 text-blue-800'
-            }">
-                    ${duty.is_active ? 'Active' : (duty.status || 'Unknown')}
-                </span>
-            </div>
-            ${duty.type ? `<p class="text-sm text-gray-600 mb-1"><strong>Type:</strong> ${duty.type}</p>` : ''}
-            ${duty.start_date ? `<p class="text-sm text-gray-600 mb-1"><strong>Start:</strong> ${formatDate(duty.start_date)}</p>` : ''}
-            ${duty.end_date ? `<p class="text-sm text-gray-600 mb-1"><strong>End:</strong> ${formatDate(duty.end_date)}</p>` : ''}
-            ${duty.duration_days ? `<p class="text-sm text-gray-600 mb-1"><strong>Duration:</strong> ${duty.duration_days} days</p>` : ''}
-            ${duty.remarks ? `<p class="text-sm text-gray-600"><strong>Remarks:</strong> ${duty.remarks}</p>` : ''}
-        </div>
-    `;
-    }
-
-    renderLeaveItem(leave) {
-        return `
-        <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
-            <div class="flex justify-between items-start mb-2">
-                <h5 class="font-medium text-gray-900">${leave.leave_type || 'Unknown Leave Type'}</h5>
-                <span class="px-2 py-1 text-xs rounded-full ${leave.status === 'approved' ? 'bg-green-100 text-green-800' :
-                leave.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    leave.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-            }">
-                    ${leave.status || 'Unknown'}
-                </span>
-            </div>
-            ${leave.reason ? `<p class="text-sm text-gray-600 mb-1"><strong>Reason:</strong> ${leave.reason}</p>` : ''}
-            ${leave.start_date ? `<p class="text-sm text-gray-600 mb-1"><strong>From:</strong> ${formatDate(leave.start_date)}</p>` : ''}
-            ${leave.end_date ? `<p class="text-sm text-gray-600 mb-1"><strong>To:</strong> ${formatDate(leave.end_date)}</p>` : ''}
-            ${leave.duration_days ? `<p class="text-sm text-gray-600 mb-1"><strong>Duration:</strong> ${leave.duration_days} days</p>` : ''}
-            ${leave.application_date ? `<p class="text-sm text-gray-600"><strong>Applied:</strong> ${formatDate(leave.application_date)}</p>` : ''}
-        </div>
-    `;
-    }
-
-    renderAppointmentItem(appointment) {
-        return `
-        <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200">
-            <div class="flex justify-between items-start mb-2">
-                <h5 class="font-medium text-gray-900">${appointment.appointment_name || 'Unknown Appointment'}</h5>
-                <span class="px-2 py-1 text-xs rounded-full ${appointment.is_current ? 'bg-green-100 text-green-800' :
-                appointment.is_active ? 'bg-blue-100 text-blue-800' :
-                    appointment.is_completed ? 'bg-gray-100 text-gray-800' :
-                        'bg-yellow-100 text-yellow-800'
-            }">
-                    ${appointment.is_current ? 'Current' :
-                appointment.is_active ? 'Active' :
-                    appointment.is_completed ? 'Completed' :
-                        appointment.status || 'Unknown'}
-                </span>
-            </div>
-            ${appointment.appointment_type ? `<p class="text-sm text-gray-600 mb-1"><strong>Type:</strong> ${appointment.appointment_type}</p>` : ''}
-            ${appointment.from_date ? `<p class="text-sm text-gray-600 mb-1"><strong>From:</strong> ${formatDate(appointment.from_date)}</p>` : ''}
-            ${appointment.to_date ? `<p class="text-sm text-gray-600 mb-1"><strong>To:</strong> ${formatDate(appointment.to_date)}</p>` : ''}
-            ${appointment.duration_days ? `<p class="text-sm text-gray-600 mb-1"><strong>Duration:</strong> ${appointment.duration_days} days</p>` : ''}
-            ${appointment.note ? `<p class="text-sm text-gray-600"><strong>Note:</strong> ${appointment.note}</p>` : ''}
-        </div>
-    `;
     }
 }
