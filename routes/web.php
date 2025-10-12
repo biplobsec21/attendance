@@ -54,7 +54,7 @@ use App\Http\Controllers\CourseCadreManagerController;
 Route::get('/', [AuthenticatedSessionController::class, 'create'])
     ->name('login');
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth', 'check.leaves')->group(function () {
     // Route::prefix('/dashboard', function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
     // })->middleware(['auth', 'verified'])->name('dashboard');

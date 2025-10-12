@@ -24,10 +24,10 @@ class CheckLeaveCompletion
     {
         // Use cache to prevent checking on every request - check once per day
         $lastChecked = Cache::get('last_leave_completion_check', now()->subDay());
-
+        // dd($lastChecked->lt(now()->startOfDay()));
         if ($lastChecked->lt(now()->startOfDay())) {
             $today = now()->toDateString();
-
+            // dd($today);
             // Find leaves that ended yesterday (completed today)
             $completedLeaves = LeaveApplication::approved()
                 ->whereDate('end_date', $today)
