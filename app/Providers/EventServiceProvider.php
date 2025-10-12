@@ -6,6 +6,10 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
+use App\Events\LeaveApproved;
+use App\Events\LeaveCompleted;
+use App\Listeners\SendLeaveApprovedNotification;
+use App\Listeners\SendLeaveCompletedNotification;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -18,8 +22,18 @@ class EventServiceProvider extends ServiceProvider
         Registered::class => [
             SendEmailVerificationNotification::class,
         ],
+        LeaveApproved::class => [
+            SendLeaveApprovedNotification::class,
+        ],
+        LeaveCompleted::class => [
+            SendLeaveCompletedNotification::class,
+        ],
     ];
 
+    // // For scheduled leave completion checks
+    // protected $subscribe = [
+    //     \App\Listeners\CheckLeaveCompletion::class,
+    // ];
     /**
      * Register any events for your application.
      */

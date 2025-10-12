@@ -7,6 +7,9 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
+    protected $commands = [
+        \App\Console\Commands\CheckLeaveCompletion::class,
+    ];
     /**
      * Define the application's command schedule.
      */
@@ -14,6 +17,7 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         $schedule->command('appointments:update-statuses')->daily();
+        $schedule->command('leaves:check-completion')->dailyAt('08:00');
     }
 
     /**

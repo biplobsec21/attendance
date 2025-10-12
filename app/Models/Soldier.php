@@ -10,10 +10,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Notifications\Notifiable;
 
 class Soldier extends Model
 {
-    use HasFactory, LogsAllActivity;
+    use HasFactory, LogsAllActivity, Notifiable;
     protected $table = 'soldiers';
 
     protected $fillable = [

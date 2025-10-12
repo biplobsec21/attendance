@@ -360,4 +360,12 @@ Route::group(['middleware' => ['auth']], function () {
         ->name('export.attendance');
 });
 
+use App\Http\Controllers\NotificationController;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+});
 Route::get('/test', [CommissionsController::class, 'testCommission'])->name('test');
