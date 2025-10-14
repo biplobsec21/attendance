@@ -37,8 +37,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SoldierExportController;
 use App\Http\Controllers\CourseCadreManagerController;
-
-
+use App\Http\Controllers\SiteSettingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -229,6 +228,10 @@ require __DIR__ . '/auth.php';
 Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {});
 
 Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function () {
+
+    Route::get('/site-settings', [SiteSettingController::class, 'edit'])->name('settings.edit');
+    Route::put('/site-settings', [SiteSettingController::class, 'update'])->name('settings.update');
+
     Route::get('/primary-manpower', [CompanyRankManpowerController::class, 'index'])->name('company_rank_manpower.index');
     Route::post('/primary-manpower', [CompanyRankManpowerController::class, 'store'])->name('company_rank_manpower.store');
 

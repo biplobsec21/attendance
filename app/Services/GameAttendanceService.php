@@ -12,6 +12,7 @@ use App\Models\SoldierCourse;
 use App\Models\SoldierCadre;
 use App\Models\SoldierServices;
 use App\Models\LeaveApplication;
+use App\Models\SiteSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,7 @@ class GameAttendanceService
 {
     protected $reportType;
     protected $excusalField;
+    protected $sessionTimes;
 
     // Report type constants
     const REPORT_GAME = 'game';
@@ -28,18 +30,58 @@ class GameAttendanceService
     const REPORT_PARADE = 'parade';
 
     // Excusal priority constants (lower number = higher priority)
+    const PRIORITY_ERE = 0;
     const PRIORITY_LEAVE = 1;
     const PRIORITY_ROSTER_DUTY = 2;
     const PRIORITY_FIXED_DUTY = 3;
     const PRIORITY_APPOINTMENT = 4;
     const PRIORITY_COURSE = 5;
     const PRIORITY_CADRE = 6;
-    const PRIORITY_EXCUSAL_DUTY_YESTERDAY = 7;
 
     public function __construct($reportType = self::REPORT_GAME)
     {
         $this->reportType = $reportType;
         $this->excusalField = $this->getExcusalFieldForReportType($reportType);
+        $this->sessionTimes = $this->getSessionTimesFromSettings();
+    }
+
+    /**
+     * Get session times from SiteSetting
+     */
+    private function getSessionTimesFromSettings()
+    {
+        $settings = SiteSetting::getSettings();
+
+        $sessionTimes = [
+            self::REPORT_PARADE => $this->parseSessionTime($settings->parade_time),
+            self::REPORT_PT => $this->parseSessionTime($settings->pt_time),
+            self::REPORT_GAME => $this->parseSessionTime($settings->games_time),
+            self::REPORT_ROLL_CALL => $this->parseSessionTime($settings->roll_call_time),
+        ];
+
+        // Set default duration (1 hour) if only start time is provided
+        foreach ($sessionTimes as $reportType => &$time) {
+            if (!isset($time['end'])) {
+                $endTime = Carbon::parse($time['start'])->addHour();
+                $time['end'] = $endTime->format('H:i');
+            }
+        }
+
+        return $sessionTimes;
+    }
+
+    /**
+     * Parse session time from settings
+     */
+    private function parseSessionTime($time)
+    {
+        if ($time instanceof Carbon) {
+            $startTime = $time->format('H:i');
+        } else {
+            $startTime = Carbon::parse($time)->format('H:i');
+        }
+
+        return ['start' => $startTime];
     }
 
     /**
@@ -48,35 +90,97 @@ class GameAttendanceService
     private function getExcusalFieldForReportType($reportType)
     {
         $fieldMap = [
-            self::REPORT_GAME => 'excused_next_day_games',
-            self::REPORT_PT => 'excused_next_day_pt',
-            self::REPORT_ROLL_CALL => 'excused_next_day_roll_call',
-            self::REPORT_PARADE => 'excused_next_day_parade',
+            self::REPORT_GAME => 'excused_next_session_games',
+            self::REPORT_PT => 'excused_next_session_pt',
+            self::REPORT_ROLL_CALL => 'excused_next_session_roll_call',
+            self::REPORT_PARADE => 'excused_next_session_parade',
         ];
 
-        return $fieldMap[$reportType] ?? 'excused_next_day_games';
+        return $fieldMap[$reportType] ?? 'excused_next_session_games';
+    }
+
+    /**
+     * Get session time range for the current report type
+     */
+    public function getSessionTimeRange($date)
+    {
+        if (!isset($this->sessionTimes[$this->reportType])) {
+            return null;
+        }
+
+        $carbonDate = Carbon::parse($date);
+        $sessionTime = $this->sessionTimes[$this->reportType];
+
+        $startTime = Carbon::parse($carbonDate->format('Y-m-d') . ' ' . $sessionTime['start']);
+        $endTime = isset($sessionTime['end'])
+            ? Carbon::parse($carbonDate->format('Y-m-d') . ' ' . $sessionTime['end'])
+            : $startTime->copy()->addHour();
+
+        return [
+            'start' => $startTime,
+            'end' => $endTime
+        ];
+    }
+
+    /**
+     * OPTIMIZED: Check if duty time overlaps with session time
+     * Handles cross-midnight duties properly
+     */
+    private function doesDutyOverlapWithSession($soldierDuty, $sessionTimeRange)
+    {
+        // If duty doesn't have specific times, assume it covers the whole day
+        if (!$soldierDuty->start_time || !$soldierDuty->end_time) {
+            Log::debug("⏰ Duty {$soldierDuty->duty->duty_name} has no specific time - assumed full day coverage");
+            return true;
+        }
+
+        $dutyAssignedDate = $soldierDuty->assigned_date;
+        $dutyStart = Carbon::parse($dutyAssignedDate->format('Y-m-d') . ' ' . $soldierDuty->start_time->format('H:i:s'));
+        $dutyEnd = Carbon::parse($dutyAssignedDate->format('Y-m-d') . ' ' . $soldierDuty->end_time->format('H:i:s'));
+
+        // Handle cross-midnight duty (end time before start time)
+        if ($dutyEnd->format('H:i') < $dutyStart->format('H:i')) {
+            $dutyEnd->addDay();
+            Log::debug("🌙 Cross-midnight duty detected: {$dutyStart->format('Y-m-d H:i')} → {$dutyEnd->format('Y-m-d H:i')}");
+        }
+
+        // Check if duty overlaps with session
+        // Overlap condition: dutyStart < sessionEnd AND dutyEnd > sessionStart
+        $overlaps = $dutyStart < $sessionTimeRange['end'] && $dutyEnd > $sessionTimeRange['start'];
+
+        Log::debug("⏰ Time overlap check:");
+        Log::debug("   Duty: {$dutyStart->format('Y-m-d H:i')} → {$dutyEnd->format('Y-m-d H:i')}");
+        Log::debug("   Session: {$sessionTimeRange['start']->format('Y-m-d H:i')} → {$sessionTimeRange['end']->format('Y-m-d H:i')}");
+        Log::debug("   Overlaps: " . ($overlaps ? 'YES ✅' : 'NO ❌'));
+
+        return $overlaps;
     }
 
     /**
      * Get the primary excusal reason for a soldier (highest priority reason)
-     * Returns: ['reason' => string, 'priority' => int, 'details' => string] or null
      */
     public function getSoldierExcusalReason($soldier, $date)
     {
-        Log::debug("🔍 Checking excusal reason for soldier {$soldier->id} on date: {$date}");
+        Log::debug("🔍 Checking excusal reason for soldier {$soldier->id} on date: {$date} for report type: {$this->reportType}");
 
         // First check if soldier has ERE - if yes, they are automatically excused
         if ($this->hasActiveEreOnDate($soldier, $date)) {
             Log::debug("✅ Soldier {$soldier->id} has active ERE - AUTOMATICALLY EXCUSED");
             return [
                 'reason' => 'ERE',
-                'priority' => 0,
+                'priority' => self::PRIORITY_ERE,
                 'details' => 'Extra Regimental Employment'
             ];
         }
 
         $carbonDate = Carbon::parse($date);
-        $yesterday = $carbonDate->copy()->subDay();
+        $sessionTimeRange = $this->getSessionTimeRange($date);
+
+        if (!$sessionTimeRange) {
+            Log::warning("⚠️ No session time configured for report type: {$this->reportType}");
+        } else {
+            Log::debug("🕒 Session time: {$sessionTimeRange['start']->format('H:i')} - {$sessionTimeRange['end']->format('H:i')}");
+        }
 
         // Check all excusal conditions with priority
         $excusalChecks = [
@@ -89,13 +193,13 @@ class GameAttendanceService
             [
                 'name' => 'Roster Duty',
                 'priority' => self::PRIORITY_ROSTER_DUTY,
-                'check' => fn() => $this->hasActiveDutyOnDate($soldier, $carbonDate),
-                'details_fn' => fn() => $this->getRosterDutyDetails($soldier, $carbonDate)
+                'check' => fn() => $this->hasActiveDutyWithTimeOrExcusal($soldier, $carbonDate, $sessionTimeRange),
+                'details_fn' => fn() => $this->getRosterDutyDetails($soldier, $carbonDate, $sessionTimeRange)
             ],
             [
                 'name' => 'Fixed Duty',
                 'priority' => self::PRIORITY_FIXED_DUTY,
-                'check' => fn() => $this->hasFixedDuty($soldier),
+                'check' => fn() => $this->hasFixedDutyWithExcusal($soldier, $carbonDate, $sessionTimeRange),
                 'details_fn' => fn() => $this->getFixedDutyDetails($soldier)
             ],
             [
@@ -115,12 +219,6 @@ class GameAttendanceService
                 'priority' => self::PRIORITY_CADRE,
                 'check' => fn() => $this->hasActiveCadreOnDate($soldier, $carbonDate),
                 'details_fn' => fn() => $this->getCadreDetails($soldier, $carbonDate)
-            ],
-            [
-                'name' => 'Excusal Duty Yesterday',
-                'priority' => self::PRIORITY_EXCUSAL_DUTY_YESTERDAY,
-                'check' => fn() => $this->hadExcusalDutyYesterday($soldier, $yesterday),
-                'details_fn' => fn() => $this->getExcusalDutyYesterdayDetails($soldier, $yesterday)
             ],
         ];
 
@@ -149,14 +247,268 @@ class GameAttendanceService
     }
 
     /**
-     * Check if a soldier is excused (backward compatibility)
+     * OPTIMIZED: Check if soldier has active duty with time overlap OR excusal checkbox
+     * OR LOGIC: (Checkbox TRUE) OR (Time Overlap) → Both are independent excusal reasons
+     * NOW CHECKS BOTH CURRENT DAY AND PREVIOUS DAY (for cross-midnight duties)
      */
-    public function isSoldierExcused($soldier, $date)
+    private function hasActiveDutyWithTimeOrExcusal($soldier, $carbonDate, $sessionTimeRange)
     {
-        return $this->getSoldierExcusalReason($soldier, $date) !== null;
+        if (!$sessionTimeRange) {
+            Log::warning("⚠️ No session time range - falling back to date-only check");
+            return $this->hasActiveDutyOnDateOnly($soldier, $carbonDate);
+        }
+
+        $previousDay = $carbonDate->copy()->subDay();
+
+        Log::debug("🔍 Checking duties for soldier {$soldier->id} on {$carbonDate->format('Y-m-d')} (including previous day for cross-midnight)");
+
+        // Look for duties on BOTH current day AND previous day
+        $duties = SoldierDuty::where('soldier_id', $soldier->id)
+            ->where(function ($query) use ($carbonDate, $previousDay) {
+                $query->whereDate('assigned_date', $carbonDate)
+                    ->orWhereDate('assigned_date', $previousDay);
+            })
+            ->where('status', 'assigned')
+            ->with('duty')
+            ->get();
+
+        Log::debug("   Found {$duties->count()} duties to check (current + previous day)");
+
+        foreach ($duties as $duty) {
+            if (!$duty->duty) {
+                Log::debug("   ⚠️ Duty has no associated duty record - skipping");
+                continue;
+            }
+
+            $dutyName = $duty->duty->duty_name ?? 'Unknown';
+            $assignedDate = $duty->assigned_date->format('Y-m-d');
+
+            Log::debug("   📋 Checking duty: {$dutyName} (assigned: {$assignedDate})");
+
+            // CHECK 1: Excusal checkbox (highest priority)
+            $hasExcusalTag = $duty->duty->{$this->excusalField};
+
+            if ($hasExcusalTag === true) {
+                Log::debug("   ✅ Duty '{$dutyName}' has excusal checkbox = TRUE for {$this->reportType} - AUTOMATICALLY EXCUSED");
+                return true;
+            }
+
+            // CHECK 2: Time overlap
+            $timeOverlaps = $this->doesDutyOverlapWithSession($duty, $sessionTimeRange);
+
+            if ($timeOverlaps) {
+                Log::debug("   ⏰ Duty '{$dutyName}' time overlaps with {$this->reportType} session - EXCUSED");
+                return true;
+            }
+
+            Log::debug("   ❌ Duty '{$dutyName}' does NOT excuse (checkbox: " . ($hasExcusalTag ? 'true' : 'false/null') . ", time overlap: no)");
+        }
+
+        Log::debug("   ❌ No excusing duties found");
+        return false;
     }
 
-    // Detail getter methods for each excusal type
+    /**
+     * OPTIMIZED: Check if soldier has fixed duty with excusal checkbox OR time overlap
+     * Fixed duties are recurring, so we check against current report session
+     */
+    private function hasFixedDutyWithExcusal($soldier, $carbonDate, $sessionTimeRange)
+    {
+        if (!$sessionTimeRange) {
+            // Fallback to checkbox-only check
+            return $this->hasFixedDutyWithExcusalCheckboxOnly($soldier);
+        }
+
+        $fixedDuties = DutyRank::where('soldier_id', $soldier->id)
+            ->where('assignment_type', 'fixed')
+            ->with('duty')
+            ->get();
+
+        if ($fixedDuties->isEmpty()) {
+            return false;
+        }
+
+        Log::debug("🔍 Checking {$fixedDuties->count()} fixed duties for soldier {$soldier->id}");
+
+        foreach ($fixedDuties as $fixedDutyRank) {
+            $duty = $fixedDutyRank->duty;
+
+            if (!$duty) {
+                continue;
+            }
+
+            $dutyName = $duty->duty_name ?? 'Unknown';
+            Log::debug("   📌 Checking fixed duty: {$dutyName}");
+
+            // CHECK 1: Excusal checkbox
+            $hasExcusalTag = $duty->{$this->excusalField};
+
+            if ($hasExcusalTag === true) {
+                Log::debug("   ✅ Fixed duty '{$dutyName}' has excusal checkbox = TRUE - AUTOMATICALLY EXCUSED");
+                return true;
+            }
+
+            // CHECK 2: Time overlap (if duty has time information)
+            if ($duty->start_time && $duty->end_time) {
+                // Create a virtual soldier duty for time comparison
+                $virtualDuty = new SoldierDuty([
+                    'assigned_date' => $carbonDate,
+                    'start_time' => $duty->start_time,
+                    'end_time' => $duty->end_time,
+                    'soldier_id' => $soldier->id,
+                    'duty_id' => $duty->id,
+                ]);
+                $virtualDuty->setRelation('duty', $duty);
+
+                if ($this->doesDutyOverlapWithSession($virtualDuty, $sessionTimeRange)) {
+                    Log::debug("   ⏰ Fixed duty '{$dutyName}' time overlaps with session - EXCUSED");
+                    return true;
+                }
+            }
+
+            Log::debug("   ❌ Fixed duty '{$dutyName}' does NOT excuse");
+        }
+
+        return false;
+    }
+
+    /**
+     * Fallback: Check fixed duty with checkbox only (when no session time configured)
+     */
+    private function hasFixedDutyWithExcusalCheckboxOnly($soldier)
+    {
+        $hasFixedDuty = DutyRank::where('soldier_id', $soldier->id)
+            ->where('assignment_type', 'fixed')
+            ->whereHas('duty', function ($query) {
+                $query->where($this->excusalField, true);
+            })
+            ->exists();
+
+        if ($hasFixedDuty) {
+            Log::debug("📌 Soldier {$soldier->id} has fixed duty with excusal checkbox for {$this->reportType}");
+        }
+
+        return $hasFixedDuty;
+    }
+
+    /**
+     * Fallback: Date-only duty check (when no time information available)
+     */
+    private function hasActiveDutyOnDateOnly($soldier, $carbonDate)
+    {
+        return SoldierDuty::where('soldier_id', $soldier->id)
+            ->whereDate('assigned_date', $carbonDate)
+            ->where('status', 'assigned')
+            ->exists();
+    }
+
+    // ========== DATE-ONLY CHECKS (for non-duty excusals) ==========
+
+    /**
+     * Check if soldier is on approved leave (date only)
+     */
+    private function isOnApprovedLeaveOnDate($soldier, $carbonDate)
+    {
+        $onLeave = LeaveApplication::where('soldier_id', $soldier->id)
+            ->where('application_current_status', 'approved')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->whereDate('end_date', '>=', $carbonDate)
+            ->exists();
+
+        if ($onLeave) {
+            Log::debug("🏖️  Soldier {$soldier->id} is on approved leave on {$carbonDate->toDateString()}");
+        }
+
+        return $onLeave;
+    }
+
+    /**
+     * Check if soldier has active appointment (date only)
+     */
+    private function hasActiveAppointmentOnDate($soldier, $carbonDate)
+    {
+        $hasAppointment = SoldierServices::where('soldier_id', $soldier->id)
+            ->where('status', 'active')
+            ->whereDate('appointments_from_date', '<=', $carbonDate)
+            ->where(function ($query) use ($carbonDate) {
+                $query->whereNull('appointments_to_date')
+                    ->orWhereDate('appointments_to_date', '>=', $carbonDate);
+            })
+            ->exists();
+
+        if ($hasAppointment) {
+            Log::debug("💼 Soldier {$soldier->id} has active appointment on {$carbonDate->toDateString()}");
+        }
+
+        return $hasAppointment;
+    }
+
+    /**
+     * Check if soldier has active course (date only)
+     */
+    private function hasActiveCourseOnDate($soldier, $carbonDate)
+    {
+        $hasCourse = SoldierCourse::where('soldier_id', $soldier->id)
+            ->where('status', 'active')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($query) use ($carbonDate) {
+                $query->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->exists();
+
+        if ($hasCourse) {
+            Log::debug("📚 Soldier {$soldier->id} has active course on {$carbonDate->toDateString()}");
+        }
+
+        return $hasCourse;
+    }
+
+    /**
+     * Check if soldier has active cadre (date only)
+     */
+    private function hasActiveCadreOnDate($soldier, $carbonDate)
+    {
+        $hasCadre = SoldierCadre::where('soldier_id', $soldier->id)
+            ->where('status', 'active')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($query) use ($carbonDate) {
+                $query->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->exists();
+
+        if ($hasCadre) {
+            Log::debug("👥 Soldier {$soldier->id} has active cadre on {$carbonDate->toDateString()}");
+        }
+
+        return $hasCadre;
+    }
+
+    /**
+     * Check if soldier has active ERE on a given date (date only)
+     */
+    private function hasActiveEreOnDate($soldier, $date)
+    {
+        $carbonDate = Carbon::parse($date);
+
+        $hasEre = $soldier->ere()
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($query) use ($carbonDate) {
+                $query->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->exists();
+
+        if ($hasEre) {
+            Log::debug("📋 Soldier {$soldier->id} has active ERE from {$carbonDate->toDateString()}");
+        }
+
+        return $hasEre;
+    }
+
+    // ========== DETAIL GETTER METHODS ==========
+
     private function getLeaveDetails($soldier, $carbonDate)
     {
         $leave = LeaveApplication::where('soldier_id', $soldier->id)
@@ -169,10 +521,71 @@ class GameAttendanceService
         return $leave && $leave->leaveType ? $leave->leaveType->name : 'Leave';
     }
 
-    private function getRosterDutyDetails($soldier, $carbonDate)
+    private function getRosterDutyDetails($soldier, $carbonDate, $sessionTimeRange)
+    {
+        if (!$sessionTimeRange) {
+            return $this->getRosterDutyDetailsSimple($soldier, $carbonDate);
+        }
+
+        $previousDay = $carbonDate->copy()->subDay();
+
+        // Get the duty that actually excused the soldier
+        $duty = SoldierDuty::where('soldier_id', $soldier->id)
+            ->where(function ($query) use ($carbonDate, $previousDay) {
+                $query->whereDate('assigned_date', $carbonDate)
+                    ->orWhereDate('assigned_date', $previousDay);
+            })
+            ->where('status', 'assigned')
+            ->with('duty')
+            ->get()
+            ->first(function ($soldierDuty) use ($sessionTimeRange) {
+                if (!$soldierDuty->duty) return false;
+
+                // Check if this duty has checkbox OR time overlap
+                $hasCheckbox = $soldierDuty->duty->{$this->excusalField} === true;
+                $hasOverlap = $this->doesDutyOverlapWithSession($soldierDuty, $sessionTimeRange);
+
+                return $hasCheckbox || $hasOverlap;
+            });
+
+        if (!$duty || !$duty->duty) {
+            return 'Roster Duty';
+        }
+
+        $details = $duty->duty->duty_name;
+
+        // Add date if from previous day
+        if ($duty->assigned_date->format('Y-m-d') !== $carbonDate->format('Y-m-d')) {
+            $details .= " (" . $duty->assigned_date->format('d M') . ")";
+        }
+
+        // Add time information if available
+        if ($duty->start_time && $duty->end_time) {
+            $startTime = $duty->start_time->format('H:i');
+            $endTime = $duty->end_time->format('H:i');
+
+            // Indicate if cross-midnight
+            if ($endTime < $startTime) {
+                $details .= " ({$startTime} - {$endTime}+1)";
+            } else {
+                $details .= " ({$startTime} - {$endTime})";
+            }
+        }
+
+        // Add excusal reason indicator
+        $hasExcusalTag = $duty->duty->{$this->excusalField} === true;
+        if ($hasExcusalTag) {
+            $details .= " [✓]";
+        }
+
+        return $details;
+    }
+
+    private function getRosterDutyDetailsSimple($soldier, $carbonDate)
     {
         $duty = SoldierDuty::where('soldier_id', $soldier->id)
             ->whereDate('assigned_date', $carbonDate)
+            ->where('status', 'assigned')
             ->with('duty')
             ->first();
 
@@ -186,7 +599,20 @@ class GameAttendanceService
             ->with('duty')
             ->first();
 
-        return $duty && $duty->duty ? $duty->duty->duty_name : 'Fixed Duty';
+        if (!$duty || !$duty->duty) {
+            return 'Fixed Duty';
+        }
+
+        $details = $duty->duty->duty_name;
+
+        // Add time if available
+        if ($duty->duty->start_time && $duty->duty->end_time) {
+            $startTime = $duty->duty->start_time->format('H:i');
+            $endTime = $duty->duty->end_time->format('H:i');
+            $details .= " ({$startTime} - {$endTime})";
+        }
+
+        return $details;
     }
 
     private function getAppointmentDetails($soldier, $carbonDate)
@@ -233,36 +659,12 @@ class GameAttendanceService
         return $cadre && $cadre->cadre ? $cadre->cadre->name : 'Cadre';
     }
 
-    private function getExcusalDutyYesterdayDetails($soldier, $yesterday)
-    {
-        $duty = SoldierDuty::where('soldier_id', $soldier->id)
-            ->whereDate('assigned_date', $yesterday)
-            ->whereHas('duty', function ($query) {
-                $query->where($this->excusalField, true);
-            })
-            ->with('duty')
-            ->first();
-
-        return $duty && $duty->duty ? $duty->duty->duty_name . " (Yesterday)" : 'Excusal Duty Yesterday';
-    }
-
     /**
-     * Check if soldier had excusal duty yesterday for the current report type
+     * Check if a soldier is excused (backward compatibility)
      */
-    private function hadExcusalDutyYesterday($soldier, $yesterday)
+    public function isSoldierExcused($soldier, $date)
     {
-        $hadExcusal = SoldierDuty::where('soldier_id', $soldier->id)
-            ->whereDate('assigned_date', $yesterday)
-            ->whereHas('duty', function ($query) {
-                $query->where($this->excusalField, true);
-            })
-            ->exists();
-
-        if ($hadExcusal) {
-            Log::debug("🔄 Soldier {$soldier->id} had excusal duty yesterday ({$yesterday->toDateString()}) for {$this->reportType}");
-        }
-
-        return $hadExcusal;
+        return $this->getSoldierExcusalReason($soldier, $date) !== null;
     }
 
     /**
@@ -436,13 +838,13 @@ class GameAttendanceService
 
         // Define category order for output
         $categoryOrder = [
+            'ERE' => 'Extra Regimental Employment',
             'Leave' => 'Leave',
             'Roster Duty' => 'Roster Duties',
             'Fixed Duty' => 'Fixed Duties',
             'Appointment' => 'Appointments',
             'Course' => 'Courses',
             'Cadre' => 'Cadres',
-            'Excusal Duty Yesterday' => 'Excusal Duties (Yesterday)',
         ];
 
         foreach ($categoryOrder as $categoryKey => $categoryDisplay) {
@@ -497,28 +899,6 @@ class GameAttendanceService
     }
 
     /**
-     * Check if a soldier has active ERE on a given date
-     */
-    private function hasActiveEreOnDate($soldier, $date)
-    {
-        $carbonDate = Carbon::parse($date);
-
-        $hasEre = $soldier->ere()
-            ->whereDate('start_date', '<=', $carbonDate)
-            ->where(function ($query) use ($carbonDate) {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $carbonDate);
-            })
-            ->exists();
-
-        if ($hasEre) {
-            Log::debug("📋 Soldier {$soldier->id} has active ERE from {$carbonDate->toDateString()}");
-        }
-
-        return $hasEre;
-    }
-
-    /**
      * Common method to check if soldier has active ERE for query optimization
      */
     private function excludeSoldiersWithActiveEre($query, $date)
@@ -532,119 +912,6 @@ class GameAttendanceService
                         ->orWhereDate('end_date', '>=', $carbonDate);
                 });
         });
-    }
-
-    /**
-     * Check if soldier has active duty on specific date
-     */
-    private function hasActiveDutyOnDate($soldier, $carbonDate)
-    {
-        $hasDuty = SoldierDuty::where('soldier_id', $soldier->id)
-            ->whereDate('assigned_date', $carbonDate)
-            ->exists();
-
-        if ($hasDuty) {
-            Log::debug("🎯 Soldier {$soldier->id} has active duty on {$carbonDate->toDateString()}");
-        }
-
-        return $hasDuty;
-    }
-
-    /**
-     * Check if soldier has fixed duty
-     */
-    private function hasFixedDuty($soldier)
-    {
-        $hasFixedDuty = DutyRank::where('soldier_id', $soldier->id)
-            ->where('assignment_type', 'fixed')
-            ->exists();
-
-        if ($hasFixedDuty) {
-            Log::debug("📌 Soldier {$soldier->id} has fixed duty");
-        }
-
-        return $hasFixedDuty;
-    }
-
-    /**
-     * Check if soldier has active course on date (null end_date means ongoing)
-     */
-    private function hasActiveCourseOnDate($soldier, $carbonDate)
-    {
-        $hasCourse = SoldierCourse::where('soldier_id', $soldier->id)
-            ->where('status', 'active')
-            ->whereDate('start_date', '<=', $carbonDate)
-            ->where(function ($query) use ($carbonDate) {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $carbonDate);
-            })
-            ->exists();
-
-        if ($hasCourse) {
-            Log::debug("📚 Soldier {$soldier->id} has active course on {$carbonDate->toDateString()}");
-        }
-
-        return $hasCourse;
-    }
-
-    /**
-     * Check if soldier has active cadre on date (null end_date means ongoing)
-     */
-    private function hasActiveCadreOnDate($soldier, $carbonDate)
-    {
-        $hasCadre = SoldierCadre::where('soldier_id', $soldier->id)
-            ->where('status', 'active')
-            ->whereDate('start_date', '<=', $carbonDate)
-            ->where(function ($query) use ($carbonDate) {
-                $query->whereNull('end_date')
-                    ->orWhereDate('end_date', '>=', $carbonDate);
-            })
-            ->exists();
-
-        if ($hasCadre) {
-            Log::debug("👥 Soldier {$soldier->id} has active cadre on {$carbonDate->toDateString()}");
-        }
-
-        return $hasCadre;
-    }
-
-    /**
-     * Check if soldier has active appointment on date
-     */
-    private function hasActiveAppointmentOnDate($soldier, $carbonDate)
-    {
-        $hasAppointment = SoldierServices::where('soldier_id', $soldier->id)
-            ->where('status', 'active')
-            ->whereDate('appointments_from_date', '<=', $carbonDate)
-            ->where(function ($query) use ($carbonDate) {
-                $query->whereNull('appointments_to_date')
-                    ->orWhereDate('appointments_to_date', '>=', $carbonDate);
-            })
-            ->exists();
-
-        if ($hasAppointment) {
-            Log::debug("💼 Soldier {$soldier->id} has active appointment on {$carbonDate->toDateString()}");
-        }
-
-        return $hasAppointment;
-    }
-
-    /**
-     * Check if soldier is on approved leave on date
-     */
-    private function isOnApprovedLeaveOnDate($soldier, $carbonDate)
-    {
-        $onLeave = LeaveApplication::where('soldier_id', $soldier->id)
-            ->where('application_current_status', 'approved')
-            ->whereDate('start_date', '<=', $carbonDate)
-            ->whereDate('end_date', '>=', $carbonDate)
-            ->exists();
-
-        if ($onLeave) {
-            Log::debug("🏖️  Soldier {$soldier->id} is on approved leave on {$carbonDate->toDateString()}");
-        }
-
-        return $onLeave;
     }
 
     /**
@@ -668,38 +935,7 @@ class GameAttendanceService
     }
 
     /**
-     * Get actual unique excused count for verification
-     */
-    public function getActualExcusedCount($date)
-    {
-        Log::info("🔍 CALCULATING ACTUAL EXCUSED COUNT for {$this->reportType} report on date: {$date}");
-
-        $soldiers = Soldier::where(function ($query) use ($date) {
-            $this->excludeSoldiersWithActiveEre($query, $date);
-        })
-            ->get();
-
-        Log::debug("👥 Total soldiers (excluding ERE): {$soldiers->count()}");
-
-        $excusedCount = 0;
-        $excusedSoldierIds = [];
-
-        foreach ($soldiers as $soldier) {
-            if ($this->isSoldierExcused($soldier, $date)) {
-                $excusedCount++;
-                $excusedSoldierIds[] = $soldier->id;
-            }
-        }
-
-        Log::info("✅ ACTUAL EXCUSED COUNT: {$excusedCount} soldiers");
-        Log::debug("📝 Excused soldier IDs: " . implode(', ', $excusedSoldierIds));
-
-        return $excusedCount;
-    }
-
-    /**
      * Get Format 3 data - Detailed list of all excused soldiers
-     * Returns a list of all excused soldiers with their complete information
      */
     public function getFormat3Data($date)
     {
@@ -744,8 +980,22 @@ class GameAttendanceService
     }
 
     /**
-     * Get summary statistics for all formats
-     * Returns comprehensive statistics including counts from all formats
+     * Get complete report data - all formats combined
+     */
+    public function getCompleteReportData($date)
+    {
+        Log::info("📋 GENERATING COMPLETE REPORT DATA for {$this->reportType} report on date: {$date}");
+
+        return [
+            'statistics' => $this->getSummaryStatistics($date),
+            'format1' => $this->getFormat1Data($date),
+            'format2' => $this->getFormat2Data($date),
+            'format3' => $this->getFormat3Data($date),
+        ];
+    }
+
+    /**
+     * Get summary statistics
      */
     public function getSummaryStatistics($date)
     {
@@ -755,10 +1005,6 @@ class GameAttendanceService
         $format1Data = $this->getFormat1Data($date);
         $format1Totals = end($format1Data);
 
-        // Get Format 2 data
-        $format2Data = $this->getFormat2Data($date);
-        $format2Totals = end($format2Data);
-
         // Get Format 3 data (detailed list)
         $format3Data = $this->getFormat3Data($date);
 
@@ -766,17 +1012,6 @@ class GameAttendanceService
         $totalStrength = $format1Totals['Total'] ?? 0;
         $totalExcused = $format1Totals['Excused'] ?? 0;
         $totalPresent = $format1Totals['All Total'] ?? 0;
-
-        $excusedByCategory = [];
-        foreach ($format2Data as $row) {
-            if ($row['category'] !== 'Total') {
-                $category = $row['category'];
-                if (!isset($excusedByCategory[$category])) {
-                    $excusedByCategory[$category] = 0;
-                }
-                $excusedByCategory[$category] += $row['Total'];
-            }
-        }
 
         $statistics = [
             'date' => $date,
@@ -791,18 +1026,8 @@ class GameAttendanceService
 
             // Format verification
             'format1_excused' => $format1Totals['Excused'] ?? 0,
-            'format2_total' => $format2Totals['Total'] ?? 0,
             'format3_count' => count($format3Data),
-            'counts_match' => (
-                ($format1Totals['Excused'] ?? 0) === ($format2Totals['Total'] ?? 0) &&
-                ($format1Totals['Excused'] ?? 0) === count($format3Data)
-            ),
-
-            // Breakdown by category
-            'excused_by_category' => $excusedByCategory,
-
-            // Company breakdown
-            'companies' => $this->getCompanyBreakdown($format1Data),
+            'counts_match' => ($format1Totals['Excused'] ?? 0) === count($format3Data),
         ];
 
         Log::info("📊 SUMMARY STATISTICS COMPLETED");
@@ -815,162 +1040,104 @@ class GameAttendanceService
     }
 
     /**
-     * Get company-wise breakdown
+     * Debug method to check all excusal possibilities for a soldier
      */
-    private function getCompanyBreakdown($format1Data)
+    public function debugSoldierExcusal($soldier, $date)
     {
-        $companies = [];
+        $carbonDate = Carbon::parse($date);
+        $sessionTimeRange = $this->getSessionTimeRange($date);
 
-        foreach ($format1Data as $row) {
-            if ($row['company'] !== 'Total') {
-                $companies[] = [
-                    'name' => $row['company'],
-                    'total' => $row['Total'] ?? 0,
-                    'excused' => $row['Excused'] ?? 0,
-                    'present' => $row['All Total'] ?? 0,
-                ];
-            }
-        }
+        Log::info("═══════════════════════════════════════════════════════");
+        Log::info("🔍 COMPLETE EXCUSAL DEBUG FOR SOLDIER {$soldier->id}");
+        Log::info("═══════════════════════════════════════════════════════");
+        Log::info("📅 Date: {$date}");
+        Log::info("📋 Report Type: {$this->reportType}");
+        Log::info("🏷️  Excusal Field: {$this->excusalField}");
 
-        return $companies;
-    }
-
-    /**
-     * Get excused soldiers by company for Format 3
-     */
-    public function getFormat3DataByCompany($date)
-    {
-        Log::info("📝 GENERATING FORMAT3 DATA BY COMPANY for {$this->reportType} report on date: {$date}");
-
-        $allExcusedSoldiers = $this->getFormat3Data($date);
-
-        // Group by company
-        $groupedByCompany = [];
-        foreach ($allExcusedSoldiers as $soldier) {
-            $companyName = $soldier['company'];
-
-            if (!isset($groupedByCompany[$companyName])) {
-                $groupedByCompany[$companyName] = [
-                    'company_name' => $companyName,
-                    'soldiers' => [],
-                    'total_count' => 0,
-                ];
-            }
-
-            $groupedByCompany[$companyName]['soldiers'][] = $soldier;
-            $groupedByCompany[$companyName]['total_count']++;
-        }
-
-        // Sort by company name
-        ksort($groupedByCompany);
-
-        Log::info("📝 FORMAT3 BY COMPANY COMPLETED - " . count($groupedByCompany) . " companies");
-
-        return array_values($groupedByCompany);
-    }
-
-    /**
-     * Get excused soldiers by category for Format 3
-     */
-    public function getFormat3DataByCategory($date)
-    {
-        Log::info("📝 GENERATING FORMAT3 DATA BY CATEGORY for {$this->reportType} report on date: {$date}");
-
-        $allExcusedSoldiers = $this->getFormat3Data($date);
-
-        // Group by category
-        $groupedByCategory = [];
-        foreach ($allExcusedSoldiers as $soldier) {
-            $category = $soldier['excusal_category'];
-
-            if (!isset($groupedByCategory[$category])) {
-                $groupedByCategory[$category] = [
-                    'category_name' => $category,
-                    'soldiers' => [],
-                    'total_count' => 0,
-                ];
-            }
-
-            $groupedByCategory[$category]['soldiers'][] = $soldier;
-            $groupedByCategory[$category]['total_count']++;
-        }
-
-        // Sort by priority (lower priority number = higher priority)
-        uasort($groupedByCategory, function ($a, $b) {
-            $priorityA = $a['soldiers'][0]['priority'] ?? 999;
-            $priorityB = $b['soldiers'][0]['priority'] ?? 999;
-            return $priorityA - $priorityB;
-        });
-
-        Log::info("📝 FORMAT3 BY CATEGORY COMPLETED - " . count($groupedByCategory) . " categories");
-
-        return array_values($groupedByCategory);
-    }
-
-    /**
-     * Get complete report data - all formats combined
-     */
-    public function getCompleteReportData($date)
-    {
-        Log::info("📋 GENERATING COMPLETE REPORT DATA for {$this->reportType} report on date: {$date}");
-
-        return [
-            'statistics' => $this->getSummaryStatistics($date),
-            'format1' => $this->getFormat1Data($date),
-            'format2' => $this->getFormat2Data($date),
-            'format3' => [
-                'all_soldiers' => $this->getFormat3Data($date),
-                'by_company' => $this->getFormat3DataByCompany($date),
-                'by_category' => $this->getFormat3DataByCategory($date),
-            ],
-        ];
-    }
-
-    /**
-     * Compare Format1 and Format2 totals for debugging
-     */
-    public function compareTotals($date)
-    {
-        Log::info("⚖️  COMPARING TOTALS for {$this->reportType} report on date: {$date}");
-
-        $format1Data = $this->getFormat1Data($date);
-        $format1Excused = end($format1Data)['Excused'] ?? 0;
-
-        $format2Data = $this->getFormat2Data($date);
-        $format2Total = end($format2Data)['Total'] ?? 0;
-
-        $format3Data = $this->getFormat3Data($date);
-        $format3Count = count($format3Data);
-
-        $actualExcused = $this->getActualExcusedCount($date);
-
-        Log::warning("📊 COMPARISON RESULTS:");
-        Log::warning("   Format1 (Excused): {$format1Excused}");
-        Log::warning("   Format2 (Total): {$format2Total}");
-        Log::warning("   Format3 (Count): {$format3Count}");
-        Log::warning("   Actual Excused: {$actualExcused}");
-
-        if ($format1Excused === $format2Total && $format1Excused === $format3Count && $format1Excused === $actualExcused) {
-            Log::info("🎉 SUCCESS: All counts match perfectly!");
+        if ($sessionTimeRange) {
+            Log::info("🕒 Session Time: {$sessionTimeRange['start']->format('H:i')} - {$sessionTimeRange['end']->format('H:i')}");
         } else {
-            Log::error("❌ MISMATCH DETECTED:");
-            if ($format1Excused !== $format2Total) {
-                Log::error("   Format1 ({$format1Excused}) ≠ Format2 ({$format2Total})");
-            }
-            if ($format1Excused !== $format3Count) {
-                Log::error("   Format1 ({$format1Excused}) ≠ Format3 ({$format3Count})");
-            }
-            if ($format1Excused !== $actualExcused) {
-                Log::error("   Format1 ({$format1Excused}) ≠ Actual ({$actualExcused})");
-            }
+            Log::info("⚠️  No session time configured");
         }
 
-        return [
-            'format1_excused' => $format1Excused,
-            'format2_total' => $format2Total,
-            'format3_count' => $format3Count,
-            'actual_excused' => $actualExcused,
-            'match' => ($format1Excused === $format2Total && $format1Excused === $format3Count && $format1Excused === $actualExcused)
+        Log::info("───────────────────────────────────────────────────────");
+
+        $checks = [
+            'ERE' => $this->hasActiveEreOnDate($soldier, $date),
+            'Leave' => $this->isOnApprovedLeaveOnDate($soldier, $carbonDate),
+            'Roster Duty' => $this->hasActiveDutyWithTimeOrExcusal($soldier, $carbonDate, $sessionTimeRange),
+            'Fixed Duty' => $this->hasFixedDutyWithExcusal($soldier, $carbonDate, $sessionTimeRange),
+            'Appointment' => $this->hasActiveAppointmentOnDate($soldier, $carbonDate),
+            'Course' => $this->hasActiveCourseOnDate($soldier, $carbonDate),
+            'Cadre' => $this->hasActiveCadreOnDate($soldier, $carbonDate),
         ];
+
+        foreach ($checks as $checkName => $result) {
+            $icon = $result ? '✅' : '❌';
+            $status = $result ? 'EXCUSED' : 'NOT EXCUSED';
+            Log::info("{$icon} {$checkName}: {$status}");
+        }
+
+        Log::info("───────────────────────────────────────────────────────");
+
+        $finalReason = $this->getSoldierExcusalReason($soldier, $date);
+
+        if ($finalReason) {
+            Log::info("🎯 FINAL RESULT: EXCUSED");
+            Log::info("   Priority: {$finalReason['priority']}");
+            Log::info("   Reason: {$finalReason['reason']}");
+            Log::info("   Details: {$finalReason['details']}");
+        } else {
+            Log::info("🎯 FINAL RESULT: NOT EXCUSED");
+        }
+
+        Log::info("═══════════════════════════════════════════════════════");
+
+        return [
+            'soldier_id' => $soldier->id,
+            'date' => $date,
+            'report_type' => $this->reportType,
+            'checks' => $checks,
+            'final_result' => $finalReason,
+        ];
+    }
+
+    /**
+     * Test cross-midnight duty handling
+     */
+    public function testCrossMidnightDuty($dutyStartTime, $dutyEndTime, $sessionStartTime, $sessionEndTime, $testDate = null)
+    {
+        $testDate = $testDate ?? Carbon::today();
+
+        Log::info("═══════════════════════════════════════════════════════");
+        Log::info("🧪 TESTING CROSS-MIDNIGHT DUTY");
+        Log::info("═══════════════════════════════════════════════════════");
+        Log::info("📅 Test Date: {$testDate->format('Y-m-d')}");
+        Log::info("⏰ Duty Time: {$dutyStartTime} → {$dutyEndTime}");
+        Log::info("🕒 Session Time: {$sessionStartTime} → {$sessionEndTime}");
+        Log::info("───────────────────────────────────────────────────────");
+
+        // Create test duty
+        $testDuty = new SoldierDuty([
+            'assigned_date' => $testDate,
+            'start_time' => Carbon::parse($dutyStartTime),
+            'end_time' => Carbon::parse($dutyEndTime),
+        ]);
+
+        $testDuty->setRelation('duty', new Duty(['duty_name' => 'Test Duty']));
+
+        // Create test session range
+        $sessionRange = [
+            'start' => Carbon::parse($testDate->format('Y-m-d') . ' ' . $sessionStartTime),
+            'end' => Carbon::parse($testDate->format('Y-m-d') . ' ' . $sessionEndTime),
+        ];
+
+        $overlaps = $this->doesDutyOverlapWithSession($testDuty, $sessionRange);
+
+        Log::info("───────────────────────────────────────────────────────");
+        Log::info("🎯 RESULT: " . ($overlaps ? 'OVERLAPS ✅' : 'NO OVERLAP ❌'));
+        Log::info("═══════════════════════════════════════════════════════");
+
+        return $overlaps;
     }
 }

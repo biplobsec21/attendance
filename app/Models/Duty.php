@@ -26,10 +26,10 @@ class Duty extends Model
         'remark',
         'status',
         'duration_days',
-        'excused_next_day_pt',
-        'excused_next_day_games',
-        'excused_next_day_roll_call',
-        'excused_next_day_parade',
+        'excused_next_session_pt',
+        'excused_next_session_games',
+        'excused_next_session_roll_call',
+        'excused_next_session_parade',
     ];
     protected $casts = [
         'start_time' => 'datetime:H:i',

@@ -456,37 +456,37 @@
                                     </div>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div class="flex items-start space-x-3">
-                                            <input type="checkbox" id="excused-next-day-pt" name="excused_next_day_pt"
-                                                value="1"
+                                            <input type="checkbox" id="excused-next-day-pt"
+                                                name="excused_next_session_pt" value="1"
                                                 class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                                {{ old('excused_next_day_pt') ? 'checked' : '' }}>
+                                                {{ old('excused_next_session_pt') ? 'checked' : '' }}>
                                             <label for="excused-next-day-pt" class="text-sm text-gray-700">
                                                 PT (Physical Training)
                                             </label>
                                         </div>
                                         <div class="flex items-start space-x-3">
                                             <input type="checkbox" id="excused-next-day-games"
-                                                name="excused_next_day_games" value="1"
+                                                name="excused_next_session_games" value="1"
                                                 class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                                {{ old('excused_next_day_games') ? 'checked' : '' }}>
+                                                {{ old('excused_next_session_games') ? 'checked' : '' }}>
                                             <label for="excused-next-day-games" class="text-sm text-gray-700">
                                                 Games
                                             </label>
                                         </div>
                                         <div class="flex items-start space-x-3">
                                             <input type="checkbox" id="excused-next-day-roll-call"
-                                                name="excused_next_day_roll_call" value="1"
+                                                name="excused_next_session_roll_call" value="1"
                                                 class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                                {{ old('excused_next_day_roll_call') ? 'checked' : '' }}>
+                                                {{ old('excused_next_session_roll_call') ? 'checked' : '' }}>
                                             <label for="excused-next-day-roll-call" class="text-sm text-gray-700">
                                                 Roll Call
                                             </label>
                                         </div>
                                         <div class="flex items-start space-x-3">
                                             <input type="checkbox" id="excused-next-day-parade"
-                                                name="excused_next_day_parade" value="1"
+                                                name="excused_next_session_parade" value="1"
                                                 class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                                {{ old('excused_next_day_parade') ? 'checked' : '' }}>
+                                                {{ old('excused_next_session_parade') ? 'checked' : '' }}>
                                             <label for="excused-next-day-parade" class="text-sm text-gray-700">
                                                 Parade
                                             </label>
