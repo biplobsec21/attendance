@@ -62,4 +62,8 @@ class Duty extends Model
     {
         return $this->dutyRanks()->where('assignment_type', 'roster');
     }
+    public function soldierDuties()
+    {
+        return $this->hasMany(SoldierDuty::class, 'duty_id');
+    }
 }

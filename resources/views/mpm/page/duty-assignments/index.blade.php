@@ -166,9 +166,6 @@
         @include('mpm.page.duty-assignments.partials.assignModal')
         @include('mpm.page.duty-assignments.partials.quickActionModal')
 
-
-
-
         <!-- Loading Overlay -->
         <div id="loadingOverlay"
             class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center">
@@ -225,7 +222,7 @@
             `;
 
             document.getElementById('toastContainer').appendChild(toast);
-            setTimeout(() => toast.remove(), 50000);
+            setTimeout(() => toast.remove(), 5000);
         }
 
         // Loading Functions
@@ -361,116 +358,144 @@
             }
         }
 
-        // Process the API response data
-        // Process the API response data - FIXED VERSION
-        // Process the API response data - SUPER ROBUST VERSION
+        // Process the API response data - UPDATED TO PROPERLY HANDLE FIXED DUTIES
         function processDutyData(data) {
-            const duties = [];
+            const dutiesMap = {};
 
-            // Process roster duties
+            // Process roster duties first
             if (data.roster_duties && Array.isArray(data.roster_duties)) {
                 data.roster_duties.forEach(rosterDuty => {
                     try {
+                        const dutyId = rosterDuty.duty_id;
+
+                        // Initialize duty if not exists
+                        if (!dutiesMap[dutyId]) {
+                            dutiesMap[dutyId] = {
+                                duty_id: dutyId,
+                                duty_name: rosterDuty.duty_name || 'Unknown Duty',
+                                start_time: formatTime(rosterDuty.start_time),
+                                end_time: formatTime(rosterDuty.end_time),
+                                duration_days: rosterDuty.duration_days || 1,
+                                required_manpower: rosterDuty.required_manpower || 0,
+                                is_overnight: checkIfOvernight(rosterDuty.start_time, rosterDuty.end_time),
+                                roster_soldiers: [],
+                                fixed_soldiers: [],
+                                has_roster: false,
+                                has_fixed: false
+                            };
+                        }
+
+                        // Mark as having roster assignments
+                        dutiesMap[dutyId].has_roster = true;
+
                         // Handle assigned_soldiers in various formats
                         let assignedSoldiers = [];
                         if (Array.isArray(rosterDuty.assigned_soldiers)) {
                             assignedSoldiers = rosterDuty.assigned_soldiers;
                         } else if (rosterDuty.assigned_soldiers && typeof rosterDuty.assigned_soldiers ===
                             'object') {
-                            // If it's an object, convert to array
                             assignedSoldiers = Object.values(rosterDuty.assigned_soldiers);
                         }
 
-                        const soldiers = assignedSoldiers.map(soldier => {
-                            console.log('Processing soldier:', soldier);
-                            // Handle different soldier object structures
-                            return {
+                        // Add roster soldiers
+                        assignedSoldiers.forEach(soldier => {
+                            dutiesMap[dutyId].roster_soldiers.push({
                                 id: soldier.soldier_id || soldier.id || 0,
                                 name: soldier.full_name || soldier.name || 'Unknown Soldier',
                                 army_no: soldier.army_no || 'N/A',
                                 rank: soldier.rank || 'N/A',
                                 company: soldier.company || 'N/A',
-                                remarks: soldier.remarks || ''
-                            };
+                                remarks: soldier.remarks || '',
+                                assignment_type: 'roster'
+                            });
                         });
 
-                        duties.push({
-                            duty_id: rosterDuty.duty_id || 0,
-                            duty_name: rosterDuty.duty_name || 'Unknown Duty',
-                            start_time: formatTime(rosterDuty.start_time),
-                            end_time: formatTime(rosterDuty.end_time),
-                            duration_days: rosterDuty.duration_days || 1,
-                            duty_type: 'roster',
-                            required_manpower: rosterDuty.required_manpower || 0,
-                            assigned_count: rosterDuty.assigned_count || soldiers.length,
-                            soldiers: soldiers,
-                            is_overnight: checkIfOvernight(rosterDuty.start_time, rosterDuty.end_time)
-                        });
                     } catch (error) {
                         console.error('Error processing roster duty:', error, rosterDuty);
-                        // Create a fallback duty entry
-                        duties.push({
-                            duty_id: rosterDuty.duty_id || 0,
-                            duty_name: rosterDuty.duty_name || 'Unknown Duty',
-                            start_time: formatTime(rosterDuty.start_time),
-                            end_time: formatTime(rosterDuty.end_time),
-                            duration_days: rosterDuty.duration_days || 1,
-                            duty_type: 'roster',
-                            required_manpower: rosterDuty.required_manpower || 0,
-                            assigned_count: 0,
-                            soldiers: [],
-                            is_overnight: false
-                        });
                     }
                 });
             }
 
-            // Process fixed duties (same as before)
-            if (data.fixed_duties && Array.isArray(data.fixed_duties)) {
-                const fixedDutiesMap = {};
+            // Process fixed duties and merge with existing duties
+            if (data.fixed_duties) {
+                let fixedDutiesArray = [];
 
-                data.fixed_duties.forEach(fixedDuty => {
+                // Handle both Collection and Array formats
+                if (Array.isArray(data.fixed_duties)) {
+                    fixedDutiesArray = data.fixed_duties;
+                } else if (data.fixed_duties.constructor && data.fixed_duties.constructor.name === 'Collection') {
+                    fixedDutiesArray = Object.values(data.fixed_duties);
+                } else if (typeof data.fixed_duties === 'object') {
+                    fixedDutiesArray = Object.values(data.fixed_duties);
+                }
+
+                console.log('Processing fixed duties:', fixedDutiesArray);
+
+                fixedDutiesArray.forEach(fixedDuty => {
                     try {
-                        if (!fixedDutiesMap[fixedDuty.duty_id]) {
-                            fixedDutiesMap[fixedDuty.duty_id] = {
-                                duty_id: fixedDuty.duty_id,
-                                duty_name: fixedDuty.duty_name,
+                        const dutyId = fixedDuty.duty_id;
+
+                        // Initialize duty if not exists (duty only has fixed assignments)
+                        if (!dutiesMap[dutyId]) {
+                            dutiesMap[dutyId] = {
+                                duty_id: dutyId,
+                                duty_name: fixedDuty.duty_name || 'Unknown Fixed Duty',
                                 start_time: formatTime(fixedDuty.start_time),
                                 end_time: formatTime(fixedDuty.end_time),
                                 duration_days: 1,
-                                duty_type: 'fixed',
-                                required_manpower: 1,
-                                assigned_count: 0,
-                                soldiers: [],
-                                is_overnight: checkIfOvernight(fixedDuty.start_time, fixedDuty.end_time)
+                                required_manpower: 0,
+                                is_overnight: checkIfOvernight(fixedDuty.start_time, fixedDuty.end_time),
+                                roster_soldiers: [],
+                                fixed_soldiers: [],
+                                has_roster: false,
+                                has_fixed: false
                             };
                         }
 
-                        fixedDutiesMap[fixedDuty.duty_id].soldiers.push({
+                        // Mark as having fixed assignments
+                        dutiesMap[dutyId].has_fixed = true;
+
+                        // Add fixed soldier
+                        dutiesMap[dutyId].fixed_soldiers.push({
                             id: fixedDuty.soldier_id,
                             name: fixedDuty.full_name || 'N/A',
                             army_no: fixedDuty.army_no || 'N/A',
                             rank: fixedDuty.rank || 'N/A',
                             company: fixedDuty.company || 'N/A',
-                            remarks: ''
+                            remarks: 'Fixed Assignment',
+                            assignment_type: 'fixed'
                         });
-                        fixedDutiesMap[fixedDuty.duty_id].assigned_count++;
+
                     } catch (error) {
                         console.error('Error processing fixed duty:', error, fixedDuty);
                     }
                 });
-
-                Object.values(fixedDutiesMap).forEach(duty => {
-                    duties.push(duty);
-                });
             }
 
-            console.log('Final processed duties:', duties);
+            // Convert map to array and calculate totals
+            const duties = Object.values(dutiesMap).map(duty => {
+                const totalRoster = duty.roster_soldiers.length;
+                const totalFixed = duty.fixed_soldiers.length;
+                const totalAssigned = totalRoster + totalFixed;
+
+                return {
+                    ...duty,
+                    roster_count: totalRoster,
+                    fixed_count: totalFixed,
+                    assigned_count: totalAssigned,
+                    fulfillment_rate: duty.required_manpower > 0 ?
+                        Math.round((totalAssigned / duty.required_manpower) * 100) : 100
+                };
+            });
+
+            // Sort duties by name
+            duties.sort((a, b) => (a.duty_name || '').localeCompare(b.duty_name || ''));
+
+            console.log('Final processed duties (merged):', duties);
             return duties;
         }
 
         // Load Duty Details
-        // Load Duty Details - Enhanced with better error handling
         async function loadDutyDetails() {
             const date = document.getElementById('selectedDate').value;
             if (!date) {
@@ -519,13 +544,244 @@
             }
         }
 
+        // Unified table rendering - Single table for both roster and fixed duties
+        // Unified table rendering - Single row per duty with both roster and fixed soldiers
+        function renderDutyDetailsTable(duties) {
+            const container = document.getElementById('dutyDetailsContainer');
 
+            if (!duties || duties.length === 0) {
+                container.innerHTML = `
+            <div class="p-12 text-center text-gray-500">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                </svg>
+                <p class="mt-4 text-lg font-medium">No duty assignments found for this date</p>
+            </div>
+        `;
+                return;
+            }
 
-        // Quick Action: Cancel Assignment - FIXED VERSION
+            // Calculate totals
+            const totalRosterAssignments = duties.reduce((sum, d) => sum + d.roster_count, 0);
+            const totalFixedAssignments = duties.reduce((sum, d) => sum + d.fixed_count, 0);
+            const totalAssignments = totalRosterAssignments + totalFixedAssignments;
+
+            let html = `
+        <div class="overflow-x-auto">
+            <div class="px-6 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm font-medium text-gray-700">Total Duties: ${duties.length}</span>
+                    <span class="text-sm text-gray-600">|</span>
+                    <span class="text-sm text-gray-600">Total Assignments: ${totalAssignments}</span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" r="5"/>
+                        </svg>
+                        Roster: ${totalRosterAssignments}
+                    </span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" r="5"/>
+                        </svg>
+                        Fixed: ${totalFixedAssignments}
+                    </span>
+                </div>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duty Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Soldiers</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fulfillment</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+    `;
+
+            // Generate all duty rows
+            duties.forEach(duty => {
+                html += generateDutyRow(duty);
+            });
+
+            html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+            container.innerHTML = html;
+        }
+
+        // Helper function to generate duty row with both roster and fixed soldiers
+        function generateDutyRow(duty) {
+            const fulfillmentPercent = duty.fulfillment_rate || 0;
+            const isFulfilled = fulfillmentPercent >= 100;
+            const totalAssigned = duty.assigned_count || 0;
+            const requiredManpower = duty.required_manpower || 0;
+
+            // Combine both roster and fixed soldiers
+            const allSoldiers = [
+                ...duty.roster_soldiers.map(s => ({
+                    ...s,
+                    type: 'roster'
+                })),
+                ...duty.fixed_soldiers.map(s => ({
+                    ...s,
+                    type: 'fixed'
+                }))
+            ];
+
+            let row = `
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4">
+                <div class="text-sm font-medium text-gray-900">${duty.duty_name || 'N/A'}</div>
+                <div class="text-sm text-gray-500 flex items-center gap-2">
+                    <span>ID: ${duty.duty_id || 'N/A'}</span>
+                    ${duty.has_roster ? `
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                                    Roster
+                                </span>
+                            ` : ''}
+                    ${duty.has_fixed ? `
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                                    Fixed
+                                </span>
+                            ` : ''}
+                </div>
+            </td>
+            <td class="px-6 py-4">
+                <div class="text-sm text-gray-900">${duty.start_time || 'N/A'} - ${duty.end_time || 'N/A'}</div>
+                ${duty.is_overnight ? '<span class="text-xs text-orange-600 font-medium">Overnight</span>' : ''}
+            </td>
+            <td class="px-6 py-4">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    ${duty.duration_days || 1} day${(duty.duration_days || 1) > 1 ? 's' : ''}
+                </span>
+            </td>
+            <td class="px-6 py-4">
+                <div class="text-sm space-y-2">
+    `;
+
+            if (allSoldiers.length > 0) {
+                allSoldiers.forEach(soldier => {
+                    const safeSoldierName = (soldier.name || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"');
+                    const safeDutyName = (duty.duty_name || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"');
+                    const isFixed = soldier.type === 'fixed';
+
+                    row += `
+                <div class="flex items-center justify-between group">
+                    <div class="flex items-center flex-wrap gap-1">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${isFixed ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}">
+                            ${soldier.rank || 'N/A'}
+                        </span>
+                        <span class="text-gray-900 font-medium">${soldier.name || 'N/A'}</span>
+                        <span class="text-gray-500 text-xs">(${soldier.army_no || 'N/A'})</span>
+                        ${soldier.company ? `<span class="text-gray-400 text-xs">• ${soldier.company}</span>` : ''}
+                        ${isFixed ? `
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                                        <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                        </svg>
+                                        Fixed
+                                    </span>
+                                ` : ''}
+                        ${soldier.remarks && !isFixed ? `<span class="text-xs text-blue-600 italic">• ${soldier.remarks}</span>` : ''}
+                    </div>
+                    <div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        ${!isFixed ? `
+                                    <button
+                                        data-action="reassign"
+                                        data-duty-id="${duty.duty_id}"
+                                        data-soldier-id="${soldier.id}"
+                                        data-soldier-name="${safeSoldierName}"
+                                        data-duty-name="${safeDutyName}"
+                                        class="text-yellow-600 hover:text-yellow-800 p-1 rounded hover:bg-yellow-50"
+                                        title="Reassign Soldier">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                                        </svg>
+                                    </button>
+                                    <button
+                                        data-action="cancel"
+                                        data-duty-id="${duty.duty_id}"
+                                        data-soldier-id="${soldier.id}"
+                                        data-soldier-name="${safeSoldierName}"
+                                        data-duty-name="${safeDutyName}"
+                                        class="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+                                        title="Remove Soldier">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
+                                ` : `
+                                    <span class="text-xs text-purple-600 italic px-2 py-1">Permanent</span>
+                                `}
+                    </div>
+                </div>
+            `;
+                });
+            } else {
+                row += `
+            <div class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <span class="text-red-600 font-medium">No soldiers assigned</span>
+            </div>
+        `;
+            }
+
+            row += `
+                </div>
+                ${duty.roster_count > 0 || duty.fixed_count > 0 ? `
+                            <div class="text-xs text-gray-500 mt-2 flex gap-3">
+                                ${duty.roster_count > 0 ? `<span class="text-green-600">Roster: ${duty.roster_count}</span>` : ''}
+                                ${duty.fixed_count > 0 ? `<span class="text-purple-600">Fixed: ${duty.fixed_count}</span>` : ''}
+                            </div>
+                        ` : ''}
+            </td>
+            <td class="px-6 py-4">
+                <div class="flex items-center space-x-2">
+                    <div class="flex-1 bg-gray-200 rounded-full h-2 min-w-[60px]">
+                        <div class="${isFulfilled ? 'bg-green-600' : 'bg-red-600'} h-2 rounded-full transition-all" style="width: ${Math.min(fulfillmentPercent, 100)}%"></div>
+                    </div>
+                    <span class="text-sm font-medium ${isFulfilled ? 'text-green-600' : 'text-red-600'} min-w-[45px]">${fulfillmentPercent}%</span>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">${totalAssigned} / ${requiredManpower}</div>
+            </td>
+            <td class="px-6 py-4 text-sm whitespace-nowrap">
+                <button onclick="viewDutyDetails(${duty.duty_id}, '${(duty.duty_name || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
+                    class="text-blue-600 hover:text-blue-900 font-medium mr-3">
+                    <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                    View
+                </button>
+                ${duty.has_roster ? `
+                            <button onclick="showAddSoldierModal(${duty.duty_id}, '${(duty.duty_name || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
+                                class="text-green-600 hover:text-green-900 font-medium">
+                                <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                </svg>
+                                Add
+                            </button>
+                        ` : `
+                            <span class="text-xs text-gray-400">Fixed Only</span>
+                        `}
+            </td>
+        </tr>
+    `;
+
+            return row;
+        }
+
+        // Quick Action: Cancel Assignment
         async function quickCancelAssignment(dutyId, soldierId, soldierName, dutyName) {
             const date = document.getElementById('selectedDate').value;
-
-            // Escape special characters in names
             const safeSoldierName = soldierName.replace(/'/g, "\\'").replace(/"/g, '\\"');
             const safeDutyName = dutyName.replace(/'/g, "\\'").replace(/"/g, '\\"');
 
@@ -563,12 +819,10 @@
             }
         }
 
-        // Also update the reassign function to handle special characters
         // Enhanced Reassign Modal with searchable dropdown
         async function quickReassignSoldier(dutyId, soldierId, soldierName, dutyName) {
             const date = document.getElementById('selectedDate').value;
 
-            // Fetch available duties
             showLoading();
             try {
                 const response = await fetch(
@@ -581,8 +835,7 @@
                 if (result.success && result.data && result.data.length > 0) {
                     result.data.forEach(duty => {
                         const capacityText = duty.required_manpower > 0 ?
-                            ` (${duty.current_assignments}/${duty.required_manpower})` : '';
-                        const statusColor = duty.is_available ? 'text-green-600' : 'text-red-600';
+                            ` (${duty.assigned_count}/${duty.required_manpower})` : '';
                         const statusText = duty.is_available ? 'Available' : 'Unavailable';
                         const availabilityInfo = duty.availability_reason ? ` - ${duty.availability_reason}` :
                             '';
@@ -599,55 +852,53 @@
 
                 document.getElementById('quickActionTitle').textContent = `Reassign ${soldierName}`;
                 document.getElementById('quickActionContent').innerHTML = `
-                        <div class="space-y-4">
-                            <p class="text-sm text-gray-600">
-                                Reassign <strong>${soldierName}</strong> from <strong>"${dutyName}"</strong> to another duty.
-                            </p>
-                            <form id="quickReassignForm" onsubmit="handleQuickReassign(event, ${soldierId}, ${dutyId})">
-                                <div class="space-y-3">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Select New Duty</label>
-                                        <input type="text" id="dutySearch"
-                                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 mb-2"
-                                            placeholder="Search duties...">
-                                        <select name="to_duty_id" id="dutySelect" required size="6"
-                                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                            ${dutiesOptions}
-                                        </select>
-                                        <div class="mt-2 flex items-center space-x-4 text-xs">
-                                            <div class="flex items-center">
-                                                <span class="w-3 h-3 bg-green-100 rounded-full mr-1"></span>
-                                                <span class="text-gray-600">Available</span>
-                                            </div>
-                                            <div class="flex items-center">
-                                                <span class="w-3 h-3 bg-red-100 rounded-full mr-1"></span>
-                                                <span class="text-gray-600">Unavailable</span>
-                                            </div>
+                    <div class="space-y-4">
+                        <p class="text-sm text-gray-600">
+                            Reassign <strong>${soldierName}</strong> from <strong>"${dutyName}"</strong> to another duty.
+                        </p>
+                        <form id="quickReassignForm" onsubmit="handleQuickReassign(event, ${soldierId}, ${dutyId})">
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Select New Duty</label>
+                                    <input type="text" id="dutySearch"
+                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 mb-2"
+                                        placeholder="Search duties...">
+                                    <select name="to_duty_id" id="dutySelect" required size="6"
+                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        ${dutiesOptions}
+                                    </select>
+                                    <div class="mt-2 flex items-center space-x-4 text-xs">
+                                        <div class="flex items-center">
+                                            <span class="w-3 h-3 bg-green-100 rounded-full mr-1"></span>
+                                            <span class="text-gray-600">Available</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="w-3 h-3 bg-red-100 rounded-full mr-1"></span>
+                                            <span class="text-gray-600">Unavailable</span>
                                         </div>
                                     </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                                        <input type="date" name="date" value="${date}" required
-                                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    </div>
                                 </div>
-                                <div class="mt-6 flex space-x-3">
-                                    <button type="button" onclick="closeQuickActionModal()"
-                                        class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
-                                        Cancel
-                                    </button>
-                                    <button type="submit"
-                                        class="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700">
-                                        Reassign
-                                    </button>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                                    <input type="date" name="date" value="${date}" required
+                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 </div>
-                            </form>
-                        </div>
-                    `;
+                            </div>
+                            <div class="mt-6 flex space-x-3">
+                                <button type="button" onclick="closeQuickActionModal()"
+                                    class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                                <button type="submit"
+                                    class="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700">
+                                    Reassign
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                `;
 
-                // Add search functionality for duties
                 setupDutySearch();
-
                 showQuickActionModal();
             } catch (error) {
                 hideLoading();
@@ -663,166 +914,17 @@
 
             searchInput.addEventListener('input', function() {
                 const searchTerm = this.value.toLowerCase();
-
                 allOptions.forEach(option => {
                     const text = option.textContent.toLowerCase();
-                    if (text.includes(searchTerm)) {
-                        option.style.display = '';
-                    } else {
-                        option.style.display = 'none';
-                    }
+                    option.style.display = text.includes(searchTerm) ? '' : 'none';
                 });
             });
 
-            // Color code options
             allOptions.forEach(option => {
                 const isAvailable = option.dataset.available === 'true';
                 option.style.backgroundColor = isAvailable ? '#f0fdf4' : '#fef2f2';
                 option.style.color = isAvailable ? '#166534' : '#991b1b';
             });
-        }
-
-        // Also update the button onclick handlers to escape the strings
-        function renderDutyDetailsTable(duties) {
-            const container = document.getElementById('dutyDetailsContainer');
-
-            if (!duties || duties.length === 0) {
-                container.innerHTML = `
-            <div class="p-12 text-center text-gray-500">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                </svg>
-                <p class="mt-4 text-lg font-medium">No duty assignments found for this date</p>
-            </div>
-        `;
-                return;
-            }
-
-            let html = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200">';
-
-            // Table Header
-            html += `
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duty Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Soldiers</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fulfillment</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-    `;
-
-            // Table Rows
-            duties.forEach(duty => {
-                const assignedCount = duty.assigned_count || (duty.soldiers ? duty.soldiers.length : 0);
-                const requiredManpower = duty.required_manpower || 1;
-                const fulfillmentPercent = Math.round((assignedCount / requiredManpower) * 100);
-                const isFulfilled = fulfillmentPercent >= 100;
-
-                html += `
-                        <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4">
-                                <div class="text-sm font-medium text-gray-900">${duty.duty_name || 'N/A'}</div>
-                                <div class="text-sm text-gray-500">ID: ${duty.duty_id || 'N/A'}</div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="text-sm text-gray-900">${duty.start_time || 'N/A'} - ${duty.end_time || 'N/A'}</div>
-                                ${duty.is_overnight ? '<span class="text-xs text-orange-600 font-medium">Overnight</span>' : ''}
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    ${duty.duration_days || 1} day${(duty.duration_days || 1) > 1 ? 's' : ''}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${duty.duty_type === 'roster' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'}">
-                                    ${duty.duty_type || 'unknown'}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="text-sm space-y-2">
-                    `;
-
-                if (duty.soldiers && duty.soldiers.length > 0) {
-                    duty.soldiers.forEach(soldier => {
-                        console.log("rmarks" + soldier);
-                        // Escape special characters for JavaScript strings
-                        const safeSoldierName = (soldier.name || 'N/A').replace(/'/g, "\\'").replace(/"/g,
-                            '\\"');
-                        const safeDutyName = (duty.duty_name || 'N/A').replace(/'/g, "\\'").replace(/"/g,
-                            '\\"');
-
-                        html += `
-                    <div class="flex items-center justify-between group">
-                        <div class="flex items-center">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                                ${soldier.rank || 'N/A'}
-                            </span>
-                            <span class="ml-2 text-gray-900">${soldier.name || 'N/A'}</span>
-                            <span class="ml-1 text-gray-500 text-xs">(${soldier.army_no || 'N/A'})</span>
-                             <span class="ml-2 text-gray-900">${soldier.remarks}</span>
-
-                        </div>
-                        <div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                                     data-action="reassign"
-                                    data-duty-id="${duty.duty_id}"
-                                    data-soldier-id="${soldier.id}"
-                                    data-soldier-name="${soldier.name}"
-                                    data-duty-name="${duty.duty_name}"
-                                class="text-yellow-600 hover:text-yellow-800 p-1 rounded hover:bg-yellow-50"
-                                title="Reassign Soldier">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-                                </svg>
-                            </button>
-                            <button data-action="cancel"
-                                    data-duty-id="${duty.duty_id}"
-                                    data-soldier-id="${soldier.id}"
-                                    data-soldier-name="${soldier.name}"
-                                    data-duty-name="${duty.duty_name}"
-                                    class="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
-                                    title="Remove Soldier">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                    });
-                } else {
-                    html += '<span class="text-red-600 font-medium">No soldiers assigned</span>';
-                }
-
-                html += `
-                    </div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex items-center space-x-2">
-                        <div class="flex-1 bg-gray-200 rounded-full h-2">
-                            <div class="${isFulfilled ? 'bg-green-600' : 'bg-red-600'} h-2 rounded-full transition-all" style="width: ${Math.min(fulfillmentPercent, 100)}%"></div>
-                        </div>
-                        <span class="text-sm font-medium ${isFulfilled ? 'text-green-600' : 'text-red-600'} min-w-[45px]">${fulfillmentPercent}%</span>
-                    </div>
-                    <div class="text-xs text-gray-500 mt-1">${assignedCount} / ${requiredManpower}</div>
-                </td>
-                <td class="px-6 py-4 text-sm whitespace-nowrap">
-                    <button onclick="viewDutyDetails(${duty.duty_id}, '${(duty.duty_name || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
-                        class="text-blue-600 hover:text-blue-900 font-medium mr-3">View</button>
-                    <button onclick="showAddSoldierModal(${duty.duty_id}, '${(duty.duty_name || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
-                        class="text-green-600 hover:text-green-900 font-medium">Add Soldier</button>
-                </td>
-            </tr>
-        `;
-            });
-
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
         }
 
         // Handle Quick Reassign
@@ -867,12 +969,10 @@
             }
         }
 
-        // Add Soldier Modal
         // Add Soldier Modal with searchable dropdown
         async function showAddSoldierModal(dutyId, dutyName) {
             const date = document.getElementById('selectedDate').value;
 
-            // Fetch available soldiers
             showLoading();
             try {
                 const response = await fetch(`/duty-assignments/available-soldiers?date=${date}&duty_id=${dutyId}`);
@@ -882,7 +982,6 @@
                 let soldiersOptions = '';
                 if (result.success && result.data && result.data.length > 0) {
                     result.data.forEach(soldier => {
-                        const statusColor = soldier.is_available ? 'text-green-600' : 'text-red-600';
                         const statusText = soldier.is_available ? 'Available' : 'Unavailable';
                         const availabilityInfo = soldier.availability_reason ?
                             ` (${soldier.availability_reason})` : '';
@@ -945,9 +1044,7 @@
                     </div>
                 `;
 
-                // Add search functionality
                 setupSoldierSearch();
-
                 showQuickActionModal();
             } catch (error) {
                 hideLoading();
@@ -963,18 +1060,12 @@
 
             searchInput.addEventListener('input', function() {
                 const searchTerm = this.value.toLowerCase();
-
                 allOptions.forEach(option => {
                     const text = option.textContent.toLowerCase();
-                    if (text.includes(searchTerm)) {
-                        option.style.display = '';
-                    } else {
-                        option.style.display = 'none';
-                    }
+                    option.style.display = text.includes(searchTerm) ? '' : 'none';
                 });
             });
 
-            // Color code options
             allOptions.forEach(option => {
                 const isAvailable = option.dataset.available === 'true';
                 option.style.backgroundColor = isAvailable ? '#f0fdf4' : '#fef2f2';
@@ -983,7 +1074,6 @@
         }
 
         // Handle Add Soldier
-        // Handle Add Soldier - Direct assignment without eligibility pre-check
         async function handleAddSoldier(event, dutyId) {
             event.preventDefault();
             const formData = new FormData(event.target);
@@ -1038,8 +1128,9 @@
         // Simple view details function
         function viewDutyDetails(dutyId, dutyName) {
             showToast(`Viewing details for: ${dutyName}`, 'info');
-            // You can expand this to show a detailed modal if needed
         }
+
+        // Event delegation for action buttons
         document.addEventListener('click', function(e) {
             if (e.target.closest('[data-action="cancel"]')) {
                 const button = e.target.closest('[data-action="cancel"]');
@@ -1047,7 +1138,6 @@
                 const soldierId = button.dataset.soldierId;
                 const soldierName = button.dataset.soldierName;
                 const dutyName = button.dataset.dutyName;
-
                 quickCancelAssignment(dutyId, soldierId, soldierName, dutyName);
             }
 
@@ -1057,9 +1147,46 @@
                 const soldierId = button.dataset.soldierId;
                 const soldierName = button.dataset.soldierName;
                 const dutyName = button.dataset.dutyName;
-
                 quickReassignSoldier(dutyId, soldierId, soldierName, dutyName);
             }
         });
     </script>
 @endpush
+
+@section('styles')
+    <style>
+        /* Custom scrollbar for select dropdowns */
+        select[size] {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f7fafc;
+        }
+
+        select[size]::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        select[size]::-webkit-scrollbar-track {
+            background: #f7fafc;
+            border-radius: 4px;
+        }
+
+        select[size]::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+
+        select[size]::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+
+        /* Smooth transitions for hover effects */
+        .group:hover .opacity-0 {
+            opacity: 1;
+        }
+
+        /* Custom tooltip styles */
+        [title] {
+            position: relative;
+        }
+    </style>
+@endsection

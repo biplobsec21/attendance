@@ -14,22 +14,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Collection;
 
-class DutyAssignmentService
+class UpdatedDutyAssignmentService
 {
     /**
      * Cache for exclusion lists to avoid repeated queries
      */
     protected $exclusionCache = [];
-
-    /**
-     * Minimum break between duties in minutes
-     */
-    protected $minBreakMinutes = 60; // 1 hour minimum break
-
-    /**
-     * Maximum duties per soldier per day
-     */
-    protected $maxDutiesPerDay = 2;
 
     /**
      * Assign roster duties for a given date with proper transaction handling.
@@ -41,9 +31,6 @@ class DutyAssignmentService
 
             Log::info('Starting duty assignment process', ['date' => $date]);
 
-            // Clear any existing assignments for this date to avoid duplicates
-            SoldierDuty::where('assigned_date', $date)->delete();
-
             // 1. Get all active roster duties with manpower requirements
             $duties = Duty::where('status', 'Active')
                 ->whereHas('dutyRanks', function ($q) {
@@ -52,11 +39,7 @@ class DutyAssignmentService
                 ->with(['dutyRanks' => function ($q) {
                     $q->where('duty_type', 'roster');
                 }])
-                ->get()
-                ->sortBy(function ($duty) {
-                    // Sort duties by start time for better assignment order
-                    return $this->parseTimeString($duty->start_time);
-                });
+                ->get();
 
             Log::info('Active duties retrieved', [
                 'date' => $date,
@@ -79,7 +62,6 @@ class DutyAssignmentService
 
             // Track assignments made during this process
             $pendingAssignments = [];
-            $soldierDutyCount = [];
 
             // 3. For each duty, handle group and individual rank assignments
             foreach ($duties as $duty) {
@@ -92,27 +74,20 @@ class DutyAssignmentService
                     'total_ranks' => $duty->dutyRanks->count()
                 ]);
 
-                $this->assignDutyToSoldiers($duty, $date, $excludedSoldierIds, $pendingAssignments, $soldierDutyCount);
+                $this->assignDutyToSoldiers($duty, $date, $excludedSoldierIds, $pendingAssignments);
             }
 
             Log::info('Duty assignment process completed successfully', [
                 'date' => $date,
-                'duties_processed' => $duties->count(),
-                'total_assignments' => count($pendingAssignments)
-            ]);
-
-            return [
-                'success' => true,
-                'assignments_count' => count($pendingAssignments),
                 'duties_processed' => $duties->count()
-            ];
+            ]);
         });
     }
 
     /**
      * Assign a specific duty to soldiers, handling both group and individual ranks.
      */
-    protected function assignDutyToSoldiers(Duty $duty, string $date, array $excludedSoldierIds, array &$pendingAssignments, array &$soldierDutyCount)
+    protected function assignDutyToSoldiers(Duty $duty, string $date, array $excludedSoldierIds, array &$pendingAssignments)
     {
         $processedGroups = [];
         $dutyRanks = $duty->dutyRanks->where('duty_type', 'roster');
@@ -137,7 +112,7 @@ class DutyAssignmentService
                     'ranks_in_group' => $groupedRanks->get($dutyRank->group_id)->pluck('rank_id')->toArray()
                 ]);
 
-                $assigned = $this->assignGroupDuty($duty, $dutyRank, $date, $excludedSoldierIds, $pendingAssignments, $soldierDutyCount);
+                $assigned = $this->assignGroupDuty($duty, $dutyRank, $date, $excludedSoldierIds, $pendingAssignments);
 
                 // Mark group as processed immediately after first attempt
                 $processedGroups[] = $dutyRank->group_id;
@@ -162,7 +137,7 @@ class DutyAssignmentService
                     'manpower' => $dutyRank->manpower
                 ]);
 
-                $this->assignIndividualRankDuty($duty, $dutyRank, $date, $excludedSoldierIds, $pendingAssignments, $soldierDutyCount);
+                $this->assignIndividualRankDuty($duty, $dutyRank, $date, $excludedSoldierIds, $pendingAssignments);
             }
             // Skip this rank because its group was already processed
             elseif (in_array($dutyRank->group_id, $processedGroups)) {
@@ -184,7 +159,7 @@ class DutyAssignmentService
     /**
      * Assign group duty - select ONE rank from the group that has available soldiers.
      */
-    protected function assignGroupDuty(Duty $duty, DutyRank $dutyRank, string $date, array $excludedSoldierIds, array &$pendingAssignments, array &$soldierDutyCount): bool
+    protected function assignGroupDuty(Duty $duty, DutyRank $dutyRank, string $date, array $excludedSoldierIds, array &$pendingAssignments): bool
     {
         $groupRanks = $duty->dutyRanks
             ->where('duty_type', 'roster')
@@ -204,8 +179,7 @@ class DutyAssignmentService
                 $duty,
                 $date,
                 $excludedSoldierIds,
-                $pendingAssignments,
-                $soldierDutyCount
+                $pendingAssignments
             );
 
             $manpower = $groupRank->manpower ?? 1;
@@ -224,8 +198,7 @@ class DutyAssignmentService
                     $eligibleSoldiers->take($manpower),
                     $duty,
                     $date,
-                    $pendingAssignments,
-                    $soldierDutyCount
+                    $pendingAssignments
                 );
 
                 Log::info('Group duty assigned successfully', [
@@ -255,15 +228,14 @@ class DutyAssignmentService
     /**
      * Assign individual rank duty.
      */
-    protected function assignIndividualRankDuty(Duty $duty, DutyRank $dutyRank, string $date, array $excludedSoldierIds, array &$pendingAssignments, array &$soldierDutyCount)
+    protected function assignIndividualRankDuty(Duty $duty, DutyRank $dutyRank, string $date, array $excludedSoldierIds, array &$pendingAssignments)
     {
         $eligibleSoldiers = $this->getEligibleSoldiersForDuty(
             $dutyRank->rank_id,
             $duty,
             $date,
             $excludedSoldierIds,
-            $pendingAssignments,
-            $soldierDutyCount
+            $pendingAssignments
         );
 
         $manpower = $dutyRank->manpower ?? 1;
@@ -293,7 +265,7 @@ class DutyAssignmentService
         $toAssign = $eligibleSoldiers->take($manpower);
 
         if ($toAssign->isNotEmpty()) {
-            $this->createSoldierDutyAssignments($toAssign, $duty, $date, $pendingAssignments, $soldierDutyCount);
+            $this->createSoldierDutyAssignments($toAssign, $duty, $date, $pendingAssignments);
 
             Log::info('Individual rank duty assigned', [
                 'duty_id' => $duty->id,
@@ -318,7 +290,7 @@ class DutyAssignmentService
     /**
      * Get eligible soldiers for a duty with all validation checks.
      */
-    protected function getEligibleSoldiersForDuty(int $rankId, Duty $duty, string $date, array $excludedSoldierIds, array $pendingAssignments = [], array $soldierDutyCount = [])
+    protected function getEligibleSoldiersForDuty(int $rankId, Duty $duty, string $date, array $excludedSoldierIds, array $pendingAssignments = [])
     {
         Log::info('Finding eligible soldiers', [
             'rank_id' => $rankId,
@@ -379,7 +351,6 @@ class DutyAssignmentService
 
         $fairRotationFiltered = 0;
         $timeConflictFiltered = 0;
-        $maxDutiesFiltered = 0;
 
         // Filter: Fair rotation check (no back-to-back same duty)
         $soldiers = $soldiers->filter(function ($soldier) use ($lastAssignments, $date, &$fairRotationFiltered) {
@@ -410,7 +381,7 @@ class DutyAssignmentService
             return true;
         });
 
-        // Filter: Time conflict check with minimum break enforcement
+        // Filter: Time conflict check
         $soldiers = $soldiers->filter(function ($soldier) use ($existingAssignments, $duty, $date, $pendingAssignments, &$timeConflictFiltered) {
             $hasConflict = $this->hasTimeConflictWithPendingAssignments($soldier->id, $duty, $date, $existingAssignments, $pendingAssignments);
             if ($hasConflict) {
@@ -426,30 +397,10 @@ class DutyAssignmentService
             return !$hasConflict;
         });
 
-        // Filter: Maximum duties per day check
-        $soldiers = $soldiers->filter(function ($soldier) use ($soldierDutyCount, &$maxDutiesFiltered) {
-            $currentDuties = $soldierDutyCount[$soldier->id] ?? 0;
-            if ($currentDuties >= $this->maxDutiesPerDay) {
-                $maxDutiesFiltered++;
-                Log::debug('Soldier filtered by maximum duties limit', [
-                    'soldier_id' => $soldier->id,
-                    'current_duties' => $currentDuties,
-                    'max_duties' => $this->maxDutiesPerDay
-                ]);
-                return false;
-            }
-            return true;
-        });
-
-        // Sort by: 1. Fewest current duties, 2. Last duty date (fair rotation)
-        $finalSoldiers = $soldiers->sortBy(function ($soldier) use ($lastAssignments, $soldierDutyCount) {
-            $currentDuties = $soldierDutyCount[$soldier->id] ?? 0;
+        // Sort by last duty date (prioritize soldiers who haven't had duty recently)
+        $finalSoldiers = $soldiers->sortBy(function ($soldier) use ($lastAssignments) {
             $lastAssignment = $lastAssignments->get($soldier->id);
-            $lastDutyDate = $lastAssignment ? $lastAssignment->assigned_date : '1900-01-01';
-
-            // Primary sort by current duty count (load balancing)
-            // Secondary sort by last duty date (fair rotation)
-            return [$currentDuties, $lastDutyDate];
+            return $lastAssignment ? $lastAssignment->assigned_date : '1900-01-01';
         })->values();
 
         Log::info('Eligible soldiers filtering completed', [
@@ -458,18 +409,16 @@ class DutyAssignmentService
             'initial_count' => $initialCount,
             'after_fair_rotation' => $initialCount - $fairRotationFiltered,
             'after_time_conflict' => $initialCount - $fairRotationFiltered - $timeConflictFiltered,
-            'after_max_duties' => $initialCount - $fairRotationFiltered - $timeConflictFiltered - $maxDutiesFiltered,
             'final_eligible' => $finalSoldiers->count(),
             'filtered_by_fair_rotation' => $fairRotationFiltered,
-            'filtered_by_time_conflict' => $timeConflictFiltered,
-            'filtered_by_max_duties' => $maxDutiesFiltered
+            'filtered_by_time_conflict' => $timeConflictFiltered
         ]);
 
         return $finalSoldiers;
     }
 
     /**
-     * Check for time conflicts using cached assignments (IMPROVED VERSION)
+     * Check for time conflicts using cached assignments (FIXED VERSION)
      */
     protected function hasTimeConflictCached(int $soldierId, Duty $duty, string $startDate, Collection $assignmentsByDate): bool
     {
@@ -494,6 +443,15 @@ class DutyAssignmentService
                 continue; // No assignments on this date, no conflict
             }
 
+            // Parse new duty times
+            $newStart = Carbon::parse($checkDate . ' ' . $duty->start_time);
+            $newEnd = Carbon::parse($checkDate . ' ' . $duty->end_time);
+
+            // Handle overnight duty for new assignment
+            if ($newEnd->lt($newStart)) {
+                $newEnd->addDay();
+            }
+
             // Check against all existing assignments on this date
             foreach ($assignmentsOnDate as $existing) {
                 // Skip if it's the same duty (allow multiple days of same duty)
@@ -501,7 +459,17 @@ class DutyAssignmentService
                     continue;
                 }
 
-                if ($this->hasTimeOverlapOrInsufficientBreak($duty, $existing)) {
+                // Parse existing duty times
+                $existingStart = Carbon::parse($checkDate . ' ' . $existing->start_time);
+                $existingEnd = Carbon::parse($checkDate . ' ' . $existing->end_time);
+
+                // Handle overnight existing duty
+                if ($existingEnd->lt($existingStart)) {
+                    $existingEnd->addDay();
+                }
+
+                // Check for time overlap
+                if ($this->timeRangesOverlap($newStart, $newEnd, $existingStart, $existingEnd)) {
                     Log::warning('TIME CONFLICT DETECTED - Soldier cannot have two duties at same time', [
                         'soldier_id' => $soldierId,
                         'date' => $checkDate,
@@ -518,7 +486,7 @@ class DutyAssignmentService
     }
 
     /**
-     * Check for time conflicts with pending assignments (IMPROVED VERSION)
+     * Check for time conflicts with pending assignments (FIXED VERSION)
      */
     protected function hasTimeConflictWithPendingAssignments(int $soldierId, Duty $duty, string $startDate, Collection $assignmentsByDate, array $pendingAssignments): bool
     {
@@ -534,6 +502,15 @@ class DutyAssignmentService
         for ($day = 0; $day < $durationDays; $day++) {
             $checkDate = Carbon::parse($startDate)->addDays($day)->toDateString();
 
+            // Parse new duty times
+            $newStart = Carbon::parse($checkDate . ' ' . $duty->start_time);
+            $newEnd = Carbon::parse($checkDate . ' ' . $duty->end_time);
+
+            // Handle overnight duty
+            if ($newEnd->lt($newStart)) {
+                $newEnd->addDay();
+            }
+
             // Check pending assignments for this soldier on this date
             foreach ($pendingAssignments as $pendingAssignment) {
                 if ($pendingAssignment['soldier_id'] == $soldierId && $pendingAssignment['assigned_date'] == $checkDate) {
@@ -543,14 +520,17 @@ class DutyAssignmentService
                         continue;
                     }
 
-                    // Create temporary duty object for pending assignment
-                    $pendingDuty = new Duty([
-                        'start_time' => $pendingAssignment['start_time'],
-                        'end_time' => $pendingAssignment['end_time'],
-                        'duration_days' => $pendingAssignment['duration_days'] ?? 1
-                    ]);
+                    // Parse pending duty times
+                    $pendingStart = Carbon::parse($checkDate . ' ' . $pendingAssignment['start_time']);
+                    $pendingEnd = Carbon::parse($checkDate . ' ' . $pendingAssignment['end_time']);
 
-                    if ($this->hasTimeOverlapOrInsufficientBreak($duty, (object) $pendingAssignment)) {
+                    // Handle overnight pending duty
+                    if ($pendingEnd->lt($pendingStart)) {
+                        $pendingEnd->addDay();
+                    }
+
+                    // Check for time overlap
+                    if ($this->timeRangesOverlap($newStart, $newEnd, $pendingStart, $pendingEnd)) {
                         Log::warning('TIME CONFLICT WITH PENDING ASSIGNMENT - Soldier cannot have two duties at same time', [
                             'soldier_id' => $soldierId,
                             'date' => $checkDate,
@@ -568,79 +548,6 @@ class DutyAssignmentService
     }
 
     /**
-     * Check for time overlap or insufficient break between duties (NEW METHOD)
-     */
-    protected function hasTimeOverlapOrInsufficientBreak($newDuty, $existingDuty): bool
-    {
-        $newStart = $this->parseTimeString($newDuty->start_time);
-        $newEnd = $this->parseTimeString($newDuty->end_time);
-        $existingStart = $this->parseTimeString($existingDuty->start_time);
-        $existingEnd = $this->parseTimeString($existingDuty->end_time);
-
-        // Handle overnight duties
-        if ($newEnd->lt($newStart)) $newEnd->addDay();
-        if ($existingEnd->lt($existingStart)) $existingEnd->addDay();
-
-        // Check for direct time overlap
-        if ($this->timeRangesOverlap($newStart, $newEnd, $existingStart, $existingEnd)) {
-            Log::debug('Direct time overlap detected', [
-                'new_duty' => $newDuty->start_time . ' - ' . $newDuty->end_time,
-                'existing_duty' => $existingDuty->start_time . ' - ' . $existingDuty->end_time
-            ]);
-            return true;
-        }
-
-        // Check for insufficient break (minimum break between duties)
-        $breakAfterExisting = $newStart->diffInMinutes($existingEnd);
-        $breakBeforeExisting = $existingStart->diffInMinutes($newEnd);
-
-        // If new duty starts after existing duty ends, check break time
-        if ($breakAfterExisting > 0 && $breakAfterExisting < $this->minBreakMinutes) {
-            Log::debug('Insufficient break after existing duty', [
-                'break_minutes' => $breakAfterExisting,
-                'required_break' => $this->minBreakMinutes,
-                'new_duty' => $newDuty->start_time . ' - ' . $newDuty->end_time,
-                'existing_duty' => $existingDuty->start_time . ' - ' . $existingDuty->end_time
-            ]);
-            return true;
-        }
-
-        // If new duty ends before existing duty starts, check break time
-        if ($breakBeforeExisting > 0 && $breakBeforeExisting < $this->minBreakMinutes) {
-            Log::debug('Insufficient break before existing duty', [
-                'break_minutes' => $breakBeforeExisting,
-                'required_break' => $this->minBreakMinutes,
-                'new_duty' => $newDuty->start_time . ' - ' . $newDuty->end_time,
-                'existing_duty' => $existingDuty->start_time . ' - ' . $existingDuty->end_time
-            ]);
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Parse time string properly without date (FIXED METHOD)
-     */
-    protected function parseTimeString(string $timeString): Carbon
-    {
-        // Handle cases where time might already contain date
-        if (str_contains($timeString, ' ')) {
-            $parts = explode(' ', $timeString);
-            // Take the last part which should be the time
-            $timeString = end($parts);
-        }
-
-        // Ensure time string has seconds
-        if (substr_count($timeString, ':') === 1) {
-            $timeString .= ':00';
-        }
-
-        // Parse as time only, using today's date as base (will be ignored in comparisons)
-        return Carbon::createFromFormat('H:i:s', $timeString);
-    }
-
-    /**
      * Check if two time ranges overlap (FIXED VERSION)
      */
     protected function timeRangesOverlap(Carbon $start1, Carbon $end1, Carbon $start2, Carbon $end2): bool
@@ -653,7 +560,7 @@ class DutyAssignmentService
     /**
      * Create soldier duty assignments for multiple days if duty spans multiple days.
      */
-    protected function createSoldierDutyAssignments(Collection $soldiers, Duty $duty, string $startDate, array &$pendingAssignments, array &$soldierDutyCount)
+    protected function createSoldierDutyAssignments(Collection $soldiers, Duty $duty, string $startDate, array &$pendingAssignments)
     {
         $durationDays = $duty->duration_days ?? 1;
 
@@ -683,29 +590,26 @@ class DutyAssignmentService
                 ];
                 $pendingAssignments[] = $pendingAssignment;
 
-                // Update soldier duty count
-                if (!isset($soldierDutyCount[$soldier->id])) {
-                    $soldierDutyCount[$soldier->id] = 0;
-                }
-                $soldierDutyCount[$soldier->id]++;
-
-                SoldierDuty::create([
-                    'soldier_id'    => $soldier->id,
-                    'duty_id'       => $duty->id,
-                    'assigned_date' => $assignmentDate,
-                    'start_time'    => $duty->start_time,
-                    'end_time'      => $duty->end_time,
-                    'duration_days' => $durationDays,
-                    'status'        => 'assigned',
-                ]);
+                SoldierDuty::updateOrCreate(
+                    [
+                        'soldier_id'    => $soldier->id,
+                        'duty_id'       => $duty->id,
+                        'assigned_date' => $assignmentDate,
+                    ],
+                    [
+                        'start_time'    => $duty->start_time,
+                        'end_time'      => $duty->end_time,
+                        'duration_days' => $durationDays,
+                        'status'        => 'assigned',
+                    ]
+                );
 
                 Log::debug('Soldier duty record created', [
                     'soldier_id' => $soldier->id,
                     'duty_id' => $duty->id,
                     'assigned_date' => $assignmentDate,
                     'day_number' => $day + 1,
-                    'total_days' => $durationDays,
-                    'soldier_duty_count' => $soldierDutyCount[$soldier->id]
+                    'total_days' => $durationDays
                 ]);
             }
 
@@ -717,8 +621,7 @@ class DutyAssignmentService
                 'start_date' => $startDate,
                 'end_date' => Carbon::parse($startDate)->addDays($durationDays - 1)->toDateString(),
                 'duration_days' => $durationDays,
-                'records_created' => $durationDays,
-                'total_duties_today' => $soldierDutyCount[$soldier->id] ?? 0
+                'records_created' => $durationDays
             ]);
         }
     }
@@ -820,133 +723,6 @@ class DutyAssignmentService
     }
 
     /**
-     * Get detailed duty assignments for a specific date
-     */
-    public function getDutyDetailsForDate(string $date): array
-    {
-        $date = Carbon::parse($date)->toDateString();
-
-        Log::info('Getting duty details for date', ['date' => $date]);
-
-        // Get all assignments for the date with related data
-        $assignments = SoldierDuty::with([
-            'soldier:id,army_no,full_name,rank_id,company_id',
-            'soldier.rank:id,name',
-            'soldier.company:id,name',
-            'duty:id,duty_name,start_time,end_time,duration_days,manpower'
-        ])
-            ->where('assigned_date', $date)
-            ->orderBy('duty_id')
-            ->orderBy('soldier_id')
-            ->get();
-
-        // Group assignments by duty
-        $duties = Duty::where('status', 'Active')
-            ->whereHas('dutyRanks', function ($q) {
-                $q->where('duty_type', 'roster');
-            })
-            ->with(['dutyRanks' => function ($q) {
-                $q->where('duty_type', 'roster')->with('rank');
-            }])
-            ->get();
-
-        $dutyDetails = [];
-
-        foreach ($duties as $duty) {
-            $dutyAssignments = $assignments->where('duty_id', $duty->id);
-
-            $dutyDetails[] = [
-                'duty_id' => $duty->id,
-                'duty_name' => $duty->duty_name,
-                'start_time' => $duty->start_time,
-                'end_time' => $duty->end_time,
-                'duration_days' => $duty->duration_days,
-                'required_manpower' => $duty->manpower,
-                'assigned_soldiers' => $dutyAssignments->map(function ($assignment) {
-                    return [
-                        'soldier_id' => $assignment->soldier_id,
-                        'army_no' => $assignment->soldier->army_no ?? 'N/A',
-                        'full_name' => $assignment->soldier->full_name ?? 'N/A',
-                        'rank' => $assignment->soldier->rank->name ?? 'N/A',
-                        'company' => $assignment->soldier->company->name ?? 'N/A',
-                        'start_time' => $assignment->start_time,
-                        'end_time' => $assignment->end_time,
-                        'remarks' => $assignment->remarks
-                    ];
-                })->toArray(),
-                'rank_requirements' => $duty->dutyRanks->map(function ($dutyRank) {
-                    return [
-                        'rank_id' => $dutyRank->rank_id,
-                        'rank_name' => $dutyRank->rank->name ?? 'N/A',
-                        'manpower' => $dutyRank->manpower,
-                        'group_id' => $dutyRank->group_id,
-                        'assignment_type' => $dutyRank->duty_type
-                    ];
-                })->toArray(),
-                'fulfillment_rate' => $duty->manpower > 0
-                    ? round(($dutyAssignments->count() / $duty->manpower) * 100, 2)
-                    : 0,
-                'assigned_count' => $dutyAssignments->count(),
-                'shortage' => max(0, $duty->manpower - $dutyAssignments->count())
-            ];
-        }
-
-        // Get fixed duties for the date
-        $fixedDuties = DutyRank::with([
-            'duty:id,duty_name,start_time,end_time',
-            'soldier:id,army_no,full_name,rank_id,company_id',
-            'soldier.rank:id,name',
-            'soldier.company:id,name'
-        ])
-            ->where('duty_type', 'fixed')
-            ->whereHas('duty', function ($q) {
-                $q->where('status', 'Active');
-            })
-            ->get()
-            ->map(function ($fixedDuty) use ($date) {
-                return [
-                    'duty_id' => $fixedDuty->duty_id,
-                    'duty_name' => $fixedDuty->duty->duty_name ?? 'N/A',
-                    'soldier_id' => $fixedDuty->soldier_id,
-                    'army_no' => $fixedDuty->soldier->army_no ?? 'N/A',
-                    'full_name' => $fixedDuty->soldier->full_name ?? 'N/A',
-                    'rank' => $fixedDuty->soldier->rank->name ?? 'N/A',
-                    'company' => $fixedDuty->soldier->company->name ?? 'N/A',
-                    'start_time' => $fixedDuty->duty->start_time ?? 'N/A',
-                    'end_time' => $fixedDuty->duty->end_time ?? 'N/A',
-                    'assignment_type' => 'fixed'
-                ];
-            });
-
-        $statistics = $this->getAssignmentStatistics($date);
-        $unfulfilled = $this->getUnfulfilledDuties($date);
-
-        $result = [
-            'date' => $date,
-            'summary' => [
-                'total_duties' => count($dutyDetails),
-                'total_assignments' => $statistics['total_assignments'],
-                'unique_soldiers' => $statistics['unique_soldiers'],
-                'unfulfilled_duties' => count($unfulfilled),
-                'average_duties_per_soldier' => $statistics['average_duties_per_soldier']
-            ],
-            'roster_duties' => $dutyDetails,
-            'fixed_duties' => $fixedDuties,
-            'unfulfilled_duties' => $unfulfilled,
-            'statistics' => $statistics
-        ];
-
-        Log::info('Duty details retrieved successfully', [
-            'date' => $date,
-            'total_roster_duties' => count($dutyDetails),
-            'total_fixed_duties' => $fixedDuties->count(),
-            'total_assignments' => $statistics['total_assignments']
-        ]);
-
-        return $result;
-    }
-
-    /**
      * Assign duties for a date range.
      */
     public function assignDutiesForDateRange(string $startDate, string $endDate)
@@ -965,16 +741,11 @@ class DutyAssignmentService
 
         while ($start->lte($end)) {
             try {
-                $result = $this->assignDutiesForDate($start->toDateString());
-                $assignedDates[] = [
-                    'date' => $start->toDateString(),
-                    'assignments' => $result['assignments_count'] ?? 0,
-                    'duties_processed' => $result['duties_processed'] ?? 0
-                ];
+                $this->assignDutiesForDate($start->toDateString());
+                $assignedDates[] = $start->toDateString();
 
                 Log::info('Successfully assigned duties for date', [
-                    'date' => $start->toDateString(),
-                    'assignments' => $result['assignments_count'] ?? 0
+                    'date' => $start->toDateString()
                 ]);
             } catch (\Exception $e) {
                 $errors[] = [
@@ -1139,21 +910,6 @@ class DutyAssignmentService
             }
         }
 
-        // Check maximum duties per day
-        $currentDuties = SoldierDuty::where('soldier_id', $soldierId)
-            ->where('assigned_date', $date)
-            ->count();
-
-        if ($currentDuties >= $this->maxDutiesPerDay) {
-            $canAssign = false;
-            $reasons[] = "Soldier has reached maximum duties per day ({$this->maxDutiesPerDay})";
-            Log::debug('Soldier failed: maximum duties reached', [
-                'soldier_id' => $soldierId,
-                'current_duties' => $currentDuties,
-                'max_duties' => $this->maxDutiesPerDay
-            ]);
-        }
-
         Log::info('Soldier eligibility check completed', [
             'soldier_id' => $soldierId,
             'duty_id' => $dutyId,
@@ -1200,16 +956,6 @@ class DutyAssignmentService
                 ];
             })->values();
 
-        // Get soldier duty distribution
-        $soldierDutyDistribution = SoldierDuty::where('assigned_date', $date)
-            ->selectRaw('soldier_id, COUNT(*) as duty_count')
-            ->groupBy('soldier_id')
-            ->get()
-            ->groupBy('duty_count')
-            ->map(function ($group, $dutyCount) {
-                return $group->count();
-            })->toArray();
-
         $statistics = [
             'date' => $date,
             'total_assignments' => $totalAssignments,
@@ -1218,9 +964,7 @@ class DutyAssignmentService
             'assignments_by_duty' => $assignmentsByDuty,
             'average_duties_per_soldier' => $uniqueSoldiers > 0
                 ? round($totalAssignments / $uniqueSoldiers, 2)
-                : 0,
-            'soldier_duty_distribution' => $soldierDutyDistribution,
-            'max_duties_per_soldier' => $soldierDutyDistribution ? max(array_keys($soldierDutyDistribution)) : 0
+                : 0
         ];
 
         Log::info('Assignment statistics generated', $statistics);
@@ -1422,6 +1166,133 @@ class DutyAssignmentService
 
             return $deletedCount > 0;
         });
+    }
+
+    /**
+     * Get detailed duty assignments for a specific date
+     */
+    public function getDutyDetailsForDate(string $date): array
+    {
+        $date = Carbon::parse($date)->toDateString();
+
+        Log::info('Getting duty details for date', ['date' => $date]);
+
+        // Get all assignments for the date with related data
+        $assignments = SoldierDuty::with([
+            'soldier:id,army_no,full_name,rank_id,company_id',
+            'soldier.rank:id,name',
+            'soldier.company:id,name',
+            'duty:id,duty_name,start_time,end_time,duration_days,manpower'
+        ])
+            ->where('assigned_date', $date)
+            ->orderBy('duty_id')
+            ->orderBy('soldier_id')
+            ->get();
+
+        // Group assignments by duty
+        $duties = Duty::where('status', 'Active')
+            ->whereHas('dutyRanks', function ($q) {
+                $q->where('duty_type', 'roster');
+            })
+            ->with(['dutyRanks' => function ($q) {
+                $q->where('duty_type', 'roster')->with('rank');
+            }])
+            ->get();
+
+        $dutyDetails = [];
+
+        foreach ($duties as $duty) {
+            $dutyAssignments = $assignments->where('duty_id', $duty->id);
+
+            $dutyDetails[] = [
+                'duty_id' => $duty->id,
+                'duty_name' => $duty->duty_name,
+                'start_time' => $duty->start_time,
+                'end_time' => $duty->end_time,
+                'duration_days' => $duty->duration_days,
+                'required_manpower' => $duty->manpower,
+                'assigned_soldiers' => $dutyAssignments->map(function ($assignment) {
+                    return [
+                        'soldier_id' => $assignment->soldier_id,
+                        'army_no' => $assignment->soldier->army_no ?? 'N/A',
+                        'full_name' => $assignment->soldier->full_name ?? 'N/A',
+                        'rank' => $assignment->soldier->rank->name ?? 'N/A',
+                        'company' => $assignment->soldier->company->name ?? 'N/A',
+                        'start_time' => $assignment->start_time,
+                        'end_time' => $assignment->end_time,
+                        'remarks' => $assignment->remarks
+                    ];
+                })->toArray(),
+                'rank_requirements' => $duty->dutyRanks->map(function ($dutyRank) {
+                    return [
+                        'rank_id' => $dutyRank->rank_id,
+                        'rank_name' => $dutyRank->rank->name ?? 'N/A',
+                        'manpower' => $dutyRank->manpower,
+                        'group_id' => $dutyRank->group_id,
+                        'assignment_type' => $dutyRank->duty_type
+                    ];
+                })->toArray(),
+                'fulfillment_rate' => $duty->manpower > 0
+                    ? round(($dutyAssignments->count() / $duty->manpower) * 100, 2)
+                    : 0,
+                'assigned_count' => $dutyAssignments->count(),
+                'shortage' => max(0, $duty->manpower - $dutyAssignments->count())
+            ];
+        }
+
+        // Get fixed duties for the date
+        $fixedDuties = DutyRank::with([
+            'duty:id,duty_name,start_time,end_time',
+            'soldier:id,army_no,full_name,rank_id,company_id',
+            'soldier.rank:id,name',
+            'soldier.company:id,name'
+        ])
+            ->where('duty_type', 'fixed')
+            ->whereHas('duty', function ($q) {
+                $q->where('status', 'Active');
+            })
+            ->get()
+            ->map(function ($fixedDuty) use ($date) {
+                return [
+                    'duty_id' => $fixedDuty->duty_id,
+                    'duty_name' => $fixedDuty->duty->duty_name ?? 'N/A',
+                    'soldier_id' => $fixedDuty->soldier_id,
+                    'army_no' => $fixedDuty->soldier->army_no ?? 'N/A',
+                    'full_name' => $fixedDuty->soldier->full_name ?? 'N/A',
+                    'rank' => $fixedDuty->soldier->rank->name ?? 'N/A',
+                    'company' => $fixedDuty->soldier->company->name ?? 'N/A',
+                    'start_time' => $fixedDuty->duty->start_time ?? 'N/A',
+                    'end_time' => $fixedDuty->duty->end_time ?? 'N/A',
+                    'assignment_type' => 'fixed'
+                ];
+            });
+
+        $statistics = $this->getAssignmentStatistics($date);
+        $unfulfilled = $this->getUnfulfilledDuties($date);
+
+        $result = [
+            'date' => $date,
+            'summary' => [
+                'total_duties' => count($dutyDetails),
+                'total_assignments' => $statistics['total_assignments'],
+                'unique_soldiers' => $statistics['unique_soldiers'],
+                'unfulfilled_duties' => count($unfulfilled),
+                'average_duties_per_soldier' => $statistics['average_duties_per_soldier']
+            ],
+            'roster_duties' => $dutyDetails,
+            'fixed_duties' => $fixedDuties,
+            'unfulfilled_duties' => $unfulfilled,
+            'statistics' => $statistics
+        ];
+
+        Log::info('Duty details retrieved successfully', [
+            'date' => $date,
+            'total_roster_duties' => count($dutyDetails),
+            'total_fixed_duties' => $fixedDuties->count(),
+            'total_assignments' => $statistics['total_assignments']
+        ]);
+
+        return $result;
     }
 
     /**
@@ -1909,11 +1780,10 @@ class DutyAssignmentService
                 // Check for time overlaps
                 foreach ($soldierAssignments as $i => $assignment1) {
                     foreach ($soldierAssignments->slice($i + 1) as $assignment2) {
-                        // Use the fixed time parsing method
-                        $start1 = $this->parseTimeString($assignment1->start_time);
-                        $end1 = $this->parseTimeString($assignment1->end_time);
-                        $start2 = $this->parseTimeString($assignment2->start_time);
-                        $end2 = $this->parseTimeString($assignment2->end_time);
+                        $start1 = Carbon::createFromTimeString($assignment1->start_time);
+                        $end1 = Carbon::createFromTimeString($assignment1->end_time);
+                        $start2 = Carbon::createFromTimeString($assignment2->start_time);
+                        $end2 = Carbon::createFromTimeString($assignment2->end_time);
 
                         // Handle overnight duties
                         if ($end1->lt($start1)) $end1->addDay();
@@ -1970,29 +1840,13 @@ class DutyAssignmentService
             $dateString = $current->toDateString();
             $conflicts = $this->getConflictAnalysis($dateString);
             $unfulfilled = $this->getUnfulfilledDuties($dateString);
-            $statistics = $this->getAssignmentStatistics($dateString);
-
-            // Check for soldiers with too many duties
-            $overloadedSoldiers = [];
-            if (isset($statistics['soldier_duty_distribution'])) {
-                foreach ($statistics['soldier_duty_distribution'] as $dutyCount => $soldierCount) {
-                    if ($dutyCount > $this->maxDutiesPerDay) {
-                        $overloadedSoldiers[] = [
-                            'duty_count' => $dutyCount,
-                            'soldier_count' => $soldierCount
-                        ];
-                    }
-                }
-            }
 
             $validationResults[$dateString] = [
                 'has_conflicts' => $conflicts['total_conflicts'] > 0,
                 'conflicts' => $conflicts['conflicts'],
                 'has_unfulfilled' => count($unfulfilled) > 0,
                 'unfulfilled_duties' => $unfulfilled,
-                'has_overloaded' => !empty($overloadedSoldiers),
-                'overloaded_soldiers' => $overloadedSoldiers,
-                'is_valid' => $conflicts['total_conflicts'] === 0 && count($unfulfilled) === 0 && empty($overloadedSoldiers)
+                'is_valid' => $conflicts['total_conflicts'] === 0
             ];
 
             $current->addDay();
