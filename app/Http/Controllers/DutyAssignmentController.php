@@ -30,7 +30,8 @@ class DutyAssignmentController extends Controller
     {
         // dd($request->all());
         $request->validate([
-            'date' => 'required|date|after_or_equal:' . now()->format('Y-m-d')
+            // 'date' => 'required|date|after_or_equal:' . now()->format('Y-m-d')
+            'date' => 'nullable'
         ]);
 
         try {
