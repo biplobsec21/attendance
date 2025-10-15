@@ -101,7 +101,7 @@
                         </a></li>
                     <li><a href="{{ route('leave-types.index') }}"
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition">
-                            <i class="fas fa-layer-group text-blue-500"></i> lve type
+                            <i class="fas fa-layer-group text-blue-500"></i> Lve type
                         </a></li>
                 </ul>
             </div>
