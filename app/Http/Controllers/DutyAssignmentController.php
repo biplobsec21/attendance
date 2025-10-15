@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\DutyAssignmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use PDF;
 
 class DutyAssignmentController extends Controller
 {
@@ -313,136 +314,19 @@ class DutyAssignmentController extends Controller
             $details = $this->dutyService->getDutyDetailsForDate($request->date);
             $date = $request->date;
 
-            // Generate CSV content
-            $filename = "duty_assignments_{$date}.csv";
-            $headers = [
-                'Content-Type' => 'text/csv',
-                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-            ];
+            // Generate PDF
+            $filename = "duty_assignments_{$date}.pdf";
 
-            $callback = function () use ($details, $date) {
-                $file = fopen('php://output', 'w');
+            $pdf = PDF::loadView('exports.duty_assignments_pdf', [
+                'details' => $details,
+                'date' => $date,
+                'generatedAt' => now()->format('Y-m-d H:i:s')
+            ]);
 
-                // Write report header
-                fputcsv($file, ['MILITARY DUTY ASSIGNMENT REPORT']);
-                fputcsv($file, ['Date:', $date]);
-                fputcsv($file, ['Generated:', date('Y-m-d H:i:s')]);
-                fputcsv($file, []);
+            // Set paper size to legal for better table layout
+            $pdf->setPaper('legal', 'landscape');
 
-                // Write table headers
-                fputcsv($file, [
-                    'Section',
-                    'Duty Name',
-                    'Duty ID',
-                    'Time',
-                    'Duration',
-                    'Required Manpower',
-                    'Assigned Count',
-                    'Fulfillment Rate',
-                    'Rank Name',
-                    'Rank Manpower',
-                    'Soldier ID',
-                    'Army No',
-                    'Full Name',
-                    'Rank',
-                    'Company',
-                    'Duty Type'
-                ]);
-
-                // Process roster duties
-                if (isset($details['roster_duties']) && is_array($details['roster_duties'])) {
-                    foreach ($details['roster_duties'] as $duty) {
-                        // Format time for display
-                        $startTime = $duty['start_time'] instanceof \Illuminate\Support\Carbon
-                            ? $duty['start_time']->format('H:i')
-                            : $duty['start_time'];
-                        $endTime = $duty['end_time'] instanceof \Illuminate\Support\Carbon
-                            ? $duty['end_time']->format('H:i')
-                            : $duty['end_time'];
-
-                        // Process each rank requirement
-                        if (isset($duty['rank_requirements']) && is_array($duty['rank_requirements'])) {
-                            foreach ($duty['rank_requirements'] as $requirement) {
-                                // Process each soldier assigned to this duty
-                                if (isset($duty['assigned_soldiers']) && is_array($duty['assigned_soldiers'])) {
-                                    foreach ($duty['assigned_soldiers'] as $soldier) {
-                                        fputcsv($file, [
-                                            'ROSTER DUTY',
-                                            $duty['duty_name'],
-                                            $duty['duty_id'],
-                                            $startTime . ' - ' . $endTime,
-                                            $duty['duration_days'] . ' day',
-                                            $duty['required_manpower'],
-                                            $duty['assigned_count'],
-                                            $duty['fulfillment_rate'] . '%',
-                                            $requirement['rank_name'] ?? 'N/A',
-                                            $requirement['manpower'] ?? 0,
-                                            $soldier['soldier_id'],
-                                            $soldier['army_no'],
-                                            $soldier['full_name'],
-                                            $soldier['rank'],
-                                            $soldier['company'],
-                                            'Roster'
-                                        ]);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Process fixed duties
-                if (isset($details['fixed_duties'])) {
-                    // Convert to array if it's a collection
-                    $fixedDuties = $details['fixed_duties'] instanceof \Illuminate\Support\Collection
-                        ? $details['fixed_duties']->toArray()
-                        : $details['fixed_duties'];
-
-                    if (is_array($fixedDuties) && count($fixedDuties) > 0) {
-                        foreach ($fixedDuties as $duty) {
-                            // Format time for display
-                            $startTime = $duty['start_time'] instanceof \Illuminate\Support\Carbon
-                                ? $duty['start_time']->format('H:i')
-                                : $duty['start_time'];
-                            $endTime = $duty['end_time'] instanceof \Illuminate\Support\Carbon
-                                ? $duty['end_time']->format('H:i')
-                                : $duty['end_time'];
-
-                            fputcsv($file, [
-                                'FIXED DUTY',
-                                $duty['duty_name'],
-                                $duty['duty_id'],
-                                $startTime . ' - ' . $endTime,
-                                '1 day',
-                                1,
-                                1,
-                                '100%',
-                                $duty['rank'], // Use the soldier's rank
-                                1,
-                                $duty['soldier_id'],
-                                $duty['army_no'],
-                                $duty['full_name'],
-                                $duty['rank'],
-                                $duty['company'],
-                                'Fixed'
-                            ]);
-                        }
-                    }
-                }
-
-                // Write summary statistics
-                fputcsv($file, []);
-                fputcsv($file, ['SUMMARY STATISTICS']);
-                fputcsv($file, ['Total Duties:', $details['summary']['total_duties']]);
-                fputcsv($file, ['Total Assignments:', $details['summary']['total_assignments']]);
-                fputcsv($file, ['Unique Soldiers:', $details['summary']['unique_soldiers']]);
-                fputcsv($file, ['Unfulfilled Duties:', $details['summary']['unfulfilled_duties']]);
-                fputcsv($file, ['Average Duties/Soldier:', $details['summary']['average_duties_per_soldier']]);
-
-                fclose($file);
-            };
-
-            return response()->stream($callback, 200, $headers);
+            return $pdf->download($filename);
         } catch (\Exception $e) {
             Log::error('Export failed', [
                 'date' => $request->date,

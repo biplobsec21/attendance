@@ -129,13 +129,13 @@
                         </svg>
                         Assign New Duties
                     </button>
-                    <button onclick="exportToExcel()"
-                        class="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                    <button onclick="exportToPDF()"
+                        class="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors duration-200">
                         <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        Export CSV
+                        Export PDF
                     </button>
                 </div>
             </div>
@@ -184,11 +184,19 @@
 
         <!-- Toast Container -->
         <div id="toastContainer" class="fixed z-50 bottom-4 right-4 z-50 space-y-4"></div>
+        <div id="duty-container-id" data-base-url="{{ url('/') }}"
+            data-show-route="{{ route('duty.show', ['duty' => ':id']) }}"></div>
     </div>
 @endsection
 
 @push('scripts')
     <script>
+        const container = document.getElementById('duty-container-id');
+        const showRouteTemplate = container?.dataset.showRoute || '/duty/:id';
+
+        function getDutyShowUrl(dutyId) {
+            return showRouteTemplate.replace(':id', dutyId);
+        }
         // CSRF Token
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
@@ -637,19 +645,19 @@
             let row = `
         <tr class="hover:bg-gray-50">
             <td class="px-6 py-4">
-                <div class="text-sm font-medium text-gray-900">${duty.duty_name || 'N/A'}</div>
+                <div class="text-sm font-medium text-gray-900"><a href="${getDutyShowUrl(duty.duty_id)}" target="_blank" class="underline">${duty.duty_name || 'N/A'}</a></div>
                 <div class="text-sm text-gray-500 flex items-center gap-2">
-                    <span>ID: ${duty.duty_id || 'N/A'}</span>
+
                     ${duty.has_roster ? `
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                                    Roster
-                                </span>
-                            ` : ''}
+                                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                                                                                Roster
+                                                                            </span>
+                                                                        ` : ''}
                     ${duty.has_fixed ? `
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
-                                    Fixed
-                                </span>
-                            ` : ''}
+                                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                                                                                Fixed
+                                                                            </span>
+                                                                        ` : ''}
                 </div>
             </td>
             <td class="px-6 py-4">
@@ -681,44 +689,44 @@
                         <span class="text-gray-500 text-xs">(${soldier.army_no || 'N/A'})</span>
                         ${soldier.company ? `<span class="text-gray-400 text-xs">• ${soldier.company}</span>` : ''}
                         ${isFixed ? `
-                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
-                                        <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                                        </svg>
-                                        Fixed
-                                    </span>
-                                ` : ''}
+                                                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                                                                                    <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                                                                    </svg>
+                                                                                    Fixed
+                                                                                </span>
+                                                                            ` : ''}
                         ${soldier.remarks && !isFixed ? `<span class="text-xs text-blue-600 italic">• ${soldier.remarks}</span>` : ''}
                     </div>
                     <div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         ${!isFixed ? `
-                                    <button
-                                        data-action="reassign"
-                                        data-duty-id="${duty.duty_id}"
-                                        data-soldier-id="${soldier.id}"
-                                        data-soldier-name="${safeSoldierName}"
-                                        data-duty-name="${safeDutyName}"
-                                        class="text-yellow-600 hover:text-yellow-800 p-1 rounded hover:bg-yellow-50"
-                                        title="Reassign Soldier">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-                                        </svg>
-                                    </button>
-                                    <button
-                                        data-action="cancel"
-                                        data-duty-id="${duty.duty_id}"
-                                        data-soldier-id="${soldier.id}"
-                                        data-soldier-name="${safeSoldierName}"
-                                        data-duty-name="${safeDutyName}"
-                                        class="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
-                                        title="Remove Soldier">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                        </svg>
-                                    </button>
-                                ` : `
-                                    <span class="text-xs text-purple-600 italic px-2 py-1">Permanent</span>
-                                `}
+                                                                                <button
+                                                                                    data-action="reassign"
+                                                                                    data-duty-id="${duty.duty_id}"
+                                                                                    data-soldier-id="${soldier.id}"
+                                                                                    data-soldier-name="${safeSoldierName}"
+                                                                                    data-duty-name="${safeDutyName}"
+                                                                                    class="text-yellow-600 hover:text-yellow-800 p-1 rounded hover:bg-yellow-50"
+                                                                                    title="Reassign Soldier">
+                                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                                                                                    </svg>
+                                                                                </button>
+                                                                                <button
+                                                                                    data-action="cancel"
+                                                                                    data-duty-id="${duty.duty_id}"
+                                                                                    data-soldier-id="${soldier.id}"
+                                                                                    data-soldier-name="${safeSoldierName}"
+                                                                                    data-duty-name="${safeDutyName}"
+                                                                                    class="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+                                                                                    title="Remove Soldier">
+                                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                                                    </svg>
+                                                                                </button>
+                                                                            ` : `
+                                                                                <span class="text-xs text-purple-600 italic px-2 py-1">Permanent</span>
+                                                                            `}
                     </div>
                 </div>
             `;
@@ -737,11 +745,11 @@
             row += `
                 </div>
                 ${duty.roster_count > 0 || duty.fixed_count > 0 ? `
-                            <div class="text-xs text-gray-500 mt-2 flex gap-3">
-                                ${duty.roster_count > 0 ? `<span class="text-green-600">Roster: ${duty.roster_count}</span>` : ''}
-                                ${duty.fixed_count > 0 ? `<span class="text-purple-600">Fixed: ${duty.fixed_count}</span>` : ''}
-                            </div>
-                        ` : ''}
+                                                                        <div class="text-xs text-gray-500 mt-2 flex gap-3">
+                                                                            ${duty.roster_count > 0 ? `<span class="text-green-600">Roster: ${duty.roster_count}</span>` : ''}
+                                                                            ${duty.fixed_count > 0 ? `<span class="text-purple-600">Fixed: ${duty.fixed_count}</span>` : ''}
+                                                                        </div>
+                                                                    ` : ''}
             </td>
             <td class="px-6 py-4">
                 <div class="flex items-center space-x-2">
@@ -762,16 +770,16 @@
                     View
                 </button>
                 ${duty.has_roster ? `
-                            <button onclick="showAddSoldierModal(${duty.duty_id}, '${(duty.duty_name || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
-                                class="text-green-600 hover:text-green-900 font-medium">
-                                <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                                </svg>
-                                Add
-                            </button>
-                        ` : `
-                            <span class="text-xs text-gray-400">Fixed Only</span>
-                        `}
+                                                                        <button onclick="showAddSoldierModal(${duty.duty_id}, '${(duty.duty_name || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
+                                                                            class="text-green-600 hover:text-green-900 font-medium">
+                                                                            <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                                                            </svg>
+                                                                            Add
+                                                                        </button>
+                                                                    ` : `
+                                                                        <span class="text-xs text-gray-400">Fixed Only</span>
+                                                                    `}
             </td>
         </tr>
     `;
@@ -1115,7 +1123,7 @@
         }
 
         // Export to CSV
-        function exportToExcel() {
+        function exportToPDF() {
             const date = document.getElementById('selectedDate').value;
             if (!date) {
                 showToast('Please select a date first', 'warning');
