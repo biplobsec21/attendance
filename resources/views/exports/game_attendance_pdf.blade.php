@@ -150,8 +150,15 @@
 
         /* Format 2 specific styles */
         table.format2-table {
-            table-layout: auto;
+            width: 50%;
+            /* table-layout: auto; */
         }
+
+        table.format1 {
+            width: 50%;
+            /* table-layout: auto; */
+        }
+
 
         table.format2-table th:first-child,
         table.format2-table td:first-child {
@@ -291,7 +298,7 @@
 
 <body>
     <!-- Header -->
-    <table class="spacing-small">
+    <table class="spacing-small format1">
         <tr class="header-row">
             <td colspan="100%">
                 {{ $reportTitle }}<br>
@@ -301,7 +308,7 @@
     </table>
 
     <!-- Format 1: Summary by Company and Rank Type -->
-    <table class="spacing-medium">
+    <table class="spacing-medium format1">
         <thead>
             <tr>
                 <th>Coy</th>
@@ -312,9 +319,24 @@
                         </div>
                     </th>
                 @endforeach
-                <th class="summary-col">Total</th>
-                <th class="summary-col">Excused</th>
-                <th class="summary-col">All Total</th>
+                <th>
+
+                    <div class="vertical-header">
+                        <div class="vertical-text">Total</div>
+                    </div>
+                </th>
+                <th>
+
+                    <div class="vertical-header">
+                        <div class="vertical-text">Excused</div>
+                    </div>
+                </th>
+                <th>
+
+                    <div class="vertical-header">
+                        <div class="vertical-text">All Total</div>
+                    </div>
+                </th>
             </tr>
         </thead>
         <tbody>
@@ -374,6 +396,9 @@
     </table>
 
     <!-- Format 3: Detailed List of Excused Soldiers -->
+    <div style="page-break-before: always;"></div>
+
+
     <table class="spacing-medium">
         <tr class="">
             <td colspan="7" style="text-align: center;font-weight:bold">Detailed List of Excused Soldiers</td>

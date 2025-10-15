@@ -48,14 +48,37 @@
         /* Vertical header container */
         .vertical-header {
             position: relative;
-            height: 70px;
+            height: 50px;
             width: 100%;
             margin: 0;
-            padding: 8px 0;
+            padding: 2px 0;
         }
 
         /* Vertical text using transform - Bottom to Top */
         .vertical-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-90deg);
+            transform-origin: center center;
+            white-space: nowrap;
+            font-size: 10px;
+            font-weight: bold;
+            width: 80px;
+            text-align: center;
+        }
+
+        /* Vertical header container */
+        .vertical-header2 {
+            position: relative;
+            height: 60px;
+            width: 100%;
+            margin: 0;
+            padding: 2px 0;
+        }
+
+        /* Vertical text using transform - Bottom to Top */
+        .vertical-text2 {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -202,7 +225,7 @@
 <body>
     <!-- Main Header -->
     <div style="text-align: center;font-weight:bold;">
-        Manpower Distribution Report 21 EB
+        Parade State <br> 21 EB
     </div>
     <div style="text-align: right;font-weight:bold;">
         Date: {{ \Carbon\Carbon::parse($date)->format('d M Y') }}
@@ -233,7 +256,7 @@
                 <th style="text-align: left;">Coy</th>
                 <th>
                     <div class="vertical-header">
-                        <div class="vertical-text">Officers</div>
+                        <div class="vertical-text">Offrs</div>
                     </div>
                 </th>
                 @foreach ($otherRanks as $rank)
@@ -459,14 +482,14 @@
                 <th style="text-align: left;">Coy</th>
                 @foreach ($leaveTypes as $leaveType)
                     <th>
-                        <div class="vertical-header">
-                            <div class="vertical-text">{{ $leaveType->name }}</div>
+                        <div class="vertical-header2">
+                            <div class="vertical-text2">{{ $leaveType->name }}</div>
                         </div>
                     </th>
                 @endforeach
                 <th>
-                    <div class="vertical-header">
-                        <div class="vertical-text">Total</div>
+                    <div class="vertical-header2">
+                        <div class="vertical-text2">Total</div>
                     </div>
                 </th>
             </tr>

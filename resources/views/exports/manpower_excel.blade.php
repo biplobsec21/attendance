@@ -68,7 +68,7 @@
             </tr>
             <tr>
                 <th>Coy</th>
-                <th class="vertical-header">Officers</th>
+                <th class="vertical-header">Offrs</th>
                 @foreach ($otherRanks as $rank)
                     <th class="vertical-header">{{ $rank->name }}</th>
                 @endforeach
