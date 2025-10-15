@@ -30,27 +30,28 @@
                             <span class="text-xs">Manpower Details</span>
                         </div>
                     </button>
+                    <button data-tab="pt"
+                        class="tab-btn group relative py-4 px-4 text-sm font-medium rounded-xl transition-all duration-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50">
+                        <div class="flex flex-col items-center space-y-2">
+                            <i class="fas fa-running text-lg"></i>
+                            <span class="text-xs">PT </span>
+                        </div>
+                    </button>
                     <button data-tab="parade"
                         class="tab-btn group relative py-4 px-4 text-sm font-medium rounded-xl transition-all duration-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50">
                         <div class="flex flex-col items-center space-y-2">
                             <i class="fas fa-calendar-times text-lg"></i>
-                            <span class="text-xs">Parade Report</span>
+                            <span class="text-xs">2nd Fall in</span>
                         </div>
                     </button>
                     <button data-tab="game"
                         class="tab-btn group relative py-4 px-4 text-sm font-medium rounded-xl transition-all duration-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50">
                         <div class="flex flex-col items-center space-y-2">
                             <i class="fas fa-gamepad text-lg"></i>
-                            <span class="text-xs">Game Attendance</span>
+                            <span class="text-xs">Games </span>
                         </div>
                     </button>
-                    <button data-tab="pt"
-                        class="tab-btn group relative py-4 px-4 text-sm font-medium rounded-xl transition-all duration-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50">
-                        <div class="flex flex-col items-center space-y-2">
-                            <i class="fas fa-running text-lg"></i>
-                            <span class="text-xs">PT Attendance</span>
-                        </div>
-                    </button>
+
                     <button data-tab="roll-call"
                         class="tab-btn group relative py-4 px-4 text-sm font-medium rounded-xl transition-all duration-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50">
                         <div class="flex flex-col items-center space-y-2">

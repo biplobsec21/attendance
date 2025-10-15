@@ -705,7 +705,7 @@ class GameAttendanceService
     {
         Log::info("📊 GENERATING FORMAT1 DATA for {$this->reportType} report on date: {$date}");
 
-        $companies = Company::orderBy('name')->get();
+        $companies = Company::orderBy('id')->get();
         $rankTypes = $this->getRankTypes();
         $data = [];
         $totals = array_fill_keys($rankTypes, 0);
@@ -793,7 +793,7 @@ class GameAttendanceService
         Log::info("📋 GENERATING FORMAT2 DATA (PRIORITY-BASED) for {$this->reportType} report on date: {$date}");
 
         $carbonDate = Carbon::parse($date);
-        $companies = Company::orderBy('name')->get();
+        $companies = Company::orderBy('id')->get();
         $companyNames = $companies->pluck('name')->toArray();
 
         // Get all soldiers (excluding ERE)

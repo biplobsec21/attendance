@@ -444,15 +444,15 @@
                                         <span class="font-semibold text-blue-700">Default Excusal:</span>
                                         Soldiers assigned to this duty are automatically excused from
                                         <span class="font-medium">PT, Parade, Games, and Roll Calls</span> during the
-                                        duty day.
+                                        the time of that sessions.
                                     </label>
                                 </div>
 
                                 <div>
                                     <div class="flex items-center mb-2">
-                                        <span class="font-semibold text-blue-700">Excused Next Day:</span>
+                                        <span class="font-semibold text-blue-700">Excused Next Session:</span>
                                         <span class="text-sm text-gray-600 ml-2">Select activities for which duties should
-                                            be excused the day after the duty ends:</span>
+                                            be excused the PT,Games,Parade and Roll Call after the duty ends:</span>
                                     </div>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div class="flex items-start space-x-3">

@@ -7,10 +7,9 @@
     <title>Manpower Distribution Report</title>
     <style>
         @page {
-            margin: 10;
+            margin: 5;
             size: legal portrait;
         }
-
 
 
         body {
@@ -18,13 +17,13 @@
             font-size: 10px;
             margin: 10;
             padding: 0;
-            line-height: 1.1;
+            line-height: 1;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             table-layout: fixed;
         }
 
@@ -37,19 +36,19 @@
 
         /* Data cells with proper padding */
         td:not(:first-child) {
-            padding: 4px 2px;
+            padding: 3px 1.5px;
         }
 
         th {
             background-color: #bdbdbd;
             font-weight: bold;
-            padding: 8px 4px;
+            padding: 6px 3px;
         }
 
         /* Vertical header container */
         .vertical-header {
             position: relative;
-            height: 80px;
+            height: 70px;
             width: 100%;
             margin: 0;
             padding: 8px 0;
@@ -140,6 +139,29 @@
             color: #666;
         }
 
+        /* Signature section */
+        .signature-section {
+            margin-top: 30px;
+            width: 100%;
+        }
+
+        .signature-line {
+            display: inline-block;
+            width: 18%;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            margin: 0 1%;
+        }
+
+        .signature-line:first-child {
+            margin-left: 0;
+        }
+
+        .signature-line:last-child {
+            margin-right: 0;
+        }
+
         /* Ensure single page fit */
         @media print {
             body {
@@ -180,10 +202,10 @@
 <body>
     <!-- Main Header -->
     <div style="text-align: center;font-weight:bold;">
-        Manpower Distribution Report
+        Manpower Distribution Report 21 EB
     </div>
-    <div style="text-align: center;font-weight:bold;">
-        {{ $formattedDate ?? '' }}
+    <div style="text-align: right;font-weight:bold;">
+        Date: {{ \Carbon\Carbon::parse($date)->format('d M Y') }}
     </div>
 
     <!-- Initialize all variables with defaults to prevent undefined errors -->
@@ -203,8 +225,8 @@
 
     <!-- Auth Manpower Section -->
     <table>
-        <tr class="" style="text-align: left;">
-            <td colspan="{{ count($otherRanks) + 3 }}">Auth Manpower</td>
+        <tr class="" style="text-align: center;font-weight:bold;">
+            <td colspan="{{ count($otherRanks) + 3 }}" style="text-align: center">Auth Manpower</td>
         </tr>
         <thead>
             <tr>
@@ -268,7 +290,7 @@
         </tfoot>
     </table>
     <div style="text-align: center;font-weight:bold;">
-        Received Manpower
+        Held Manpower
     </div>
     <!-- Received Manpower Distribution Table -->
     <table>
@@ -318,61 +340,11 @@
         </tfoot>
     </table>
 
-    <!-- Manpower with Leave Table -->
-    <div style="text-align: center;font-weight:bold;">
-        Leave Manpower
-    </div>
-    <table>
 
-        {{-- <thead>
-            <tr class="" style="text-align: center;">
-                <td colspan="{{ count($otherRanks) + 3 }}">Leave Manpower</td>
-            </tr>
-        </thead> --}}
-        <tbody>
-            @foreach ($companies as $company)
-                @php
-                    $companyId = $company->id;
-                    $companyLeaveData = $leaveManpower[$companyId] ?? null;
-                @endphp
-                <tr>
-                    <td style="text-align: left;">{{ $company->name }}</td>
-                    <td>{{ $leaveOfficerTotals[$companyId] ?? 0 }}</td>
-                    @foreach ($otherRanks as $rank)
-                        @php
-                            $rankId = $rank->id;
-                            $count = 0;
-                            if ($companyLeaveData && isset($companyLeaveData[$rankId])) {
-                                $count = $companyLeaveData[$rankId]->count ?? 0;
-                            }
-                        @endphp
-                        <td>{{ $count }}</td>
-                    @endforeach
-                    <td>
-                        {{ ManpowerViewHelper::calculateLeaveCompanyTotal($companyId, $leaveOfficerTotals, $otherRanks, $leaveManpower) }}
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            <tr class="total-row">
-                <td style="text-align: left;">Total</td>
-                <td>{{ array_sum($leaveOfficerTotals) }}</td>
-                @foreach ($otherRanks as $rank)
-                    <td>
-                        {{ ManpowerViewHelper::calculateLeaveRankTotal($rank->id, $companies, $leaveManpower) }}
-                    </td>
-                @endforeach
-                <td>
-                    {{ ManpowerViewHelper::calculateLeaveGrandTotal($leaveOfficerTotals, $otherRanks, $companies, $leaveManpower) }}
-                </td>
-            </tr>
-        </tfoot>
-    </table>
 
     <!-- Present Manpower Table -->
     <div style="text-align: center;font-weight:bold;">
-        Present Manpower
+        Present
     </div>
     <table>
 
@@ -422,9 +394,60 @@
         </tfoot>
     </table>
 
+    <!-- Manpower with Leave Table -->
+    <div style="text-align: center;font-weight:bold;">
+        Absent
+    </div>
+    <table>
+
+        {{-- <thead>
+            <tr class="" style="text-align: center;">
+                <td colspan="{{ count($otherRanks) + 3 }}">Leave Manpower</td>
+            </tr>
+        </thead> --}}
+        <tbody>
+            @foreach ($companies as $company)
+                @php
+                    $companyId = $company->id;
+                    $companyLeaveData = $leaveManpower[$companyId] ?? null;
+                @endphp
+                <tr>
+                    <td style="text-align: left;">{{ $company->name }}</td>
+                    <td>{{ $leaveOfficerTotals[$companyId] ?? 0 }}</td>
+                    @foreach ($otherRanks as $rank)
+                        @php
+                            $rankId = $rank->id;
+                            $count = 0;
+                            if ($companyLeaveData && isset($companyLeaveData[$rankId])) {
+                                $count = $companyLeaveData[$rankId]->count ?? 0;
+                            }
+                        @endphp
+                        <td>{{ $count }}</td>
+                    @endforeach
+                    <td>
+                        {{ ManpowerViewHelper::calculateLeaveCompanyTotal($companyId, $leaveOfficerTotals, $otherRanks, $leaveManpower) }}
+                    </td>
+                </tr>
+            @endforeach
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td style="text-align: left;">Total</td>
+                <td>{{ array_sum($leaveOfficerTotals) }}</td>
+                @foreach ($otherRanks as $rank)
+                    <td>
+                        {{ ManpowerViewHelper::calculateLeaveRankTotal($rank->id, $companies, $leaveManpower) }}
+                    </td>
+                @endforeach
+                <td>
+                    {{ ManpowerViewHelper::calculateLeaveGrandTotal($leaveOfficerTotals, $otherRanks, $companies, $leaveManpower) }}
+                </td>
+            </tr>
+        </tfoot>
+    </table>
     <!-- Leave Types Distribution Table -->
     <div style="text-align: center;font-weight:bold;">
-        Leave Manpower
+        Details of Absent
     </div>
 
     <table>
@@ -470,8 +493,16 @@
         </tfoot>
     </table>
 
-    <div class="footer">
+    {{-- <div class="footer">
+        <!-- Signature Section -->
         Generated on: {{ now()->format('F d, Y H:i:s') }}
+    </div> --}}
+    <div class="signature-section">
+        <div class="signature-line">BSM ______</div>
+        <div class="signature-line">NSA ______</div>
+        <div class="signature-line">Adjt ______</div>
+        <div class="signature-line">21C ______</div>
+        <div class="signature-line">CO ______</div>
     </div>
 </body>
 

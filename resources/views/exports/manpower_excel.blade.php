@@ -38,7 +38,7 @@
     <!-- Header Table -->
     <table>
         <tr class="header-row">
-            <td style="padding:4px" colspan="5">
+            <td style="padding:4px;text-align:center" colspan="{{ count($otherRanks) + 3 }}">
                 <strong>Manpower Distribution Report {{ $date }}</strong><br>
                 <br>
             </td>
@@ -64,7 +64,7 @@
     <table>
         <thead>
             <tr class="section-title-row">
-                <td colspan="5">Auth Manpower</td>
+                <td colspan="{{ count($otherRanks) + 3 }}" style="text-align: center">Auth Manpower</td>
             </tr>
             <tr>
                 <th>Coy</th>
@@ -118,7 +118,7 @@
     <!-- Received Manpower Distribution Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="5">Received Manpower</td>
+            <td colspan="{{ count($otherRanks) + 3 }}" style="text-align: center">Held Manpower</td>
         </tr>
         <tbody>
             @foreach ($companies as $company)
@@ -161,56 +161,12 @@
         </tfoot>
     </table>
 
-    <!-- Manpower with Leave Table -->
-    <table>
-        <tr class="section-title-row">
-            <td colspan="5">Leave Manpower</td>
-        </tr>
-        <tbody>
-            @foreach ($companies as $company)
-                @php
-                    $companyId = $company->id;
-                    $companyLeaveData = $leaveManpower[$companyId] ?? null;
-                @endphp
-                <tr>
-                    <td>{{ $company->name }}</td>
-                    <td>{{ $leaveOfficerTotals[$companyId] ?? 0 }}</td>
-                    @foreach ($otherRanks as $rank)
-                        @php
-                            $rankId = $rank->id;
-                            $count = 0;
-                            if ($companyLeaveData && isset($companyLeaveData[$rankId])) {
-                                $count = $companyLeaveData[$rankId]->count ?? 0;
-                            }
-                        @endphp
-                        <td>{{ $count }}</td>
-                    @endforeach
-                    <td>
-                        {{ ManpowerViewHelper::calculateLeaveCompanyTotal($companyId, $leaveOfficerTotals, $otherRanks, $leaveManpower) }}
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            <tr class="total-row">
-                <td>Total</td>
-                <td>{{ array_sum($leaveOfficerTotals) }}</td>
-                @foreach ($otherRanks as $rank)
-                    <td>
-                        {{ ManpowerViewHelper::calculateLeaveRankTotal($rank->id, $companies, $leaveManpower) }}
-                    </td>
-                @endforeach
-                <td>
-                    {{ ManpowerViewHelper::calculateLeaveGrandTotal($leaveOfficerTotals, $otherRanks, $companies, $leaveManpower) }}
-                </td>
-            </tr>
-        </tfoot>
-    </table>
+
 
     <!-- Manpower without Leave Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="5">Present Manpower</td>
+            <td colspan="{{ count($otherRanks) + 3 }}" style="text-align: center">Present</td>
         </tr>
         <tbody>
             @foreach ($companies as $company)
@@ -252,11 +208,55 @@
             </tr>
         </tfoot>
     </table>
-
+    <!-- Manpower with Leave Table -->
+    <table>
+        <tr class="section-title-row">
+            <td colspan="{{ count($otherRanks) + 3 }}" style="text-align: center">Absent</td>
+        </tr>
+        <tbody>
+            @foreach ($companies as $company)
+                @php
+                    $companyId = $company->id;
+                    $companyLeaveData = $leaveManpower[$companyId] ?? null;
+                @endphp
+                <tr>
+                    <td>{{ $company->name }}</td>
+                    <td>{{ $leaveOfficerTotals[$companyId] ?? 0 }}</td>
+                    @foreach ($otherRanks as $rank)
+                        @php
+                            $rankId = $rank->id;
+                            $count = 0;
+                            if ($companyLeaveData && isset($companyLeaveData[$rankId])) {
+                                $count = $companyLeaveData[$rankId]->count ?? 0;
+                            }
+                        @endphp
+                        <td>{{ $count }}</td>
+                    @endforeach
+                    <td>
+                        {{ ManpowerViewHelper::calculateLeaveCompanyTotal($companyId, $leaveOfficerTotals, $otherRanks, $leaveManpower) }}
+                    </td>
+                </tr>
+            @endforeach
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td>Total</td>
+                <td>{{ array_sum($leaveOfficerTotals) }}</td>
+                @foreach ($otherRanks as $rank)
+                    <td>
+                        {{ ManpowerViewHelper::calculateLeaveRankTotal($rank->id, $companies, $leaveManpower) }}
+                    </td>
+                @endforeach
+                <td>
+                    {{ ManpowerViewHelper::calculateLeaveGrandTotal($leaveOfficerTotals, $otherRanks, $companies, $leaveManpower) }}
+                </td>
+            </tr>
+        </tfoot>
+    </table>
     <!-- Leave Types Distribution Table -->
     <table>
         <tr class="section-title-row">
-            <td colspan="5">Leave Details
+            <td colspan="{{ count($leaveTypes) + 3 }}" style="text-align: center">Details of Absent
             </td>
         </tr>
         <thead>
@@ -288,6 +288,17 @@
                 <td>{{ array_sum($leaveTypeCompanyTotals) }}</td>
             </tr>
         </tfoot>
+    </table>
+
+    <!-- Signature Section for Excel -->
+    <table class="signature-table">
+        <tr>
+            <td class="signature-cell" colspan="3">BSM ______</td>
+            <td class="signature-cell" colspan="3">NSA ______</td>
+            <td class="signature-cell" colspan="3">Adjt ______</td>
+            <td class="signature-cell" colspan="3">21C ______</td>
+            <td class="signature-cell" colspan="3">CO ______</td>
+        </tr>
     </table>
 </body>
 
