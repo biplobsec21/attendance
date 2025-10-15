@@ -111,7 +111,8 @@
                                         class="text-blue-600 hover:text-blue-900 mr-3">View</a>
                                     <a href="{{ route('leave-types.edit', $leaveType) }}"
                                         class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
-                                    <form method="POST" action="{{-- {{ route('leave-types.destroy', $leaveType) }} --}}" class="inline"
+                                    <form method="POST" action="{{ route('leave-types.destroy', $leaveType) }}"
+                                        class="inline"
                                         onsubmit="return confirm('Are you sure you want to delete this leave type?')">
                                         @csrf
                                         @method('DELETE')
