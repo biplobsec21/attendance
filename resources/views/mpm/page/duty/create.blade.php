@@ -442,17 +442,16 @@
                                         class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                                     <label for="default-excusal" class="text-sm text-gray-700">
                                         <span class="font-semibold text-blue-700">Default Excusal:</span>
-                                        Soldiers assigned to this duty are automatically excused from
-                                        <span class="font-medium">PT, Parade, Games, and Roll Calls</span> during the
-                                        the time of that sessions.
+                                        Soldiers on this duty are exempt from PT, Parade, Games, and Roll Calls for the
+                                        duration of the session
                                     </label>
                                 </div>
 
                                 <div>
                                     <div class="flex items-center mb-2">
                                         <span class="font-semibold text-blue-700">Excused Next Session:</span>
-                                        <span class="text-sm text-gray-600 ml-2">Select activities for which duties should
-                                            be excused the PT,Games,Parade and Roll Call after the duty ends:</span>
+                                        <span class="text-sm text-gray-600 ml-2">Select activities exempt from PT, Games,
+                                            Parade, and Roll Call after duty</span>
                                     </div>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div class="flex items-start space-x-3">
@@ -461,7 +460,7 @@
                                                 class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                                 {{ old('excused_next_session_pt') ? 'checked' : '' }}>
                                             <label for="excused-next-day-pt" class="text-sm text-gray-700">
-                                                PT (Physical Training)
+                                                PT ({{ $siteSettings->pt_time->format('H:i') ?? 'N/A' }})
                                             </label>
                                         </div>
                                         <div class="flex items-start space-x-3">
@@ -470,7 +469,7 @@
                                                 class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                                 {{ old('excused_next_session_games') ? 'checked' : '' }}>
                                             <label for="excused-next-day-games" class="text-sm text-gray-700">
-                                                Games
+                                                Games ({{ $siteSettings->games_time->format('H:i') ?? 'N/A' }})
                                             </label>
                                         </div>
                                         <div class="flex items-start space-x-3">
@@ -479,7 +478,7 @@
                                                 class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                                 {{ old('excused_next_session_roll_call') ? 'checked' : '' }}>
                                             <label for="excused-next-day-roll-call" class="text-sm text-gray-700">
-                                                Roll Call
+                                                Roll Call ({{ $siteSettings->roll_call_time->format('H:i') ?? 'N/A' }})
                                             </label>
                                         </div>
                                         <div class="flex items-start space-x-3">
@@ -488,9 +487,13 @@
                                                 class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                                 {{ old('excused_next_session_parade') ? 'checked' : '' }}>
                                             <label for="excused-next-day-parade" class="text-sm text-gray-700">
-                                                Parade
+                                                Parade ({{ $siteSettings->parade_time->format('H:i') ?? 'N/A' }})
                                             </label>
                                         </div>
+                                    </div>
+                                    <div class="m-3">
+                                        Edit these times in <a href="{{ route('settings.edit') }}"
+                                            class="text-blue-600 underline hover:text-blue-800">Site Settings</a>.
                                     </div>
                                 </div>
                             </div>

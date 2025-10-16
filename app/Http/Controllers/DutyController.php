@@ -6,6 +6,7 @@ use App\Http\Requests\StoreDutyRequest;
 use App\Http\Requests\UpdateDutyRequest;
 use App\Models\Duty;
 use App\Models\Rank;
+use App\Models\SiteSetting;
 use App\Models\Soldier;
 use App\Services\DutyService;
 use Illuminate\Http\JsonResponse;
@@ -53,15 +54,17 @@ class DutyController extends Controller
     {
         try {
             $ranks = Rank::orderBy('name')->get();
-
+            $siteSettings = SiteSetting::getSettings()->first();
+            // dd($siteSettings->pt_time->format('H:i'));
             // Get all available soldiers without any filters for create view
             $availableSoldiers = $this->dutyService->getAvailableSoldiersForDuty();
 
             // Debug in controller
             \Log::info('Available soldiers in create:', ['count' => count($availableSoldiers)]);
 
-            return view('mpm.page.duty.create', compact('ranks', 'availableSoldiers'));
+            return view('mpm.page.duty.create', compact('ranks', 'availableSoldiers', 'siteSettings'));
         } catch (\Exception $e) {
+            dd($e->getMessage());
             \Log::error('Error in duty create:', ['error' => $e->getMessage()]);
             return redirect()->route('duty.index')
                 ->with('error', 'Failed to load create form: ' . $e->getMessage());
@@ -125,6 +128,8 @@ class DutyController extends Controller
     public function edit(Duty $duty)
     {
         try {
+            $siteSettings = SiteSetting::getSettings();
+
             $duty->load([
                 'dutyRanks.rank',
                 'dutyRanks.soldier',
@@ -182,6 +187,7 @@ class DutyController extends Controller
             $scheduleDescription = $this->dutyService->getDutyScheduleDescription($duty);
 
             return view('mpm.page.duty.edit', compact(
+                'siteSettings',
                 'duty',
                 'ranks',
                 'availableSoldiers',
