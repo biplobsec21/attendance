@@ -828,6 +828,26 @@ class DutyAssignmentService
 
         Log::info('Getting duty details for date', ['date' => $date]);
 
+        // Helper function to convert UTC times to local time (UTC+6)
+        $convertToLocalTime = function ($datetime) {
+            if (!$datetime) return 'N/A';
+
+            if ($datetime instanceof \Carbon\Carbon) {
+                return $datetime->copy()->setTimezone('Asia/Dhaka')->format('H:i');
+            }
+
+            if (is_string($datetime)) {
+                try {
+                    $carbon = Carbon::parse($datetime);
+                    return $carbon->setTimezone('Asia/Dhaka')->format('H:i');
+                } catch (\Exception $e) {
+                    return $datetime; // Return original if parsing fails
+                }
+            }
+
+            return 'N/A';
+        };
+
         // Get all assignments for the date with related data
         $assignments = SoldierDuty::with([
             'soldier:id,army_no,full_name,rank_id,company_id',
@@ -858,19 +878,19 @@ class DutyAssignmentService
             $dutyDetails[] = [
                 'duty_id' => $duty->id,
                 'duty_name' => $duty->duty_name,
-                'start_time' => $duty->start_time,
-                'end_time' => $duty->end_time,
+                'start_time' => $convertToLocalTime($duty->start_time), // Convert to local time
+                'end_time' => $convertToLocalTime($duty->end_time), // Convert to local time
                 'duration_days' => $duty->duration_days,
                 'required_manpower' => $duty->manpower,
-                'assigned_soldiers' => $dutyAssignments->map(function ($assignment) {
+                'assigned_soldiers' => $dutyAssignments->map(function ($assignment) use ($convertToLocalTime) {
                     return [
                         'soldier_id' => $assignment->soldier_id,
                         'army_no' => $assignment->soldier->army_no ?? 'N/A',
                         'full_name' => $assignment->soldier->full_name ?? 'N/A',
                         'rank' => $assignment->soldier->rank->name ?? 'N/A',
                         'company' => $assignment->soldier->company->name ?? 'N/A',
-                        'start_time' => $assignment->start_time,
-                        'end_time' => $assignment->end_time,
+                        'start_time' => $convertToLocalTime($assignment->start_time), // Convert to local time
+                        'end_time' => $convertToLocalTime($assignment->end_time), // Convert to local time
                         'remarks' => $assignment->remarks
                     ];
                 })->toArray(),
@@ -903,7 +923,7 @@ class DutyAssignmentService
                 $q->where('status', 'Active');
             })
             ->get()
-            ->map(function ($fixedDuty) use ($date) {
+            ->map(function ($fixedDuty) use ($convertToLocalTime) {
                 return [
                     'duty_id' => $fixedDuty->duty_id,
                     'duty_name' => $fixedDuty->duty->duty_name ?? 'N/A',
@@ -912,8 +932,8 @@ class DutyAssignmentService
                     'full_name' => $fixedDuty->soldier->full_name ?? 'N/A',
                     'rank' => $fixedDuty->soldier->rank->name ?? 'N/A',
                     'company' => $fixedDuty->soldier->company->name ?? 'N/A',
-                    'start_time' => $fixedDuty->duty->start_time ?? 'N/A',
-                    'end_time' => $fixedDuty->duty->end_time ?? 'N/A',
+                    'start_time' => $convertToLocalTime($fixedDuty->duty->start_time), // Convert to local time
+                    'end_time' => $convertToLocalTime($fixedDuty->duty->end_time), // Convert to local time
                     'assignment_type' => 'fixed'
                 ];
             });

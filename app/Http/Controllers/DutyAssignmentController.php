@@ -141,7 +141,10 @@ class DutyAssignmentController extends Controller
 
         try {
             $details = $this->dutyService->getDutyDetailsForDate($request->date);
-
+            //  Log::error('Details LOGS', [
+            //     'date' => $request->date,
+            //     'details' => $details
+            // ]);
             return response()->json([
                 'success' => true,
                 'data' => $details
@@ -491,24 +494,44 @@ class DutyAssignmentController extends Controller
             // Get site settings for session times
             $siteSettings = SiteSetting::first();
 
+            // Helper function to extract time part from datetime string
+            $extractTimePart = function ($datetime) {
+                if (!$datetime) return null;
+
+                if ($datetime instanceof \Carbon\Carbon) {
+                    return $datetime->format('H:i:s');
+                }
+
+                if (is_string($datetime)) {
+                    // If it's already just a time string (HH:MM:SS)
+                    if (preg_match('/^\d{1,2}:\d{2}(:\d{2})?$/', $datetime)) {
+                        return $datetime;
+                    }
+
+                    // If it's a full datetime string, extract time part
+                    if (preg_match('/\d{1,2}:\d{2}(:\d{2})?/', $datetime, $matches)) {
+                        return $matches[0];
+                    }
+                }
+
+                return '00:00:00';
+            };
+
             // Helper function to check if duty overlaps with session times
-            $checkSessionOverlap = function ($dutyStartTime, $dutyEndTime, $sessionTime, $sessionDurationMinutes = 60) use ($date) {
+            $checkSessionOverlap = function ($dutyStartTime, $dutyEndTime, $sessionTime, $sessionDurationMinutes = 60) use ($date, $extractTimePart) {
                 if (!$sessionTime) return false;
 
-                // Extract time part from session time (in case it's a full datetime)
-                $sessionTimeString = $sessionTime instanceof \Carbon\Carbon ?
-                    $sessionTime->format('H:i:s') : (is_string($sessionTime) ? $sessionTime : '00:00:00');
+                // Extract time parts
+                $sessionTimeString = $extractTimePart($sessionTime);
+                $dutyStartTimeString = $extractTimePart($dutyStartTime);
+                $dutyEndTimeString = $extractTimePart($dutyEndTime);
 
+                // Parse times with the selected date
                 $sessionStart = Carbon::parse($date . ' ' . $sessionTimeString);
                 $sessionEnd = $sessionStart->copy()->addMinutes($sessionDurationMinutes);
 
-                // Extract time strings from duty times (handle Carbon or string)
-                $dutyStartTimeStr = $dutyStartTime instanceof \Carbon\Carbon ? $dutyStartTime->format('H:i:s') : $dutyStartTime;
-                $dutyEndTimeStr = $dutyEndTime instanceof \Carbon\Carbon ? $dutyEndTime->format('H:i:s') : $dutyEndTime;
-
-                // Parse duty times with the specific date
-                $dutyStart = Carbon::parse($date . ' ' . $dutyStartTimeStr);
-                $dutyEnd = Carbon::parse($date . ' ' . $dutyEndTimeStr);
+                $dutyStart = Carbon::parse($date . ' ' . $dutyStartTimeString);
+                $dutyEnd = Carbon::parse($date . ' ' . $dutyEndTimeString);
 
                 // Handle overnight duties
                 if ($dutyEnd->lt($dutyStart)) {
@@ -542,7 +565,7 @@ class DutyAssignmentController extends Controller
                 ->where('duty_id', $dutyId)
                 ->where('assigned_date', $date)
                 ->get()
-                ->map(function ($assignment) use ($dutySessionExcuses) {
+                ->map(function ($assignment) {
                     return [
                         'assignment_id' => $assignment->id,
                         'soldier_id' => $assignment->soldier_id,
@@ -620,11 +643,12 @@ class DutyAssignmentController extends Controller
             $totalHours = 0;
             $isOvernight = false;
             try {
-                $startTimeStr = $duty->start_time instanceof Carbon ? $duty->start_time->format('H:i:s') : $duty->start_time;
-                $endTimeStr = $duty->end_time instanceof Carbon ? $duty->end_time->format('H:i:s') : $duty->end_time;
+                // Extract time parts for duty times
+                $dutyStartTimeString = $extractTimePart($duty->start_time);
+                $dutyEndTimeString = $extractTimePart($duty->end_time);
 
-                $startTime = Carbon::parse($date . ' ' . $startTimeStr);
-                $endTime = Carbon::parse($date . ' ' . $endTimeStr);
+                $startTime = Carbon::parse('2000-01-01 ' . $dutyStartTimeString); // Use a base date
+                $endTime = Carbon::parse('2000-01-01 ' . $dutyEndTimeString); // Use a base date
 
                 if ($endTime->lt($startTime)) {
                     $endTime->addDay();
@@ -645,14 +669,10 @@ class DutyAssignmentController extends Controller
             $sessionTimes = null;
             if ($siteSettings) {
                 $sessionTimes = [
-                    'pt_time' => $siteSettings->pt_time ?
-                        (is_string($siteSettings->pt_time) ? $siteSettings->pt_time : $siteSettings->pt_time->format('H:i')) : null,
-                    'games_time' => $siteSettings->games_time ?
-                        (is_string($siteSettings->games_time) ? $siteSettings->games_time : $siteSettings->games_time->format('H:i')) : null,
-                    'roll_call_time' => $siteSettings->roll_call_time ?
-                        (is_string($siteSettings->roll_call_time) ? $siteSettings->roll_call_time : $siteSettings->roll_call_time->format('H:i')) : null,
-                    'parade_time' => $siteSettings->parade_time ?
-                        (is_string($siteSettings->parade_time) ? $siteSettings->parade_time : $siteSettings->parade_time->format('H:i')) : null,
+                    'pt_time' => $extractTimePart($siteSettings->pt_time),
+                    'games_time' => $extractTimePart($siteSettings->games_time),
+                    'roll_call_time' => $extractTimePart($siteSettings->roll_call_time),
+                    'parade_time' => $extractTimePart($siteSettings->parade_time),
                 ];
             }
 
@@ -696,8 +716,8 @@ class DutyAssignmentController extends Controller
                 'duty' => [
                     'id' => $duty->id,
                     'duty_name' => $duty->duty_name,
-                    'start_time' => $duty->start_time,
-                    'end_time' => $duty->end_time,
+                    'start_time' => $extractTimePart($duty->start_time), // Show only time part
+                    'end_time' => $extractTimePart($duty->end_time), // Show only time part
                     'duration_days' => $duty->duration_days ?? 1,
                     'required_manpower' => $requiredManpower,
                     'status' => $duty->status,
