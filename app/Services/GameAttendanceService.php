@@ -790,7 +790,7 @@ class GameAttendanceService
      */
     public function getFormat2Data($date)
     {
-        Log::info("📋 GENERATING FORMAT2 DATA (PRIORITY-BASED) for {$this->reportType} report on date: {$date}");
+        Log::info("📋 GENERATING FORMAT2 DATA (SIMPLIFIED GROUPING) for {$this->reportType} report on date: {$date}");
 
         $carbonDate = Carbon::parse($date);
         $companies = Company::orderBy('id')->get();
@@ -805,9 +805,19 @@ class GameAttendanceService
 
         Log::debug("👥 Total soldiers to process (excluding ERE): {$allSoldiers->count()}");
 
-        // Categorize each soldier by their PRIMARY excusal reason
-        $categorizedSoldiers = [];
+        // Group by simple duty types
+        $dutyGroups = [
+            'Roster Duties' => [],
+            'Fixed Duties' => [],
+            'Leave' => [],
+            'Appointments' => [],
+            'Courses' => [],
+            'Cadres' => [],
+            'ERE' => [],
+        ];
+
         $totalExcused = 0;
+        $grandTotal = array_fill_keys($companyNames, 0);
 
         foreach ($allSoldiers as $soldier) {
             $excusalReason = $this->getSoldierExcusalReason($soldier, $date);
@@ -815,67 +825,46 @@ class GameAttendanceService
             if ($excusalReason) {
                 $totalExcused++;
                 $category = $excusalReason['reason'];
-                $details = $excusalReason['details'];
 
-                if (!isset($categorizedSoldiers[$category])) {
-                    $categorizedSoldiers[$category] = [];
+                // Map to simple group names
+                $groupName = match ($category) {
+                    'Roster Duty' => 'Roster Duties',
+                    'Fixed Duty' => 'Fixed Duties',
+                    'Leave' => 'Leave',
+                    'Appointment' => 'Appointments',
+                    'Course' => 'Courses',
+                    'Cadre' => 'Cadres',
+                    'ERE' => 'ERE',
+                    default => 'Other'
+                };
+
+                if (!isset($dutyGroups[$groupName][$soldier->company->name])) {
+                    $dutyGroups[$groupName][$soldier->company->name] = 0;
                 }
 
-                if (!isset($categorizedSoldiers[$category][$details])) {
-                    $categorizedSoldiers[$category][$details] = [];
-                }
-
-                $categorizedSoldiers[$category][$details][] = $soldier;
+                $dutyGroups[$groupName][$soldier->company->name]++;
+                $grandTotal[$soldier->company->name]++;
             }
         }
 
-        Log::debug("📊 Total excused soldiers: {$totalExcused}");
-        Log::debug("📋 Categories found: " . implode(', ', array_keys($categorizedSoldiers)));
-
         // Build the data rows
         $data = [];
-        $grandTotal = array_fill_keys($companyNames, 0);
 
-        // Define category order for output
-        $categoryOrder = [
-            'ERE' => 'Extra Regimental Employment',
-            'Leave' => 'Leave',
-            'Roster Duty' => 'Roster Duties',
-            'Fixed Duty' => 'Fixed Duties',
-            'Appointment' => 'Appointments',
-            'Course' => 'Courses',
-            'Cadre' => 'Cadres',
-        ];
+        foreach ($dutyGroups as $groupName => $companyCounts) {
+            if (array_sum($companyCounts) > 0) {
+                $row = [
+                    'category' => $groupName,
+                    'type' => '', // Empty for simplified version
+                ];
 
-        foreach ($categoryOrder as $categoryKey => $categoryDisplay) {
-            if (isset($categorizedSoldiers[$categoryKey])) {
-                foreach ($categorizedSoldiers[$categoryKey] as $typeName => $soldiers) {
-                    $row = [
-                        'category' => $categoryDisplay,
-                        'type' => $typeName,
-                    ];
-
-                    $counts = array_fill_keys($companyNames, 0);
-
-                    foreach ($soldiers as $soldier) {
-                        if ($soldier->company) {
-                            $companyName = $soldier->company->name;
-                            if (in_array($companyName, $companyNames)) {
-                                $counts[$companyName]++;
-                                $grandTotal[$companyName]++;
-                            }
-                        }
-                    }
-
-                    foreach ($companies as $company) {
-                        $row[$company->name] = $counts[$company->name];
-                    }
-
-                    $row['Total'] = count($soldiers);
-                    $data[] = $row;
-
-                    Log::debug("   📝 {$categoryDisplay} - {$typeName}: " . count($soldiers) . " soldiers");
+                foreach ($companies as $company) {
+                    $row[$company->name] = $companyCounts[$company->name] ?? 0;
                 }
+
+                $row['Total'] = array_sum($companyCounts);
+                $data[] = $row;
+
+                Log::debug("   📊 {$groupName}: " . $row['Total'] . " soldiers");
             }
         }
 
@@ -886,14 +875,13 @@ class GameAttendanceService
         ];
 
         foreach ($companies as $company) {
-            $totalRow[$company->name] = $grandTotal[$company->name];
+            $totalRow[$company->name] = $grandTotal[$company->name] ?? 0;
         }
 
         $totalRow['Total'] = $totalExcused;
         $data[] = $totalRow;
 
-        Log::info("📋 FORMAT2 COMPLETED (PRIORITY-BASED) - Total excused: {$totalExcused}");
-        Log::info("📊 NO DUPLICATES - Each soldier counted only once in their highest priority category");
+        Log::info("📋 FORMAT2 COMPLETED (SIMPLIFIED) - Total excused: {$totalExcused}");
 
         return $data;
     }
