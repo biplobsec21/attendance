@@ -191,6 +191,7 @@
 
 @push('scripts')
     <script>
+        var GlobalDate = null;
         const container = document.getElementById('duty-container-id');
         const showRouteTemplate = container?.dataset.showRoute || '/duty/:id';
 
@@ -535,6 +536,7 @@
                 // Process and render details
                 let duties = [];
                 if (detailsResult.success && detailsResult.data) {
+                    GlobalDate = detailsResult.data.date;
                     console.log('Raw duty data:', detailsResult.data);
                     duties = processDutyData(detailsResult.data);
                     console.log('Processed duties:', duties);
@@ -555,6 +557,7 @@
         // Unified table rendering - Single table for both roster and fixed duties
         // Unified table rendering - Single row per duty with both roster and fixed soldiers
         function renderDutyDetailsTable(duties) {
+            console.log('Rendering duties:', duties);
             const container = document.getElementById('dutyDetailsContainer');
 
             if (!duties || duties.length === 0) {
@@ -625,6 +628,7 @@
 
         // Helper function to generate duty row with both roster and fixed soldiers
         function generateDutyRow(duty) {
+            // console.log(GlobalDate);
             const fulfillmentPercent = duty.fulfillment_rate || 0;
             const isFulfilled = fulfillmentPercent >= 100;
             const totalAssigned = duty.assigned_count || 0;
@@ -649,15 +653,15 @@
                 <div class="text-sm text-gray-500 flex items-center gap-2">
 
                     ${duty.has_roster ? `
-                                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                                                                                Roster
-                                                                            </span>
-                                                                        ` : ''}
+                                                                                                                                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                                                                                                                                                                                Roster
+                                                                                                                                                                            </span>
+                                                                                                                                                                        ` : ''}
                     ${duty.has_fixed ? `
-                                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
-                                                                                Fixed
-                                                                            </span>
-                                                                        ` : ''}
+                                                                                                                                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                                                                                                                                                                                Fixed
+                                                                                                                                                                            </span>
+                                                                                                                                                                        ` : ''}
                 </div>
             </td>
             <td class="px-6 py-4">
@@ -689,44 +693,44 @@
                         <span class="text-gray-500 text-xs">(${soldier.army_no || 'N/A'})</span>
                         ${soldier.company ? `<span class="text-gray-400 text-xs">• ${soldier.company}</span>` : ''}
                         ${isFixed ? `
-                                                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
-                                                                                    <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                                                                                    </svg>
-                                                                                    Fixed
-                                                                                </span>
-                                                                            ` : ''}
+                                                                                                                                                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
+                                                                                                                                                                                    <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                                                                                                                                                                    </svg>
+                                                                                                                                                                                    Fixed
+                                                                                                                                                                                </span>
+                                                                                                                                                                            ` : ''}
                         ${soldier.remarks && !isFixed ? `<span class="text-xs text-blue-600 italic">• ${soldier.remarks}</span>` : ''}
                     </div>
                     <div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         ${!isFixed ? `
-                                                                                <button
-                                                                                    data-action="reassign"
-                                                                                    data-duty-id="${duty.duty_id}"
-                                                                                    data-soldier-id="${soldier.id}"
-                                                                                    data-soldier-name="${safeSoldierName}"
-                                                                                    data-duty-name="${safeDutyName}"
-                                                                                    class="text-yellow-600 hover:text-yellow-800 p-1 rounded hover:bg-yellow-50"
-                                                                                    title="Reassign Soldier">
-                                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-                                                                                    </svg>
-                                                                                </button>
-                                                                                <button
-                                                                                    data-action="cancel"
-                                                                                    data-duty-id="${duty.duty_id}"
-                                                                                    data-soldier-id="${soldier.id}"
-                                                                                    data-soldier-name="${safeSoldierName}"
-                                                                                    data-duty-name="${safeDutyName}"
-                                                                                    class="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
-                                                                                    title="Remove Soldier">
-                                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                                                    </svg>
-                                                                                </button>
-                                                                            ` : `
-                                                                                <span class="text-xs text-purple-600 italic px-2 py-1">Permanent</span>
-                                                                            `}
+                                                                                                                                                                                <button
+                                                                                                                                                                                    data-action="reassign"
+                                                                                                                                                                                    data-duty-id="${duty.duty_id}"
+                                                                                                                                                                                    data-soldier-id="${soldier.id}"
+                                                                                                                                                                                    data-soldier-name="${safeSoldierName}"
+                                                                                                                                                                                    data-duty-name="${safeDutyName}"
+                                                                                                                                                                                    class="text-yellow-600 hover:text-yellow-800 p-1 rounded hover:bg-yellow-50"
+                                                                                                                                                                                    title="Reassign Soldier">
+                                                                                                                                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                                                                                                                                                                                    </svg>
+                                                                                                                                                                                </button>
+                                                                                                                                                                                <button
+                                                                                                                                                                                    data-action="cancel"
+                                                                                                                                                                                    data-duty-id="${duty.duty_id}"
+                                                                                                                                                                                    data-soldier-id="${soldier.id}"
+                                                                                                                                                                                    data-soldier-name="${safeSoldierName}"
+                                                                                                                                                                                    data-duty-name="${safeDutyName}"
+                                                                                                                                                                                    class="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+                                                                                                                                                                                    title="Remove Soldier">
+                                                                                                                                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                                                                                                                                                    </svg>
+                                                                                                                                                                                </button>
+                                                                                                                                                                            ` : `
+                                                                                                                                                                                <span class="text-xs text-purple-600 italic px-2 py-1">Permanent</span>
+                                                                                                                                                                            `}
                     </div>
                 </div>
             `;
@@ -745,11 +749,11 @@
             row += `
                 </div>
                 ${duty.roster_count > 0 || duty.fixed_count > 0 ? `
-                                                                        <div class="text-xs text-gray-500 mt-2 flex gap-3">
-                                                                            ${duty.roster_count > 0 ? `<span class="text-green-600">Roster: ${duty.roster_count}</span>` : ''}
-                                                                            ${duty.fixed_count > 0 ? `<span class="text-purple-600">Fixed: ${duty.fixed_count}</span>` : ''}
-                                                                        </div>
-                                                                    ` : ''}
+                                                                                                                                                                        <div class="text-xs text-gray-500 mt-2 flex gap-3">
+                                                                                                                                                                            ${duty.roster_count > 0 ? `<span class="text-green-600">Roster: ${duty.roster_count}</span>` : ''}
+                                                                                                                                                                            ${duty.fixed_count > 0 ? `<span class="text-purple-600">Fixed: ${duty.fixed_count}</span>` : ''}
+                                                                                                                                                                        </div>
+                                                                                                                                                                    ` : ''}
             </td>
             <td class="px-6 py-4">
                 <div class="flex items-center space-x-2">
@@ -761,7 +765,7 @@
                 <div class="text-xs text-gray-500 mt-1">${totalAssigned} / ${requiredManpower}</div>
             </td>
             <td class="px-6 py-4 text-sm whitespace-nowrap">
-                <button onclick="viewDutyDetails(${duty.duty_id}, '${(duty.duty_name || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
+                <button onclick="viewDutyDetails(${duty.duty_id}, '${(duty.start_time || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
                     class="text-blue-600 hover:text-blue-900 font-medium mr-3">
                     <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -770,16 +774,16 @@
                     View
                 </button>
                 ${duty.has_roster ? `
-                                                                        <button onclick="showAddSoldierModal(${duty.duty_id}, '${(duty.duty_name || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
-                                                                            class="text-green-600 hover:text-green-900 font-medium">
-                                                                            <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                                                                            </svg>
-                                                                            Add
-                                                                        </button>
-                                                                    ` : `
-                                                                        <span class="text-xs text-gray-400">Fixed Only</span>
-                                                                    `}
+                                                                                                                                                                        <button onclick="showAddSoldierModal(${duty.duty_id}, '${(duty.duty_name || 'N/A').replace(/'/g, "\\'").replace(/"/g, '\\"')}')"
+                                                                                                                                                                            class="text-green-600 hover:text-green-900 font-medium">
+                                                                                                                                                                            <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                                                                                                                                                            </svg>
+                                                                                                                                                                            Add
+                                                                                                                                                                        </button>
+                                                                                                                                                                    ` : `
+                                                                                                                                                                        <span class="text-xs text-gray-400">Fixed Only</span>
+                                                                                                                                                                    `}
             </td>
         </tr>
     `;
@@ -1134,10 +1138,156 @@
         }
 
         // Simple view details function
+        /// <start> showing modal for duty details <start>///
+        /// <start> showing modal for duty details <start>///
+        /// <start> showing modal for duty details <start>///
+
         function viewDutyDetails(dutyId, dutyName) {
-            showToast(`Viewing details for: ${dutyName}`, 'info');
+            // showToast(`Loading details for: ${dutyName}`, 'info');
+            // Get the selected date from the date picker
+            const date = document.getElementById('selectedDate').value;
+            if (!date) {
+                showToast('Please select a date first', 'warning');
+                return;
+            }
+            showLoading();
+            // Make AJAX request to load duty details
+            fetch(`/duty-assignments/duty-details/${dutyId}?date=${date}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    hideLoading();
+
+                    if (result.success) {
+                        // Create and show modal with the duty details
+                        showDutyDetailsModal(result.data, result.html);
+                    } else {
+                        showToast(result.message || 'Failed to load duty details', 'error');
+                    }
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error('Error loading duty details:', error);
+                    showToast('Error loading duty details: ' + error.message, 'error');
+                });
         }
 
+        // Function to create and show duty details modal
+        function showDutyDetailsModal(data, htmlContent) {
+            // Remove existing modal if any
+            const existingModal = document.getElementById('dutyDetailsModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // Create modal container
+            const modal = document.createElement('div');
+            modal.id = 'dutyDetailsModal';
+            modal.className = 'fixed inset-0 z-50 overflow-y-auto';
+            modal.innerHTML = `
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Background overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeDutyDetailsModal()"></div>
+
+            <!-- Modal panel -->
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-7xl sm:w-full">
+                <!-- Close button -->
+                <div class="absolute top-4 right-4 z-10">
+                    <button type="button" onclick="closeDutyDetailsModal()"
+                        class="bg-white rounded-md p-2 inline-flex items-center justify-center text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Modal content -->
+                <div id="dutyDetailsContent" class="max-h-[90vh] overflow-y-auto">
+                    ${htmlContent || '<div class="p-8 text-center text-gray-500">No content available</div>'}
+                </div>
+
+                <!-- Modal footer -->
+                <div class="bg-gray-50 px-6 py-3 flex justify-between items-center border-t">
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="closeDutyDetailsModal()"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+            // Add modal to body
+            document.body.appendChild(modal);
+
+            // Prevent body scroll when modal is open
+            document.body.style.overflow = 'hidden';
+
+            // Add smooth entrance animation
+            setTimeout(() => {
+                const modalPanel = modal.querySelector('.sm\\:align-middle');
+                if (modalPanel) {
+                    modalPanel.style.opacity = '1';
+                    modalPanel.style.transform = 'translateY(0)';
+                }
+            }, 50);
+        }
+
+        // Function to close duty details modal
+        function closeDutyDetailsModal() {
+            const modal = document.getElementById('dutyDetailsModal');
+            if (modal) {
+                // Add exit animation
+                const modalPanel = modal.querySelector('.sm\\:align-middle');
+                if (modalPanel) {
+                    modalPanel.style.opacity = '0';
+                    modalPanel.style.transform = 'translateY(-20px)';
+                }
+
+                setTimeout(() => {
+                    modal.remove();
+                    // Restore body scroll
+                    document.body.style.overflow = '';
+                }, 300);
+            }
+        }
+
+
+        // Also update the event listener for view buttons to use the new function
+        document.addEventListener('click', function(e) {
+            // Existing code for cancel and reassign buttons...
+
+            // Add handler for view details buttons if they exist in the table
+            if (e.target.closest('[onclick*="viewDutyDetails"]')) {
+                e.preventDefault();
+                const button = e.target.closest('[onclick*="viewDutyDetails"]');
+                const onclickAttr = button.getAttribute('onclick');
+                const matches = onclickAttr.match(/viewDutyDetails\((\d+),\s*'([^']+)'\)/);
+                if (matches && matches.length >= 3) {
+                    const dutyId = parseInt(matches[1]);
+                    const dutyName = matches[2].replace(/\\'/g, "'").replace(/\\"/g, '"');
+                    viewDutyDetails(dutyId, dutyName);
+                }
+            }
+        });
+
+        /// <end> showing modal for duty details <end>///
+        /// <end> showing modal for duty details <end>///
+        /// <end> showing modal for duty details <end>///
+        /// <end> showing modal for duty details <end>///
         // Event delegation for action buttons
         document.addEventListener('click', function(e) {
             if (e.target.closest('[data-action="cancel"]')) {

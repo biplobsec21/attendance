@@ -142,8 +142,8 @@
                             <option value="">Select Gender</option>
                             <option value="Male" {{ (old('gender') ?? $profile?->gender) == 'Male' ? 'selected' : '' }}>
                                 Male</option>
-                            <option value="Female"
-                                {{ (old('gender') ?? $profile?->gender) == 'Female' ? 'selected' : '' }}>Female</option>
+                            {{-- <option value="Female"
+                                {{ (old('gender') ?? $profile?->gender) == 'Female' ? 'selected' : '' }}>Female</option> --}}
                         </x-form.select>
                         @error('gender')
                             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>

@@ -173,6 +173,10 @@ Route::middleware('auth', 'check.leaves')->group(function () {
 
         Route::get('/available-soldiers', [DutyAssignmentController::class, 'availableSoldiers']);
         Route::get('/available-duties', [DutyAssignmentController::class, 'availableDuties']);
+
+        // routes/web.php
+        Route::get('/duty-details/{dutyId}', [DutyAssignmentController::class, 'dutyDetails'])
+            ->name('duty-assignments.duty-details');
     });
 
 
