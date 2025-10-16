@@ -36,6 +36,11 @@ class Duty extends Model
         'end_time' => 'datetime:H:i',
         'duration_days' => 'integer',
         'manpower' => 'integer',
+        // Add these boolean casts
+        'excused_next_session_pt' => 'boolean',
+        'excused_next_session_games' => 'boolean',
+        'excused_next_session_roll_call' => 'boolean',
+        'excused_next_session_parade' => 'boolean',
     ];
     public function ranks()
     {

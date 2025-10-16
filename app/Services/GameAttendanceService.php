@@ -289,7 +289,7 @@ class GameAttendanceService
             $hasExcusalTag = $duty->duty->{$this->excusalField};
 
             if ($hasExcusalTag === true) {
-                Log::debug("   ✅ Duty '{$dutyName}' has excusal checkbox = TRUE for {$this->reportType} - AUTOMATICALLY EXCUSED");
+                Log::debug("   ✅ Duty '{$dutyName}' has excusal checkbox = TRUE for {$this->reportType} - AUTOMATICALLY EXCUSED {$this->excusalField}");
                 return true;
             }
 
@@ -301,7 +301,7 @@ class GameAttendanceService
                 return true;
             }
 
-            Log::debug("   ❌ Duty '{$dutyName}' does NOT excuse (checkbox: " . ($hasExcusalTag ? 'true' : 'false/null') . ", time overlap: no)");
+            Log::debug("   ❌ Duty '{$dutyName}' does NOT excuse (checkbox DDDD: {$this->excusalField} " . ($hasExcusalTag ? 'true' : 'false/null') . ", time overlap: no)");
         }
 
         Log::debug("   ❌ No excusing duties found");
