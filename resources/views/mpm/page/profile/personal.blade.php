@@ -139,7 +139,6 @@
 
                     <div>
                         <x-form.select name="gender" label="Gender">
-                            <option value="">Select Gender</option>
                             <option value="Male" {{ (old('gender') ?? $profile?->gender) == 'Male' ? 'selected' : '' }}>
                                 Male</option>
                             {{-- <option value="Female"
