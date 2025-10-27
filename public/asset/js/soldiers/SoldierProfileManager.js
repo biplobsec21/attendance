@@ -17,10 +17,12 @@ export default class SoldierProfileManager {
             skill: "",
             course: "",
             cadre: "",
-            ere: "all",
+            ere: "",
             att: "",
             education: "",
-            leave: ""
+            leave: "",
+            district: "",
+            bloodGroup: ""
         };
         this.selectedRows = new Set();
         this.soldiers = [];
@@ -233,16 +235,31 @@ export default class SoldierProfileManager {
     /**
      * Progressive rendering - renders soldiers in batches with small delays
      */
+    /**
+ * Progressive rendering - renders soldiers in batches with small delays
+ */
     async progressiveRender() {
         const filtered = this.applyFilters(this.soldiers);
 
+        console.log('Progressive render - filtered soldiers:', filtered.length);
+        console.log('Current filters:', this.filters);
+
+        const emptyState = document.getElementById('empty-state');
+        const tbody = document.getElementById('soldiers-tbody');
+        const loadingState = document.getElementById('loading-state');
+
+        // Hide loading state if it's visible
+        loadingState.classList.add('hidden');
+
         if (filtered.length === 0) {
-            document.getElementById('empty-state').classList.remove('hidden');
+            console.log('No soldiers found after filtering - showing empty state');
+            emptyState.classList.remove('hidden');
+            tbody.innerHTML = '';
             return;
         }
 
-        document.getElementById('empty-state').classList.add('hidden');
-        const tbody = document.getElementById('soldiers-tbody');
+        console.log(`Rendering ${filtered.length} soldiers`);
+        emptyState.classList.add('hidden');
         tbody.innerHTML = '';
 
         // Show initial message
@@ -258,6 +275,7 @@ export default class SoldierProfileManager {
                     finalLoadingRow.remove();
                 }
                 this.bulkActions.updateBulkActionButton();
+                console.log('Finished rendering all soldiers');
                 return;
             }
 
@@ -295,7 +313,26 @@ export default class SoldierProfileManager {
 
         requestAnimationFrame(renderNextBatch);
     }
+    async filterAndRender() {
+        console.log('Filter and render called');
+        console.log('Current filters state:', this.filters);
 
+        // Force a complete re-render
+        await this.progressiveRender();
+    }
+    forceRerender() {
+        const tbody = document.getElementById('soldiers-tbody');
+        const emptyState = document.getElementById('empty-state');
+        const loadingState = document.getElementById('loading-state');
+
+        // Clear everything first
+        tbody.innerHTML = '';
+        loadingState.classList.add('hidden');
+        emptyState.classList.add('hidden');
+
+        // Then re-render
+        this.progressiveRender();
+    }
     /**
      * Create loading indicator row
      */
@@ -343,10 +380,14 @@ export default class SoldierProfileManager {
         const cadres = new Set();
         const atts = new Set();
         const educations = new Set();
+        const districts = new Set();
+        const bloodGroups = new Set();
 
         this.soldiers.forEach(s => {
             if (s.rank) ranks.add(s.rank);
             if (s.unit) companies.add(s.unit);
+            if (s.blood_group) bloodGroups.add(s.blood_group);
+            if (s.districts) districts.add(s.districts);
 
             if (Array.isArray(s.cocurricular)) {
                 s.cocurricular.forEach(skill => {
@@ -386,6 +427,8 @@ export default class SoldierProfileManager {
         this.populateSelect('cadre-filter', cadres);
         this.populateSelect('att-filter', atts);
         this.populateSelect('education-filter', educations);
+        this.populateSelect('district-filter', districts);
+        this.populateSelect('bloodGroup-filter', bloodGroups);
     }
 
     populateSelect(selectId, items) {
@@ -404,6 +447,7 @@ export default class SoldierProfileManager {
     applyFilters(soldiers) {
         let filtered = [...soldiers];
 
+        // Search filter (always applies)
         if (this.filters.search) {
             const term = this.filters.search.toLowerCase();
             filtered = filtered.filter(s =>
@@ -412,78 +456,119 @@ export default class SoldierProfileManager {
             );
         }
 
-        if (this.filters.rank) {
-            filtered = filtered.filter(s => s.rank === this.filters.rank);
-        }
+        // Define all possible category filters
+        const categoryFilters = [
+            'rank', 'company', 'status', 'skill', 'course',
+            'cadre', 'ere', 'att', 'education', 'leave', 'district', 'bloodGroup'
+        ];
 
-        if (this.filters.company) {
-            filtered = filtered.filter(s => s.unit === this.filters.company);
-        }
+        // Apply ALL active category filters using reduce
+        filtered = categoryFilters.reduce((currentFiltered, filterType) => {
+            if (this.filters[filterType] && this.filters[filterType] !== '') {
+                const beforeCount = currentFiltered.length;
+                const result = this.applySingleCategoryFilter(currentFiltered, filterType);
+                console.log(`Applied ${filterType}=${this.filters[filterType]}: ${beforeCount} -> ${result.length} soldiers`);
+                return result;
+            }
+            return currentFiltered;
+        }, filtered);
 
-        if (this.filters.status) {
-            filtered = filtered.filter(s => {
-                const status = s.is_leave ? 'leave' : (s.is_sick ? 'medical' : 'active');
-                return status === this.filters.status;
-            });
-        }
-
-        if (this.filters.skill) {
-            filtered = filtered.filter(soldier =>
-                soldier.cocurricular?.some(skill => skill.name === this.filters.skill)
-            );
-        }
-
-        if (this.filters.course) {
-            const filterValue = this.filters.course.toLowerCase().trim();
-            filtered = filtered.filter(soldier =>
-                soldier.courses?.some(course =>
-                    course.name.toLowerCase().trim() === filterValue
-                )
-            );
-        }
-
-        if (this.filters.cadre) {
-            const filterValue = this.filters.cadre.toLowerCase().trim();
-            filtered = filtered.filter(soldier =>
-                soldier.cadres?.some(cadre =>
-                    cadre.name.toLowerCase().trim() === filterValue
-                )
-            );
-        }
-
-        if (this.filters.ere && this.filters.ere !== "all") {
-            filtered = filtered.filter(soldier => {
-                const hasEre = soldier.has_ere === true;
-                return this.filters.ere === "with-ere" ? hasEre : !hasEre;
-            });
-        }
-
-        if (this.filters.att) {
-            const filterValue = this.filters.att.toLowerCase().trim();
-            filtered = filtered.filter(soldier =>
-                soldier.att?.some(att =>
-                    att.name.toLowerCase().trim() === filterValue
-                )
-            );
-        }
-
-        if (this.filters.education) {
-            const filterValue = this.filters.education.toLowerCase().trim();
-            filtered = filtered.filter(soldier =>
-                soldier.educations?.some(education =>
-                    education.name.toLowerCase().trim() === filterValue
-                )
-            );
-        }
-
-        if (this.filters.leave) {
-            filtered = filtered.filter(soldier => {
-                const isOnLeave = soldier.is_leave === true;
-                return this.filters.leave === "on-leave" ? isOnLeave : !isOnLeave;
-            });
-        }
-
+        console.log(`Final filtered count: ${filtered.length} soldiers`);
         return filtered;
+    }
+
+    /**
+     * Apply a single category filter
+     */
+    applySingleCategoryFilter(soldiers, filterType) {
+        const filterValue = this.filters[filterType];
+
+        console.log(`Filtering by ${filterType}: ${filterValue}`);
+
+        switch (filterType) {
+            case 'rank':
+                return soldiers.filter(s => s.rank === filterValue);
+
+            case 'company':
+                return soldiers.filter(s => s.unit === filterValue);
+
+            case 'status':
+                return soldiers.filter(s => {
+                    const status = s.is_leave ? 'leave' : (s.is_sick ? 'medical' : 'active');
+                    return status === filterValue;
+                });
+
+            case 'skill':
+                return soldiers.filter(soldier =>
+                    soldier.cocurricular?.some(skill => skill.name === filterValue)
+                );
+
+            case 'course':
+                const courseFilterValue = filterValue.toLowerCase().trim();
+                return soldiers.filter(soldier =>
+                    soldier.courses?.some(course =>
+                        course.name.toLowerCase().trim() === courseFilterValue
+                    )
+                );
+
+            case 'cadre':
+                const cadreFilterValue = filterValue.toLowerCase().trim();
+                return soldiers.filter(soldier =>
+                    soldier.cadres?.some(cadre =>
+                        cadre.name.toLowerCase().trim() === cadreFilterValue
+                    )
+                );
+
+            case 'ere':
+                console.log(`ERE Filter: value=${filterValue}, soldiers count before=${soldiers.length}`);
+                const ereFiltered = soldiers.filter(soldier => {
+                    const hasEre = soldier.has_ere === true;
+                    console.log(`Soldier ${soldier.name} (${soldier.army_no}): has_ere=${soldier.has_ere}, matches=${filterValue === "true" ? hasEre : !hasEre}`);
+                    // Fixed: Compare with "true" instead of "with-ere"
+                    return filterValue === "true" ? hasEre : !hasEre;
+                });
+                console.log(`ERE Filter result: ${ereFiltered.length} soldiers`);
+                return ereFiltered;
+
+            case 'att':
+                const attFilterValue = filterValue.toLowerCase().trim();
+                return soldiers.filter(soldier =>
+                    soldier.att?.some(att =>
+                        att.name.toLowerCase().trim() === attFilterValue
+                    )
+                );
+
+            case 'education':
+                const educationFilterValue = filterValue.toLowerCase().trim();
+                return soldiers.filter(soldier =>
+                    soldier.educations?.some(education =>
+                        education.name.toLowerCase().trim() === educationFilterValue
+                    )
+                );
+
+            case 'leave':
+                console.log(`Leave Filter: value=${filterValue}, soldiers count before=${soldiers.length}`);
+                const leaveFiltered = soldiers.filter(soldier => {
+                    const isOnLeave = soldier.is_leave === true;
+                    console.log(`Soldier ${soldier.name} (${soldier.army_no}): is_leave=${soldier.is_leave}, matches=${filterValue === "on-leave" ? isOnLeave : !isOnLeave}`);
+                    return filterValue === "on-leave" ? isOnLeave : !isOnLeave;
+                });
+                console.log(`Leave Filter result: ${leaveFiltered.length} soldiers`);
+                return leaveFiltered;
+
+            case 'district':
+                return soldiers.filter(soldier => {
+                    // Extract district from address - you might need to adjust this based on your data structure
+                    const address = soldier.address || '';
+                    const districtMatch = address.toLowerCase().includes(filterValue.toLowerCase());
+                    console.log(`Soldier ${soldier.name}: address="${address}", district match=${districtMatch}`);
+                    return districtMatch;
+                });
+            case 'bloodGroup':
+                return soldiers.filter(soldier => soldier.blood_group === filterValue);
+            default:
+                return soldiers;
+        }
     }
 
     async filterAndRender() {
@@ -499,10 +584,12 @@ export default class SoldierProfileManager {
             skill: "",
             course: "",
             cadre: "",
-            ere: "all",
+            ere: "",
             att: "",
             education: "",
-            leave: ""
+            leave: "",
+            district: "",
+            bloodGroup: ""
         };
 
         const inputs = {
@@ -513,17 +600,23 @@ export default class SoldierProfileManager {
             'skill-filter': '',
             'course-filter': '',
             'cadre-filter': '',
-            'ere-filter': 'all',
+            'ere-filter': '',
             'att-filter': '',
             'education-filter': '',
-            'leave-filter': ''
+            'leave-filter': '',
+            'district-filter': '',
+            'bloodGroup-filter': ''
         };
 
         Object.entries(inputs).forEach(([id, value]) => {
             const element = document.getElementById(id);
-            if (element) element.value = value;
+            if (element) {
+                element.value = value;
+                console.log(`Reset ${id} to: ${value}`);
+            }
         });
 
+        console.log('All filters cleared, current state:', this.filters);
         this.filterAndRender();
     }
 
@@ -573,5 +666,41 @@ export default class SoldierProfileManager {
 
     showError(msg) {
         showToast(msg, 'error');
+    }
+    // Add this method to SoldierProfileManager class
+    debugFilters() {
+        console.log('=== FILTER DEBUG ===');
+        console.log('Current filters:', this.filters);
+
+        const filtered = this.applyFilters(this.soldiers);
+        console.log(`Total soldiers: ${this.soldiers.length}`);
+        console.log(`Filtered soldiers: ${filtered.length}`);
+
+        // Check specific filters
+        if (this.filters.company) {
+            const companySoldiers = this.soldiers.filter(s => s.unit === this.filters.company);
+            console.log(`Soldiers in company ${this.filters.company}: ${companySoldiers.length}`);
+        }
+
+        if (this.filters.ere) {
+            const ereSoldiers = this.soldiers.filter(s =>
+                this.filters.ere === "true" ? s.has_ere === true : s.has_ere === false
+            );
+            console.log(`Soldiers with ERE=${this.filters.ere}: ${ereSoldiers.length}`);
+        }
+
+        if (this.filters.district) {
+            const districtSoldiers = this.soldiers.filter(s =>
+                s.address && s.address.toLowerCase().includes(this.filters.district.toLowerCase())
+            );
+            console.log(`Soldiers from district ${this.filters.district}: ${districtSoldiers.length}`);
+        }
+
+        if (this.filters.bloodGroup) {
+            const bloodGroupSoldiers = this.soldiers.filter(s => s.blood_group === this.filters.bloodGroup);
+            console.log(`Soldiers with blood group ${this.filters.bloodGroup}: ${bloodGroupSoldiers.length}`);
+        }
+
+        console.log('=== END DEBUG ===');
     }
 }

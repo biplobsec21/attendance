@@ -94,7 +94,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">RK</label>
                                 <select id="rank-filter"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">All RK</option>
+                                    <option value="">Select RK</option>
                                 </select>
                             </div>
 
@@ -103,17 +103,17 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Coy</label>
                                 <select id="company-filter"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">All Coy</option>
+                                    <option value="">Select Coy</option>
                                 </select>
                             </div>
 
                             <!-- Status Filter -->
-                            <div>
+                            <div class="hidden">
                                 <label for="status-filter"
                                     class="block text-sm font-medium text-gray-700 mb-2">Status</label>
                                 <select id="status-filter"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">All Status</option>
+                                    <option value="">Select Status</option>
                                     <option value="active">Active</option>
                                     <option value="leave">On Leave</option>
                                 </select>
@@ -124,7 +124,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Skills</label>
                                 <select id="skill-filter"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">All Skills</option>
+                                    <option value="">Select Skills</option>
                                 </select>
                             </div>
 
@@ -133,7 +133,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Courses</label>
                                 <select id="course-filter"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">All Courses</option>
+                                    <option value="">Select Courses</option>
                                 </select>
                             </div>
 
@@ -142,7 +142,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Cadres</label>
                                 <select id="cadre-filter"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">All Cadres</option>
+                                    <option value="">Select Cadres</option>
                                 </select>
                             </div>
 
@@ -152,9 +152,9 @@
                                     Status</label>
                                 <select id="ere-filter"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="all">All Soldiers</option>
-                                    <option value="with-ere">With ERE</option>
-                                    <option value="without-ere">Without ERE</option>
+                                    <option value="">Select Soldiers</option>
+                                    <option value="true">With ERE</option>
+                                    <option value="false">Without ERE</option>
                                 </select>
                             </div>
 
@@ -163,7 +163,7 @@
                                 <label for="att-filter" class="block text-sm font-medium text-gray-700 mb-2">ATT</label>
                                 <select id="att-filter"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">All ATT</option>
+                                    <option value="">Select ATT</option>
                                 </select>
                             </div>
                             {{-- Education Filter --}}
@@ -172,7 +172,7 @@
                                     class="block text-sm font-medium text-gray-700 mb-2">Education</label>
                                 <select id="education-filter"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">All Education</option>
+                                    <option value="">Select Education</option>
                                 </select>
                             </div>
                             {{-- Leave Filter --}}
@@ -181,19 +181,53 @@
                                     Status</label>
                                 <select id="leave-filter"
                                     class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">All Soldiers</option>
+                                    <option value="">Select Soldiers</option>
                                     <option value="on-leave">On Leave</option>
                                     <option value="not-on-leave">Not On Leave</option>
                                 </select>
                             </div>
-                        </div>
+                            <!-- District Filter -->
+                            <div>
+                                <label for="district-filter"
+                                    class="block text-sm font-medium text-gray-700 mb-2">District</label>
+                                <select id="district-filter"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                    <option value="">Select District</option>
+                                </select>
+                            </div>
 
+                            <!-- Blood Group Filter -->
+                            <div>
+                                <label for="bloodGroup-filter" class="block text-sm font-medium text-gray-700 mb-2">Blood
+                                    Group</label>
+                                <select id="bloodGroup-filter"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                    <option value="">Select Blood Group</option>
+                                </select>
+                            </div>
+
+                        </div>
+                        <!-- Active Filters Summary -->
+                        <div id="active-filters-summary"
+                            class="hidden bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-4 flex-wrap gap-2">
+                                    <span class="text-green-800 font-medium">Active Filters:</span>
+                                    <div id="active-filters-list" class="flex flex-wrap gap-2"></div>
+                                    <!-- Counter will be inserted here automatically -->
+                                </div>
+                                <button id="clear-all-filters"
+                                    class="text-green-600 hover:text-green-800 text-sm font-medium whitespace-nowrap">
+                                    Clear All
+                                </button>
+                            </div>
+                        </div>
                         <!-- Action Buttons -->
                         <div class="flex flex-wrap gap-3">
-                            <button id="clear-filters"
+                            {{-- <button id="clear-filters"
                                 class="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200">
                                 <i class="fas fa-times mr-2"></i>Clear Filters
-                            </button>
+                            </button> --}}
                             <button id="export-excel"
                                 class="hidden px-4 py-2 text-green-600 bg-green-100 rounded-lg hover:bg-green-200 transition-colors duration-200">
                                 <i class="fas fa-file-excel mr-2"></i>Export Excel

@@ -87,6 +87,7 @@ class SoldierDataFormatter
         return [
             'id'        => $profile->id,
             'name'      => $profile->full_name,
+            'districts'  => $profile->district?->name,
             'joining_date'      => $profile->joining_date,
             'army_no'      => $profile->army_no,
             'rank'      => $profile->rank?->name,
