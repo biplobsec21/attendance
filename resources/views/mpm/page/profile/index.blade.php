@@ -224,10 +224,10 @@
                         </div>
                         <!-- Action Buttons -->
                         <div class="flex flex-wrap gap-3">
-                            {{-- <button id="clear-filters"
+                            <button id="clear-filters hidden"
                                 class="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200">
                                 <i class="fas fa-times mr-2"></i>Clear Filters
-                            </button> --}}
+                            </button>
                             <button id="export-excel"
                                 class="hidden px-4 py-2 text-green-600 bg-green-100 rounded-lg hover:bg-green-200 transition-colors duration-200">
                                 <i class="fas fa-file-excel mr-2"></i>Export Excel
