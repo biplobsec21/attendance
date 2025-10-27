@@ -96,6 +96,11 @@ export function initFilters(manager) {
             if (counterElement) {
                 counterElement.remove();
             }
+            // const counterElement2 = document.getElementById('filter-count');
+            // if (counterElement2) {
+            //     counterElement2.remove();
+            // }
+
         }
     };
     // Function to update filter active states (from Option 1)
@@ -166,6 +171,8 @@ export function initFilters(manager) {
                 console.log(`Filter changed: ${filterType} = ${e.target.value}`);
                 manager.debugFilters();
                 manager.forceRerender();
+                // updateFilterCount();
+
             });
         }
     });
@@ -175,8 +182,31 @@ export function initFilters(manager) {
         manager.clearFilters();
         updateFilterActiveStates();
         updateActiveFiltersSummary();
-    });
+        updateFilterCount(); // This will now work
 
+    });
+    function updateFilterCount() {
+        const filters = document.querySelectorAll('#filters-sidebar select, #filters-sidebar input');
+        let activeCount = 0;
+
+        filters.forEach(filter => {
+            if (filter.value && filter.value !== '' && filter.id !== 'search-input') {
+                activeCount++;
+            } else if (filter.id === 'search-input' && filter.value.trim() !== '') {
+                activeCount++;
+            }
+        });
+
+        const filterCount = document.getElementById('filter-count');
+        if (!filterCount) return;
+
+        if (activeCount > 0) {
+            filterCount.textContent = activeCount;
+            filterCount.classList.remove('hidden');
+        } else {
+            filterCount.classList.add('hidden');
+        }
+    }
     // Initialize
     updateFilterActiveStates();
     updateActiveFiltersSummary();

@@ -72,175 +72,27 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
 
-                <!-- Filters Section -->
-                <div class=" mx-auto px-4 sm:px-6 lg:px-8 mb-8">
-                    <div class="bg-white rounded-xl shadow-md p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                            <!-- Search -->
-                            <div class="lg:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                                <div class="relative">
-                                    <input type="text" id="search-input" placeholder="Search by name, army number..."
-                                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                                </div>
-                            </div>
+                <!-- Filter Toggle Button -->
+                <!-- Filter Toggle Button -->
+                <div class="mx-auto px-4 sm:px-6 lg:px-8 mb-4">
+                    <div class="flex items-center justify-between">
+                        <button id="toggle-filters"
+                            class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-all duration-200">
+                            <i class="fas fa-filter text-green-600"></i>
+                            <span class="font-medium text-gray-700">Filters</span>
+                            <span id="filter-count"
+                                class="hidden px-2 py-1 text-xs font-semibold text-white bg-green-600 rounded-full"></span>
+                            <i class="fas fa-chevron-right text-gray-400 ml-2" id="filter-toggle-icon"></i>
+                        </button>
 
-                            <!-- Rank Filter -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">RK</label>
-                                <select id="rank-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select RK</option>
-                                </select>
-                            </div>
-
-                            <!-- Company Filter -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Coy</label>
-                                <select id="company-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select Coy</option>
-                                </select>
-                            </div>
-
-                            <!-- Status Filter -->
-                            <div class="hidden">
-                                <label for="status-filter"
-                                    class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                                <select id="status-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select Status</option>
-                                    <option value="active">Active</option>
-                                    <option value="leave">On Leave</option>
-                                </select>
-                            </div>
-
-                            {{-- Skill --}}
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Skills</label>
-                                <select id="skill-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select Skills</option>
-                                </select>
-                            </div>
-
-                            {{-- Courses --}}
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Courses</label>
-                                <select id="course-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select Courses</option>
-                                </select>
-                            </div>
-
-                            {{-- Cadres --}}
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Cadres</label>
-                                <select id="cadre-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select Cadres</option>
-                                </select>
-                            </div>
-
-                            {{-- ERE Filter --}}
-                            <div>
-                                <label for="ere-filter" class="block text-sm font-medium text-gray-700 mb-2">ERE
-                                    Status</label>
-                                <select id="ere-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select Soldiers</option>
-                                    <option value="true">With ERE</option>
-                                    <option value="false">Without ERE</option>
-                                </select>
-                            </div>
-
-                            {{-- ATT Filter --}}
-                            <div>
-                                <label for="att-filter" class="block text-sm font-medium text-gray-700 mb-2">ATT</label>
-                                <select id="att-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select ATT</option>
-                                </select>
-                            </div>
-                            {{-- Education Filter --}}
-                            <div>
-                                <label for="education-filter"
-                                    class="block text-sm font-medium text-gray-700 mb-2">Education</label>
-                                <select id="education-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select Education</option>
-                                </select>
-                            </div>
-                            {{-- Leave Filter --}}
-                            <div>
-                                <label for="leave-filter" class="block text-sm font-medium text-gray-700 mb-2">Leave
-                                    Status</label>
-                                <select id="leave-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select Soldiers</option>
-                                    <option value="on-leave">On Leave</option>
-                                    <option value="not-on-leave">Not On Leave</option>
-                                </select>
-                            </div>
-                            <!-- District Filter -->
-                            <div>
-                                <label for="district-filter"
-                                    class="block text-sm font-medium text-gray-700 mb-2">District</label>
-                                <select id="district-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select District</option>
-                                </select>
-                            </div>
-
-                            <!-- Blood Group Filter -->
-                            <div>
-                                <label for="bloodGroup-filter" class="block text-sm font-medium text-gray-700 mb-2">Blood
-                                    Group</label>
-                                <select id="bloodGroup-filter"
-                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                    <option value="">Select Blood Group</option>
-                                </select>
-                            </div>
-
-                        </div>
-                        <!-- Active Filters Summary -->
-                        <div id="active-filters-summary"
-                            class="hidden bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-4 flex-wrap gap-2">
-                                    <span class="text-green-800 font-medium">Active Filters:</span>
-                                    <div id="active-filters-list" class="flex flex-wrap gap-2"></div>
-                                    <!-- Counter will be inserted here automatically -->
-                                </div>
-                                <button id="clear-all-filters"
-                                    class="text-green-600 hover:text-green-800 text-sm font-medium whitespace-nowrap">
-                                    Clear All
-                                </button>
-                            </div>
-                        </div>
-                        <!-- Action Buttons -->
-                        <div class="flex flex-wrap gap-3">
-                            <button id="clear-filters"
-                                class=" hidden px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors duration-200">
-                                <i class="fas fa-times mr-2"></i>Clear Filters
-                            </button>
-                            <button id="export-excel"
-                                class="hidden px-4 py-2 text-green-600 bg-green-100 rounded-lg hover:bg-green-200 transition-colors duration-200">
-                                <i class="fas fa-file-excel mr-2"></i>Export Excel
-                            </button>
-                            <button id="export-pdf"
-                                class="hidden px-4 py-2 text-red-600 bg-red-100 rounded-lg hover:bg-red-200 transition-colors duration-200">
-                                <i class="fas fa-file-pdf mr-2"></i>Export PDF
-                            </button>
-                            <button id="bulk-action"
-                                class="px-4 py-2 text-blue-600 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors duration-200 hidden">
-                                <i class="fas fa-edit mr-2"></i>Bulk Actions
-                            </button>
-                        </div>
+                        <!-- Bulk Action Button (moved here) -->
+                        <button id="bulk-action"
+                            class="hidden items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm">
+                            <i class="fas fa-edit"></i>
+                            <span class="font-medium">Bulk Actions</span>
+                        </button>
                     </div>
                 </div>
 
@@ -302,7 +154,216 @@
                 </div>
             </div>
         </div>
-        <!-- Profile Quick View Modal //  make it as a common modal //-->
+
+        <!-- Filters Sidebar -->
+        <div id="filters-sidebar"
+            class="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-50 overflow-hidden flex flex-col">
+            <!-- Sidebar Header -->
+            <div
+                class="bg-gradient-to-r from-green-800 to-green-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-filter text-white text-xl"></i>
+                    <h3 class="text-xl font-bold text-white">Filters</h3>
+                </div>
+                <button id="close-filters" class="text-white hover:text-green-100 transition-colors duration-200">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <!-- Active Filters Summary (Inside Sidebar) -->
+            <div id="active-filters-summary" class="hidden bg-green-50 border-b border-green-200 px-6 py-3 flex-shrink-0">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-green-800 font-medium text-sm">Active:</span>
+                        <div id="active-filters-list" class="flex flex-wrap gap-2"></div>
+                    </div>
+                    <button id="clear-all-filters"
+                        class="text-green-600 hover:text-green-800 text-sm font-medium whitespace-nowrap">
+                        Clear All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scrollable Filters Content -->
+            <div class="flex-1 overflow-y-auto px-6 py-4 filter-scrollbar">
+                <div class="space-y-4">
+                    <!-- Search -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-search text-gray-400 mr-2"></i>Search
+                        </label>
+                        <input type="text" id="search-input" placeholder="Name, army number..."
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
+                    </div>
+
+                    <!-- Rank Filter -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                RK
+                            </label>
+                            <select id="rank-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">Select RK</option>
+                            </select>
+                        </div>
+
+                        <!-- Company Filter -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Coy
+                            </label>
+                            <select id="company-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">Select Coy</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Courses Filter -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Courses
+                            </label>
+                            <select id="course-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">Select Courses</option>
+                            </select>
+                        </div>
+
+                        <!-- Cadres Filter -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Cadres
+                            </label>
+                            <select id="cadre-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">Select Cadres</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Status Filter (Hidden) -->
+                    <div class="hidden">
+                        <label for="status-filter" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <select id="status-filter"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="">Select Status</option>
+                            <option value="active">Active</option>
+                            <option value="leave">On Leave</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+
+                        <!-- Skills Filter -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Skills
+                            </label>
+                            <select id="skill-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">Select Skills</option>
+                            </select>
+                        </div>
+                        <!-- Education Filter -->
+                        <div>
+                            <label for="education-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                                Education
+                            </label>
+                            <select id="education-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">Select Education</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- ERE Filter -->
+                        <div>
+                            <label for="ere-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                                ERE Status
+                            </label>
+                            <select id="ere-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">Select Soldiers</option>
+                                <option value="true">With ERE</option>
+                                <option value="false">Without ERE</option>
+                            </select>
+                        </div>
+
+                        <!-- ATT Filter -->
+                        <div>
+                            <label for="att-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                                Att
+                            </label>
+                            <select id="att-filter"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">Select Att</option>
+                            </select>
+                        </div>
+                    </div>
+
+
+                    <!-- Leave Filter -->
+                    <div>
+                        <label for="leave-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                            Leave Status
+                        </label>
+                        <select id="leave-filter"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="">Select Soldiers</option>
+                            <option value="on-leave">On Leave</option>
+                            <option value="not-on-leave">Not On Leave</option>
+                        </select>
+                    </div>
+
+                    <!-- District Filter -->
+                    <div>
+                        <label for="district-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                            District
+                        </label>
+                        <select id="district-filter"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="">Select District</option>
+                        </select>
+                    </div>
+
+                    <!-- Blood Group Filter -->
+                    <div>
+                        <label for="bloodGroup-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                            Blood Group
+                        </label>
+                        <select id="bloodGroup-filter"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                            <option value="">Select Blood Group</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Footer with Action Buttons -->
+            <!-- Sidebar Footer with Action Buttons -->
+            <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 flex-shrink-0 hidden">
+                <div class="flex flex-col gap-3">
+                    <div class="flex gap-3">
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="export-excel"
+                            class="flex-1 px-4 py-2 text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors duration-200 text-sm font-medium border border-green-200">
+                            <i class="fas fa-file-excel mr-2"></i>Export Excel
+                        </button>
+                        <button id="export-pdf"
+                            class="flex-1 px-4 py-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors duration-200 text-sm font-medium border border-red-200">
+                            <i class="fas fa-file-pdf mr-2"></i>Export PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overlay -->
+        <div id="filters-overlay"
+            class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300"></div>
+
+        <!-- Profile Quick View Modal -->
         <div id="profile-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
             <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
@@ -322,8 +383,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Add this after the existing profile modal in your index.blade.php -->
 
         <!-- History Modal -->
         <div id="history-modal" class="fixed inset-0 z-50 hidden overflow-y-auto pt-16">
@@ -349,36 +408,178 @@
                 </div>
             </div>
         </div>
-    @endsection
+    </div>
+@endsection
 
-    @push('scripts')
-        <script>
-            const routes = {
-                getAllSoldiers: "{{ route('soldier.getAllData') }}",
-                delete: "{{ route('soldier.destroy', ['soldier' => ':id']) }}", // placeholder
-                edit: "{{ route('soldier.personalForm', ['profile' => ':id']) }}",
-                bulkDelete: "{{ route('soldier.bulkDelete') }}",
-                view: "{{ route('soldier.details', ['id' => ':id']) }}",
-                getHistory: "{{ route('soldier.history', ['id' => ':id']) }}", // Add this route
+@push('scripts')
+    <script>
+        const routes = {
+            getAllSoldiers: "{{ route('soldier.getAllData') }}",
+            delete: "{{ route('soldier.destroy', ['soldier' => ':id']) }}", // placeholder
+            edit: "{{ route('soldier.personalForm', ['profile' => ':id']) }}",
+            bulkDelete: "{{ route('soldier.bulkDelete') }}",
+            view: "{{ route('soldier.details', ['id' => ':id']) }}",
+            getHistory: "{{ route('soldier.history', ['id' => ':id']) }}", // Add this route
+        };
 
-            };
+        // Debug ERE filter
+        document.addEventListener('DOMContentLoaded', function() {
+            const ereFilter = document.getElementById('ere-filter');
+            if (ereFilter) {
+                console.log('ERE filter element found');
+                ereFilter.addEventListener('change', function() {
+                    console.log('ERE filter changed to:', this.value);
+                });
+            } else {
+                console.error('ERE filter element not found');
+            }
 
-            // Debug ERE filter
-            document.addEventListener('DOMContentLoaded', function() {
-                const ereFilter = document.getElementById('ere-filter');
-                if (ereFilter) {
-                    console.log('ERE filter element found');
-                    ereFilter.addEventListener('change', function() {
-                        console.log('ERE filter changed to:', this.value);
-                    });
+            // Sidebar functionality
+            const toggleBtn = document.getElementById('toggle-filters');
+            const closeBtn = document.getElementById('close-filters');
+            const sidebar = document.getElementById('filters-sidebar');
+            const overlay = document.getElementById('filters-overlay');
+            const applyBtn = document.getElementById('apply-filters');
+            const filterToggleIcon = document.getElementById('filter-toggle-icon');
+            const filterCount = document.getElementById('filter-count');
+
+            // Toggle sidebar
+            function openSidebar() {
+                sidebar.classList.add('show');
+                sidebar.style.transform = 'translateX(0)';
+                overlay.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+                filterToggleIcon.classList.remove('fa-chevron-right');
+                filterToggleIcon.classList.add('fa-chevron-left');
+            }
+
+            function closeSidebar() {
+                sidebar.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    sidebar.classList.remove('show');
+                }, 300);
+                overlay.classList.add('hidden');
+                document.body.style.overflow = '';
+                filterToggleIcon.classList.remove('fa-chevron-left');
+                filterToggleIcon.classList.add('fa-chevron-right');
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                if (sidebar.classList.contains('show')) {
+                    closeSidebar();
                 } else {
-                    console.error('ERE filter element not found');
+                    openSidebar();
                 }
             });
-        </script>
-        <script type="module" src="{{ asset('asset/js/soldiers/init.js') }}"></script>
-    @endpush
 
-    @push('styles')
-        <link rel="stylesheet" href="{{ asset('asset/css/profile.css') }}">
-    @endpush
+            closeBtn.addEventListener('click', closeSidebar);
+            overlay.addEventListener('click', closeSidebar);
+
+            // Optional: Close sidebar when apply is clicked
+            if (applyBtn) {
+                applyBtn.addEventListener('click', function() {
+                    closeSidebar();
+                    // Your existing filter apply logic will be triggered by your existing JS
+                });
+            }
+
+            // Update filter count badge
+            function updateFilterCount() {
+                const filters = document.querySelectorAll('#filters-sidebar select, #filters-sidebar input');
+                let activeCount = 0;
+
+                filters.forEach(filter => {
+                    if (filter.value && filter.value !== '' && filter.id !== 'search-input') {
+                        activeCount++;
+                    } else if (filter.id === 'search-input' && filter.value.trim() !== '') {
+                        activeCount++;
+                    }
+                });
+
+                if (activeCount > 0) {
+                    filterCount.textContent = activeCount;
+                    filterCount.classList.remove('hidden');
+                } else {
+                    filterCount.classList.add('hidden');
+                }
+            }
+
+            // Listen for filter changes
+            const filterInputs = document.querySelectorAll('#filters-sidebar select, #filters-sidebar input');
+            filterInputs.forEach(input => {
+                input.addEventListener('change', updateFilterCount);
+                input.addEventListener('input', updateFilterCount);
+            });
+
+            // Close sidebar on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && sidebar.classList.contains('show')) {
+                    closeSidebar();
+                }
+            });
+
+            // Initial count update
+            updateFilterCount();
+        });
+    </script>
+    <script type="module" src="{{ asset('asset/js/soldiers/init.js') }}"></script>
+@endpush
+
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('asset/css/profile.css') }}">
+    <style>
+        /* Sidebar styles */
+        #filters-sidebar {
+            box-shadow: -4px 0 6px -1px rgba(0, 0, 0, 0.1), -2px 0 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Custom scrollbar for sidebar */
+        .filter-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .filter-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .filter-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 3px;
+        }
+
+        .filter-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            #filters-sidebar {
+                width: 85%;
+                max-width: 320px;
+            }
+        }
+
+        /* Animation for filter count badge */
+        #filter-count {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Ensure modals appear above sidebar */
+        #profile-modal,
+        #history-modal {
+            z-index: 60;
+        }
+    </style>
+@endpush
