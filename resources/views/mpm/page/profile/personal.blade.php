@@ -243,15 +243,16 @@
                     <div class="sm:col-span-2">
                         <x-form.select name="living_type" label="Living Type" id="living_type">
                             <option value="">Select Living Type</option>
-                            <option value="cantonment"
-                                {{ (old('living_type') ?? $profile?->living_type) == 'cantonment' ? 'selected' : '' }}>
-                                Cantonment</option>
-                            <option value="rental"
-                                {{ (old('living_type') ?? $profile?->living_type) == 'rental' ? 'selected' : '' }}>Rental
+                            <option value="Lineman"
+                                {{ (old('living_type') ?? $profile?->living_type) == 'Lineman' ? 'selected' : '' }}>
+                                Lineman</option>
+                            <option value="In_living"
+                                {{ (old('living_type') ?? $profile?->living_type) == 'In_living' ? 'selected' : '' }}>
+                                In living
                             </option>
-                            <option value="bachelor_mess"
-                                {{ (old('living_type') ?? $profile?->living_type) == 'bachelor_mess' ? 'selected' : '' }}>
-                                Bachelor Mess</option>
+                            <option value="Out_living"
+                                {{ (old('living_type') ?? $profile?->living_type) == 'Out_living' ? 'selected' : '' }}>
+                                Out living</option>
                         </x-form.select>
                         @error('living_type')
                             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>

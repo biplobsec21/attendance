@@ -15,7 +15,7 @@ return new class extends Migration
             $table->text('notes')->nullable()->after('medical_completed');
             $table->string('family_mobile_1', 20)->nullable()->after('notes');
             $table->string('family_mobile_2', 20)->nullable()->after('family_mobile_1');
-            $table->enum('living_type', ['cantonment', 'rental', 'bachelor_mess'])->nullable()->after('family_mobile_2');
+            $table->enum('living_type', ['Lineman', 'In_living', 'Out_living'])->nullable()->after('family_mobile_2');
             $table->string('living_address', 255)->nullable()->after('living_type');
             $table->unsignedTinyInteger('no_of_brothers')->default(0)->after('living_address');
             $table->unsignedTinyInteger('no_of_sisters')->default(0)->after('no_of_brothers');

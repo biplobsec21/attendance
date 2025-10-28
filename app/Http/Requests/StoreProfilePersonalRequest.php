@@ -37,7 +37,7 @@ class StoreProfilePersonalRequest extends FormRequest
             'permanent_address' => 'required|string',
             'family_mobile_1' => 'nullable|string|max:20',
             'family_mobile_2' => 'nullable|string|max:20',
-            'living_type' => 'nullable|in:cantonment,rental,bachelor_mess',
+            'living_type' => 'nullable|in:Lineman,In_living,Out_living',
             'living_address' => 'nullable|string|max:255',
             'no_of_brothers' => 'nullable|integer|min:0|max:20',
             'no_of_sisters' => 'nullable|integer|min:0|max:20',
