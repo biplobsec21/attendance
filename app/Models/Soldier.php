@@ -39,6 +39,13 @@ class Soldier extends Model
         'service_completed',
         'qualifications_completed',
         'medical_completed',
+        'family_mobile_1',
+        'family_mobile_2',
+        'living_type',
+        'living_address',
+        'no_of_brothers',
+        'no_of_sisters',
+        'notes',
     ];
 
     protected $casts = [
@@ -49,6 +56,8 @@ class Soldier extends Model
         'qualifications_completed' => 'boolean',
         'num_boys' => 'integer',
         'num_girls' => 'integer',
+        'no_of_brothers' => 'integer', // ADD THIS
+        'no_of_sisters' => 'integer',  // ADD THIS
     ];
 
     // Add computed attribute automatically

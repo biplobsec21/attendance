@@ -42,6 +42,13 @@ class UpdateProfilePersonalRequest extends FormRequest
             'village' => 'required|string|max:255',
             'district_id' => 'required|exists:districts,id',
             'permanent_address' => 'required|string',
+            'family_mobile_1' => 'nullable|string|max:20',
+            'family_mobile_2' => 'nullable|string|max:20',
+            'living_type' => 'nullable|in:cantonment,rental,bachelor_mess',
+            'living_address' => 'nullable|string|max:255',
+            'no_of_brothers' => 'nullable|integer|min:0|max:20',
+            'no_of_sisters' => 'nullable|integer|min:0|max:20',
+            'notes' => 'nullable|string|max:1000',
         ];
     }
 
