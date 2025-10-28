@@ -1,220 +1,178 @@
 @extends('mpm.layouts.app')
 
-@section('title', 'Absent List')
+@section('title', 'Absent Records List')
 
 @section('content')
-<div class="container mx-auto p-4">
-    <div class="bg-white/30 shadow-lg rounded-lg p-4 sm:p-6 formBack">
-        <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-            <h1 class="text-2xl font-bold text-gray-800">Absent List</h1>
-            <div class="w-full md:w-auto flex flex-col sm:flex-row items-center gap-2">
-                 <div class="w-full sm:w-auto flex items-center space-x-2">
-                    <label for="rows-per-page" class="text-sm font-medium text-gray-700">Rows:</label>
-                    <select id="rows-per-page" class="w-full border rounded-lg px-2 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
-                        <option value="5">5</option>
-                        <option value="10" selected>10</option>
-                        <option value="15">15</option>
-                        <option value="20">20</option>
-                        <option value="all">All</option>
-                    </select>
-                </div>
-                <input type="text" id="table-search" class="w-full sm:w-auto px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500" placeholder="Search records...">
-                <a href="{{ url('absent/create') }}" class="w-full sm:w-auto bg-transparent text-black font-semibold py-2 px-4 border border-black rounded-lg hover:bg-black hover:text-white transition-colors text-center no-underline">Add New Record</a>
+    <div class="container mx-auto p-4">
+        <x-breadcrumb :breadcrumbs="generateBreadcrumbs()" />
+        <!-- Alert Messages -->
+        @include('mpm.components.alerts')
+
+        @if ($errors->any())
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <ul class="list-disc pl-5">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
+        @endif
+        <div class="bg-white/30 shadow-lg rounded-lg p-4 sm:p-6 formBack">
+            <h1 class="text-2xl font-bold text-gray-800 mb-4 pb-2">Absent Records List</h1>
+
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                <div class="w-full flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <!-- Search Left -->
+                    <form method="GET" action="{{ route('absents.index') }}"
+                        class="w-full md:max-w-2xl flex flex-col md:flex-row gap-2">
+                        <div class="flex flex-col md:flex-row gap-2 w-full">
+                            <input type="text" name="search" value="{{ request('search') }}"
+                                class="flex-1 px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                placeholder="Search by name...">
+                            <select name="status"
+                                class="border rounded-lg px-2 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+                                <option value="">All Status</option>
+                                <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>Active
+                                </option>
+                                <option value="inactive" {{ request('status') === 'inactive' ? 'selected' : '' }}>Inactive
+                                </option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col md:flex-row gap-2 w-full">
+                            <input type="date" name="start_date" value="{{ request('start_date') }}"
+                                class="px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                placeholder="Start Date">
+                            <input type="date" name="end_date" value="{{ request('end_date') }}"
+                                class="px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                placeholder="End Date">
+                            <button type="submit"
+                                class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg">Search</button>
+                            @if (request()->hasAny(['search', 'status', 'start_date', 'end_date']))
+                                <a href="{{ route('absents.index') }}"
+                                    class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Clear</a>
+                            @endif
+                        </div>
+                    </form>
+                    <!-- Add New Right -->
+                    <div class="w-full md:w-auto md:ml-4">
+                        <a href="{{ route('absents.create') }}"
+                            class="w-full md:w-auto bg-transparent text-black font-semibold py-2 px-4 border border-black rounded-lg hover:bg-black hover:text-white transition-colors text-center no-underline block md:inline-block">Add
+                            New Absent Record</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-transparent rounded-lg">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="{{ route('absents.index', array_merge(request()->query(), ['sort_by' => 'id', 'sort_direction' => request('sort_direction') === 'asc' ? 'desc' : 'asc'])) }}"
+                                    class="no-underline text-gray-500">
+                                    #ID
+                                    @if (request('sort_by') === 'id')
+                                        <span class="ml-1">{{ request('sort_direction') === 'asc' ? '↑' : '↓' }}</span>
+                                    @endif
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="{{ route('absents.index', array_merge(request()->query(), ['sort_by' => 'name', 'sort_direction' => request('sort_direction') === 'asc' ? 'desc' : 'asc'])) }}"
+                                    class="no-underline text-gray-500">
+                                    Name
+                                    @if (request('sort_by') === 'name')
+                                        <span class="ml-1">{{ request('sort_direction') === 'asc' ? '↑' : '↓' }}</span>
+                                    @endif
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="{{ route('absents.index', array_merge(request()->query(), ['sort_by' => 'absent_date', 'sort_direction' => request('sort_direction') === 'asc' ? 'desc' : 'asc'])) }}"
+                                    class="no-underline text-gray-500">
+                                    Absent Date
+                                    @if (request('sort_by') === 'absent_date')
+                                        <span class="ml-1">{{ request('sort_direction') === 'asc' ? '↑' : '↓' }}</span>
+                                    @endif
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Reason
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <a href="{{ route('absents.index', array_merge(request()->query(), ['sort_by' => 'status', 'sort_direction' => request('sort_direction') === 'asc' ? 'desc' : 'asc'])) }}"
+                                    class="no-underline text-gray-500">
+                                    Status
+                                    @if (request('sort_by') === 'status')
+                                        <span class="ml-1">{{ request('sort_direction') === 'asc' ? '↑' : '↓' }}</span>
+                                    @endif
+                                </a>
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-300">
+                        @forelse($absents as $absent)
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ $absent->id }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap font-medium">{{ $absent->name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="{{ $absent->is_past ? 'text-red-600' : 'text-green-600' }} font-medium">
+                                        {{ $absent->formatted_absent_date }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="max-w-xs truncate" title="{{ $absent->reason }}">
+                                        {{ Str::limit($absent->reason, 50) }}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <form method="POST" action="{{ route('absents.toggle-status', $absent) }}"
+                                        class="inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit"
+                                            class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $absent->status_badge_class }} cursor-pointer border-0">
+                                            {{ $absent->status_text }}
+                                        </button>
+                                    </form>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <a href="{{ route('absents.show', $absent) }}"
+                                        class="text-blue-600 hover:text-blue-900 mr-3">View</a>
+                                    <a href="{{ route('absents.edit', $absent) }}"
+                                        class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                                    <form method="POST" action="{{ route('absents.destroy', $absent) }}" class="inline"
+                                        onsubmit="return confirm('Are you sure you want to delete this absent record?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                            class="text-red-600 hover:text-red-900 border-0 bg-transparent cursor-pointer">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                                    @if (request()->hasAny(['search', 'status', 'start_date', 'end_date']))
+                                        No absent records found matching your criteria.
+                                    @else
+                                        No absent records available. <a href="{{ route('absents.create') }}"
+                                            class="text-orange-600 hover:text-orange-800">Create one now</a>.
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            @if ($absents->hasPages())
+                <div class="flex justify-center items-center mt-4">
+                    {{ $absents->links() }}
+                </div>
+            @endif
         </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-transparent rounded-lg">
-                <thead>
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#SL</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Absent Name</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remark</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="absent-table-body" class="divide-y divide-gray-300">
-                    <!-- Table rows will be inserted by JavaScript -->
-                </tbody>
-            </table>
-        </div>
-        <!-- Pagination -->
-        <div id="pagination-controls" class="flex justify-center items-center mt-4 space-x-2 flex-wrap"></div>
     </div>
-</div>
 @endsection
-
-@push('scripts')
-<script>
-    // --- Absent Data ---
-    const absentData = [
-        { sl: 1, name: "Medical Leave", remark: "For scheduled surgery.", status: "Active" },
-        { sl: 2, name: "Annual Leave", remark: "Family vacation.", status: "Active" },
-        { sl: 3, name: "Compassionate Leave", remark: "Bereavement.", status: "Inactive" },
-        { sl: 4, name: "Unpaid Leave", remark: "Extended travel.", status: "Active" },
-        { sl: 5, name: "Maternity Leave", remark: "New child.", status: "Inactive" }
-    ];
-
-    // --- Table Search and Pagination Logic ---
-    const tableBody = document.getElementById('absent-table-body');
-    const searchInput = document.getElementById('table-search');
-    const paginationControls = document.getElementById('pagination-controls');
-    const rowsPerPageSelect = document.getElementById('rows-per-page');
-    
-    let currentPage = 1;
-    let rowsPerPage = rowsPerPageSelect.value === 'all' ? absentData.length : parseInt(rowsPerPageSelect.value);
-    let filteredData = [...absentData];
-
-    function displayTable(page) {
-        tableBody.innerHTML = '';
-        page--; // Adjust for zero-based index
-
-        const start = rowsPerPage * page;
-        const end = start + rowsPerPage;
-        const paginatedItems = filteredData.slice(start, end);
-
-        for (let i = 0; i < paginatedItems.length; i++) {
-            const item = paginatedItems[i];
-            const statusClass = item.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
-            const row = `<tr>
-                            <td class="px-6 py-4 whitespace-nowrap">${item.sl}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">${item.name}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">${item.remark}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass} cursor-pointer" data-id="${item.sl}">
-                                    ${item.status}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <a href="#" class="text-indigo-600 hover:text-indigo-900">Edit</a>
-                                <a href="#" class="ml-4 text-red-600 hover:text-red-900">Delete</a>
-                            </td>
-                         </tr>`;
-            tableBody.innerHTML += row;
-        }
-    }
-
-    function setupPagination(items, wrapper) {
-        wrapper.innerHTML = '';
-        
-        if (rowsPerPage >= items.length) return;
-
-        const pageCount = Math.ceil(items.length / rowsPerPage);
-        
-        if (pageCount > 1) {
-            const prevBtn = paginationNavButton('Prev');
-            wrapper.appendChild(prevBtn);
-        }
-
-        for (let i = 1; i < pageCount + 1; i++) {
-            const btn = paginationButton(i);
-            wrapper.appendChild(btn);
-        }
-
-        if (pageCount > 1) {
-            const nextBtn = paginationNavButton('Next');
-            wrapper.appendChild(nextBtn);
-        }
-    }
-    
-    function updateActiveButton(page) {
-        let currentActiveBtn = document.querySelector('#pagination-controls button.bg-orange-500');
-        if(currentActiveBtn) {
-            currentActiveBtn.classList.remove('bg-orange-500', 'text-white');
-            currentActiveBtn.classList.add('hover:bg-orange-200');
-        }
-        
-        let newActiveBtn = document.querySelector(`#pagination-controls button[data-page='${page}']`);
-        if (newActiveBtn) {
-            newActiveBtn.classList.add('bg-orange-500', 'text-white');
-            newActiveBtn.classList.remove('hover:bg-orange-200');
-        }
-    }
-    
-    function paginationNavButton(text) {
-        const button = document.createElement('button');
-        button.innerText = text;
-        button.classList.add('px-3', 'py-1', 'border', 'rounded-md', 'transition-colors', 'mb-2', 'hover:bg-orange-200');
-        
-        button.addEventListener('click', () => {
-             const pageCount = Math.ceil(filteredData.length / rowsPerPage);
-            if (text === 'Prev') {
-                currentPage = Math.max(1, currentPage - 1);
-            } else if (text === 'Next') {
-                currentPage = Math.min(pageCount, currentPage + 1);
-            }
-            displayTable(currentPage);
-            updateActiveButton(currentPage);
-        });
-        
-        return button;
-    }
-
-
-    function paginationButton(page) {
-        const button = document.createElement('button');
-        button.innerText = page;
-        button.setAttribute('data-page', page);
-        button.classList.add('px-3', 'py-1', 'border', 'rounded-md', 'transition-colors', 'mb-2');
-
-        if (currentPage == page) {
-            button.classList.add('bg-orange-500', 'text-white');
-        } else {
-            button.classList.add('hover:bg-orange-200');
-        }
-
-        button.addEventListener('click', () => {
-            currentPage = page;
-            displayTable(currentPage);
-            updateActiveButton(page);
-        });
-
-        return button;
-    }
-
-    function toggleStatus(recordId) {
-        const record = absentData.find(item => item.sl === recordId);
-        if (record) {
-            record.status = record.status === 'Active' ? 'Inactive' : 'Active';
-        }
-        const filteredRecord = filteredData.find(item => item.sl === recordId);
-        if (filteredRecord) {
-            filteredRecord.status = record.status;
-        }
-        displayTable(currentPage);
-    }
-
-    tableBody.addEventListener('click', (e) => {
-        if (e.target.matches('span[data-id]')) {
-            const recordId = parseInt(e.target.dataset.id);
-            toggleStatus(recordId);
-        }
-    });
-    
-    searchInput.addEventListener('keyup', (e) => {
-        const searchValue = e.target.value.toLowerCase();
-        filteredData = absentData.filter(item => {
-            return item.name.toLowerCase().includes(searchValue) || item.remark.toLowerCase().includes(searchValue);
-        });
-        currentPage = 1;
-        displayTable(currentPage);
-        setupPagination(filteredData, paginationControls);
-    });
-    
-    rowsPerPageSelect.addEventListener('change', (e) => {
-        const selectedValue = e.target.value;
-        if (selectedValue === 'all') {
-            rowsPerPage = filteredData.length > 0 ? filteredData.length : absentData.length;
-        } else {
-            rowsPerPage = parseInt(selectedValue);
-        }
-        currentPage = 1;
-        displayTable(currentPage);
-        setupPagination(filteredData, paginationControls);
-    });
-
-    // Initial setup
-    displayTable(currentPage);
-    setupPagination(filteredData, paginationControls);
-</script>
-@endpush

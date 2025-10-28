@@ -38,6 +38,9 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SoldierExportController;
 use App\Http\Controllers\CourseCadreManagerController;
 use App\Http\Controllers\SiteSettingController;
+use App\Http\Controllers\CmdController;
+use App\Http\Controllers\ExAreaController;
+use App\Http\Controllers\AbsentTypeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -263,6 +266,18 @@ Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function ()
     Route::patch('atts/{att}/toggle-status', [AttsController::class, 'toggleStatus'])
         ->name('atts.toggle-status');
     Route::resource('eres', EresController::class);
+
+    Route::resource('cmds', CmdController::class);
+    Route::patch('cmds/{cmd}/toggle-status', [CmdController::class, 'toggleStatus'])->name('cmds.toggle-status');
+    Route::get('api/cmds', [CmdController::class, 'getCmds'])->name('cmds.api');
+
+    Route::resource('ex-areas', ExAreaController::class);
+    Route::patch('ex-areas/{ex_area}/toggle-status', [ExAreaController::class, 'toggleStatus'])->name('ex-areas.toggle-status');
+    Route::get('api/ex-areas', [ExAreaController::class, 'getExAreas'])->name('ex-areas.api');
+
+    Route::resource('absent-types', AbsentTypeController::class);
+    Route::patch('absent-types/{absent_type}/toggle-status', [AbsentTypeController::class, 'toggleStatus'])->name('absent-types.toggle-status');
+    Route::get('api/absent-types', [AbsentTypeController::class, 'getAbsentTypes'])->name('absent-types.api');
     // Additional route to toggle course status
     Route::patch('eres/{ere}/toggle-status', [EresController::class, 'toggleStatus'])
         ->name('eres.toggle-status');

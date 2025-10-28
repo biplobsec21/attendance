@@ -69,6 +69,19 @@
                             <i class="fas fa-check-circle text-orange-500"></i> ERE
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('cmds.index') }}"
+                            class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
+                            <i class="fas fa-check-circle text-orange-500"></i> Comd
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('ex-areas.index') }}"
+                            class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
+                            <i class="fas fa-check-circle text-orange-500"></i> Ex-area
+                        </a>
+                    </li>
+
                     {{-- <li>
                         <a href="{{ route('filters.index') }}"
                             class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
@@ -103,6 +116,14 @@
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition">
                             <i class="fas fa-layer-group text-blue-500"></i> Lve type
                         </a></li>
+
+                    <li>
+                        <a href="{{ route('absent-types.index') }}"
+                            class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition">
+                            <i class="fas fa-layer-group text-blue-500"></i> Absent Type
+                        </a>
+                    </li>
+
                     <a href="{{ route('settings.edit') }}"
                         class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition">
                         <i class="fas fa-cog text-blue-500"></i> Site Settings
