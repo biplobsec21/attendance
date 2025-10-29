@@ -106,7 +106,11 @@ class SoldierDataFormatter
             'is_leave' => (bool) $profile->is_on_leave,
             'is_sick' => $profile->is_sick,
             'status' => $profile->status,
-            'mobile' => $profile->mobile,
+            'mobile' => implode(', ', array_filter([
+                $profile->mobile,
+                $profile->family_mobile_1,
+                $profile->family_mobile_2
+            ])),
             'blood_group' => $profile->blood_group,
             'image' => $profile->image ?? asset('/images/default-avatar.png'),
             'service_duration' => $this->duration($profile->joining_date),

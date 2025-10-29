@@ -68,7 +68,7 @@ Route::middleware('auth', 'check.leaves')->group(function () {
         Route::put('update/{id}', [LeaveController::class, 'update'])->name('leave.update');
         Route::delete('{id}', [LeaveController::class, 'destroy'])->name('leave.destroy');
 
-
+        Route::post('/leave/filter', [LeaveController::class, 'filter'])->name('leave.filter');
         Route::get('approval/', [LeaveController::class, 'approvalList'])->name('leave.approveList');
         Route::post('approval/{id}', [LeaveController::class, 'approvalAction'])->name('leave.approveAction');
     });

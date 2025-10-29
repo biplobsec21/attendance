@@ -8,6 +8,7 @@ use App\Models\LeaveType;
 use App\Models\Soldier;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class LeaveController extends Controller
 {
@@ -19,10 +20,84 @@ class LeaveController extends Controller
         $profiles = Soldier::get();
 
         $query = LeaveApplication::query();
-        $leaveDatas = $query->paginate(10)->withQueryString();
+        $leaveDatas = $query->paginate(30)->withQueryString();
 
         return view('mpm.page.leave.leaveList', compact('profiles', 'leaveType', 'leaveDatas'));
     }
+
+    // Ajax filtering for leave applications
+    public function filter(Request $request)
+    {
+        try {
+            $query = LeaveApplication::with(['soldier', 'leaveType', 'soldier.rank']);
+
+            // Date range filter - filter by application date (created_at) or leave dates
+            if ($request->filled('from_date')) {
+                $query->where(function ($q) use ($request) {
+                    $q->whereDate('start_date', '>=', $request->from_date)
+                        ->orWhereDate('created_at', '>=', $request->from_date);
+                });
+            }
+
+            if ($request->filled('to_date')) {
+                $query->where(function ($q) use ($request) {
+                    $q->whereDate('end_date', '<=', $request->to_date)
+                        ->orWhereDate('created_at', '<=', $request->to_date);
+                });
+            }
+
+            // Leave type filter
+            if ($request->filled('leave_type_id')) {
+                $query->where('leave_type_id', $request->leave_type_id);
+            }
+
+            // Status filter
+            if ($request->filled('status')) {
+                $query->where('application_current_status', $request->status);
+            }
+
+            // Soldier search filter
+            if ($request->filled('soldier_search')) {
+                $searchTerm = $request->soldier_search;
+                $query->whereHas('soldier', function ($q) use ($searchTerm) {
+                    $q->where('full_name', 'like', "%{$searchTerm}%")
+                        ->orWhere('army_no', 'like', "%{$searchTerm}%");
+                });
+            }
+
+            // Order by latest first
+            $query->orderBy('created_at', 'desc');
+
+            $leaveDatas = $query->paginate(30)->withQueryString();
+
+            if ($request->ajax()) {
+                $table = view('mpm.components.leave-table', compact('leaveDatas'))->render();
+                $pagination = $leaveDatas->links()->render();
+
+                return response()->json([
+                    'success' => true,
+                    'table' => $table,
+                    'pagination' => $pagination,
+                    'total' => $leaveDatas->total()
+                ]);
+            }
+
+            return back();
+        } catch (\Exception $e) {
+            \Log::error('Error filtering leave applications: ' . $e->getMessage());
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error filtering data. Please try again.',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+
+            return back()->with('error', 'Error filtering data. Please try again.');
+        }
+    }
+
     public function leaveApplicationSubmit(StoreUpdateLeaveApplication $request)
     {
         try {
@@ -46,6 +121,7 @@ class LeaveController extends Controller
                 ->with('error', 'An unexpected error occurred while saving. Please try again.');
         }
     }
+
     public function changeStatus(Request $request)
     {
         $validated = $request->validate([
@@ -70,6 +146,7 @@ class LeaveController extends Controller
 
         return back()->with('success', 'Leave status updated successfully.');
     }
+
     public function update(StoreUpdateLeaveApplication $request, $id)
     {
         $leave = LeaveApplication::findOrFail($id);
@@ -104,12 +181,33 @@ class LeaveController extends Controller
 
         return redirect()->route('leave.index')->with('success', 'Leave updated successfully.');
     }
+
     public function destroy($id)
     {
-        $leave = LeaveApplication::findOrFail($id);
-        $leave->delete();
-        return redirect()->route('leave.index')->with('success', 'Leave Application deleted successfully.');
+        try {
+            $leave = LeaveApplication::findOrFail($id);
+
+            // Delete associated file if exists
+            if ($leave->hard_copy && \Storage::exists('public/' . $leave->hard_copy)) {
+                \Storage::delete('public/' . $leave->hard_copy);
+            }
+
+            $leave->delete();
+
+            return redirect()->route('leave.index')->with('success', 'Leave Application deleted successfully.');
+        } catch (\Exception $e) {
+            \Log::error('Error deleting leave application: ' . $e->getMessage());
+            return redirect()->route('leave.index')->with('error', 'Error deleting leave application. Please try again.');
+        }
     }
-    public function approvalList() {}
-    public function approvalAction() {}
+
+    public function approvalList()
+    {
+        // Implementation for approval list
+    }
+
+    public function approvalAction()
+    {
+        // Implementation for approval action
+    }
 }
