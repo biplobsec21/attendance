@@ -419,7 +419,14 @@
             edit: "{{ route('soldier.personalForm', ['profile' => ':id']) }}",
             bulkDelete: "{{ route('soldier.bulkDelete') }}",
             view: "{{ route('soldier.details', ['id' => ':id']) }}",
-            getHistory: "{{ route('soldier.history', ['id' => ':id']) }}", // Add this route
+            getHistory: "{{ route('soldier.history', ['id' => ':id']) }}",
+
+            getAttTypes: '/api/soldiers/att-types',
+            addAttRecord: '/api/soldiers/:id/att',
+            getCmdTypes: '/api/soldiers/cmd-types',
+            addCmdRecord: '/api/soldiers/:id/cmd'
+
+
         };
 
         // Debug ERE filter

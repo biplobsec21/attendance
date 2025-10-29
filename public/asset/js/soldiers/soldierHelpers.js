@@ -139,3 +139,17 @@ export function showToast(message, type) {
     }, 5000);
 }
 
+// In public/js/soldiers/soldierHelpers.js
+
+/**
+ * Format ATT status for display
+ */
+export function getAttStatus(attRecord) {
+    if (attRecord.is_active) {
+        return '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Active</span>';
+    } else if (attRecord.status === 'completed') {
+        return '<span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Completed</span>';
+    } else {
+        return '<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">' + (attRecord.status || 'Unknown') + '</span>';
+    }
+}

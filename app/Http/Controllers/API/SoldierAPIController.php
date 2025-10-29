@@ -94,9 +94,11 @@ class SoldierAPIController extends Controller
             'stats' => $statsCounters
         ]);
     }
+    // In App\Http\Controllers\API\SoldierAPIController
+
     public function getHistory($id, Request $request)
     {
-        $type = $request->get('type'); // duty, leave, or appointment
+        $type = $request->get('type'); // duty, leave, appointment, or att
 
         // Base query
         $query = Soldier::with(['rank:id,name']);
@@ -154,6 +156,24 @@ class SoldierAPIController extends Controller
                 ]);
                 break;
 
+            case 'att':
+                $query->with([
+                    'att' => function ($q) {
+                        $q->orderBy('pivot_start_date', 'desc')
+                            ->select('atts.id', 'atts.name');
+                    }
+                ]);
+                break;
+
+            case 'cmd':
+                $query->with([
+                    'cmds' => function ($q) {
+                        $q->orderBy('pivot_start_date', 'desc')
+                            ->select('cmds.id', 'cmds.name', 'cmds.status');
+                    }
+                ]);
+                break;
+
             default:
                 return response()->json(['error' => 'Invalid history type'], 400);
         }
@@ -172,6 +192,9 @@ class SoldierAPIController extends Controller
             'duty' => $formatter->formatDutiesHistory($soldier),
             'leave' => $formatter->formatLeaveHistory($soldier),
             'appointment' => $formatter->formatAppointmentHistory($soldier),
+            'att' => $formatter->formatAttHistory($soldier),
+            'cmd' => $formatter->formatCmdHistory($soldier),
+
             default => []
         };
 
@@ -183,5 +206,278 @@ class SoldierAPIController extends Controller
             'soldier_rank' => $soldier->rank?->name,
             'count' => count($historyData)
         ]);
+    }
+
+    /**
+     * Add new ATT record for a soldier
+     */
+    // In App\Http\Controllers\API\SoldierAPIController
+
+
+    public function addAttRecord($id, Request $request)
+    {
+        try {
+            $request->validate([
+                'att_id' => 'required|exists:atts,id',
+                'start_date' => 'required|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
+                'remarks' => 'nullable|string|max:500'
+            ]);
+
+            $soldier = Soldier::findOrFail($id);
+
+            // Check if ATT record already exists for this period
+            // Use the exact column names from your table
+            $existingAtt = DB::table('soldiers_att')
+                ->where('soldier_id', $soldier->id)
+                ->where('atts_id', $request->att_id) // Note: column is 'atts_id' not 'att_id'
+                ->where(function ($query) use ($request) {
+                    $query->whereBetween('start_date', [$request->start_date, $request->end_date ?? $request->start_date])
+                        ->orWhereBetween('end_date', [$request->start_date, $request->end_date ?? $request->start_date])
+                        ->orWhere(function ($q) use ($request) {
+                            $q->where('start_date', '<=', $request->start_date)
+                                ->where('end_date', '>=', $request->start_date);
+                        });
+                })
+                ->exists();
+
+            if ($existingAtt) {
+                return response()->json([
+                    'error' => 'ATT record already exists for this period'
+                ], 422);
+            }
+
+            // Insert directly into pivot table using correct column names
+            DB::table('soldiers_att')->insert([
+                'soldier_id' => $soldier->id,
+                'atts_id' => $request->att_id, // Column is 'atts_id'
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+                'remarks' => $request->remarks,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Reload the soldier with ATT data
+            $soldier->load(['att' => function ($q) {
+                $q->orderBy('soldiers_att.start_date', 'desc');
+            }]);
+
+            $formatter = new SoldierDataFormatter();
+            $attHistory = $formatter->formatAttHistory($soldier);
+
+            return response()->json([
+                'message' => 'ATT record added successfully',
+                'data' => $attHistory,
+                'count' => count($attHistory)
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('ATT Record Error: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to add ATT record: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get available ATT types for dropdown
+     */
+    // In App\Http\Controllers\API\SoldierAPIController
+
+    /**
+     * Get available ATT types for dropdown
+     */
+    public function getAttTypes()
+    {
+        try {
+            $attTypes = \App\Models\Atts::where('status', true) // Use where instead of scope for clarity
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
+
+            return response()->json($attTypes);
+        } catch (\Exception $e) {
+            \Log::error('Get ATT Types Error: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to fetch ATT types'
+            ], 500);
+        }
+    }
+    /**
+     * Add new CMD record for a soldier
+     */
+    public function addCmdRecord($id, Request $request)
+    {
+        try {
+            $request->validate([
+                'cmd_id' => 'required|exists:cmds,id',
+                'start_date' => 'required|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
+                'remarks' => 'nullable|string|max:500'
+            ]);
+
+            $soldier = Soldier::findOrFail($id);
+
+            // Check if CMD record already exists for this period
+            $existingCmd = DB::table('soldiers_cmds')
+                ->where('soldier_id', $soldier->id)
+                ->where('cmd_id', $request->cmd_id)
+                ->where(function ($query) use ($request) {
+                    $query->whereBetween('start_date', [$request->start_date, $request->end_date ?? $request->start_date])
+                        ->orWhereBetween('end_date', [$request->start_date, $request->end_date ?? $request->start_date])
+                        ->orWhere(function ($q) use ($request) {
+                            $q->where('start_date', '<=', $request->start_date)
+                                ->where('end_date', '>=', $request->start_date);
+                        });
+                })
+                ->exists();
+
+            if ($existingCmd) {
+                return response()->json([
+                    'error' => 'CMD record already exists for this period'
+                ], 422);
+            }
+
+            // Insert into pivot table
+            DB::table('soldiers_cmds')->insert([
+                'soldier_id' => $soldier->id,
+                'cmd_id' => $request->cmd_id,
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+                'remarks' => $request->remarks,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Reload the soldier with CMD data
+            $soldier->load(['cmds' => function ($q) {
+                $q->orderBy('soldiers_cmds.start_date', 'desc');
+            }]);
+
+            $formatter = new SoldierDataFormatter();
+            $cmdHistory = $formatter->formatCmdHistory($soldier);
+
+            return response()->json([
+                'message' => 'CMD record added successfully',
+                'data' => $cmdHistory,
+                'count' => count($cmdHistory)
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('CMD Record Error: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to add CMD record: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get available CMD types for dropdown
+     */
+    public function getCmdTypes()
+    {
+        try {
+            $cmdTypes = \App\Models\Cmd::where('status', true)
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
+
+            return response()->json($cmdTypes);
+        } catch (\Exception $e) {
+            \Log::error('Get CMD Types Error: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to fetch CMD types'
+            ], 500);
+        }
+    }
+    /**
+     * Delete ATT record for a soldier
+     */
+    public function deleteAttRecord($soldierId, $attRecordId)
+    {
+        try {
+            $soldier = Soldier::findOrFail($soldierId);
+
+            // Delete the ATT record from pivot table
+            $deleted = DB::table('soldiers_att')
+                ->where('soldier_id', $soldierId)
+                ->where('atts_id', $attRecordId)
+                ->delete();
+
+            if (!$deleted) {
+                return response()->json([
+                    'error' => 'ATT record not found'
+                ], 404);
+            }
+
+            // Reload the soldier with ATT data
+            $soldier->load(['att' => function ($q) {
+                $q->orderBy('soldiers_att.start_date', 'desc');
+            }]);
+
+            $formatter = new SoldierDataFormatter();
+            $attHistory = $formatter->formatAttHistory($soldier);
+
+            return response()->json([
+                'message' => 'ATT record deleted successfully',
+                'data' => $attHistory,
+                'count' => count($attHistory)
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Delete ATT Record Error: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to delete ATT record: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete CMD record for a soldier
+     */
+    public function deleteCmdRecord($soldierId, $cmdRecordId)
+    {
+        try {
+            $soldier = Soldier::findOrFail($soldierId);
+
+            // Delete the CMD record from pivot table
+            $deleted = DB::table('soldiers_cmds')
+                ->where('soldier_id', $soldierId)
+                ->where('cmd_id', $cmdRecordId)
+                ->delete();
+
+            if (!$deleted) {
+                return response()->json([
+                    'error' => 'CMD record not found'
+                ], 404);
+            }
+
+            // Reload the soldier with CMD data
+            $soldier->load(['cmds' => function ($q) {
+                $q->orderBy('soldiers_cmds.start_date', 'desc');
+            }]);
+
+            $formatter = new SoldierDataFormatter();
+            $cmdHistory = $formatter->formatCmdHistory($soldier);
+
+            return response()->json([
+                'message' => 'CMD record deleted successfully',
+                'data' => $cmdHistory,
+                'count' => count($cmdHistory)
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Delete CMD Record Error: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Failed to delete CMD record: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

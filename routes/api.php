@@ -23,3 +23,10 @@ Route::get('/filters', [FilterController::class, 'index']);
 Route::post('/filters/apply', [FilterController::class, 'apply']);
 Route::get('/soldier/data', [SoldierAPIController::class, 'index'])->name('soldier.getAllData');
 Route::get('/soldier/{id}/history', [SoldierAPIController::class, 'getHistory'])->name('soldier.history');
+// ATT routes
+Route::get('/soldiers/att-types', [SoldierAPIController::class, 'getAttTypes']);
+Route::post('/soldiers/{id}/att', [SoldierAPIController::class, 'addAttRecord']);
+
+// CMD routes
+Route::get('/soldiers/cmd-types', [SoldierAPIController::class, 'getCmdTypes']);
+Route::post('/soldiers/{id}/cmd', [SoldierAPIController::class, 'addCmdRecord']);

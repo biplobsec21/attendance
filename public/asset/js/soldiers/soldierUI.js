@@ -86,7 +86,15 @@ export function renderTableRow(soldier) {
                         ${soldier.address ?? 'N/A'}
                 </li>
 
-
+            <!-- New ATT History Button -->
+                <button class="btn-att-history px-2 py-1 bg-gradient-to-r from-orange-400 to-orange-500 text-white text-xs rounded hover:from-orange-500 hover:to-orange-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                        data-id="${soldier.id}" title="ATT History">
+                    <i class="fas fa-clipboard-check mr-1"></i>ATT
+                </button>
+                 <button class="btn-cmd-history px-2 py-1 bg-gradient-to-r from-teal-400 to-teal-500 text-white text-xs rounded hover:from-teal-500 hover:to-teal-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                        data-id="${soldier.id}" title="CMD History">
+                    <i class="fas fa-code-branch mr-1"></i>CMD
+                </button>
 
              </td>
 

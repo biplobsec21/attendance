@@ -555,4 +555,112 @@ class SoldierDataFormatter
 
         return $appointmentHistory;
     }
+    // In App\Services\SoldierDataFormatter
+
+    /**
+     * Format ATT history data
+     */
+    public function formatAttHistory(Soldier $soldier): array
+    {
+        return $soldier->att->map(function ($att) use ($soldier) {
+            $startDate = $att->pivot->start_date;
+            $endDate = $att->pivot->end_date;
+
+            $today = Carbon::today();
+            $start = Carbon::parse($startDate);
+            $end = $endDate ? Carbon::parse($endDate) : null;
+
+            $isActive = $start->lte($today) && (!$end || $end->gte($today));
+            $status = $isActive ? 'active' : ($end && $end->isPast() ? 'completed' : 'scheduled');
+            $durationDays = $endDate ? $start->diffInDays(Carbon::parse($endDate)) + 1 : null;
+
+            return [
+                'id' => $att->id,
+                'name' => $att->name,
+                'type' => 'Att',
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'remarks' => $att->pivot->remarks,
+                'status' => $status,
+                'is_active' => $isActive,
+                'is_current' => $isActive,
+                'duration_days' => $durationDays,
+                'test_period' => $this->formatAttPeriod($startDate, $endDate),
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Format ATT period for display
+     */
+    protected function formatAttPeriod($startDate, $endDate): string
+    {
+        if (!$startDate) {
+            return 'Not scheduled';
+        }
+
+        $start = Carbon::parse($startDate)->format('M d, Y');
+
+        if (!$endDate) {
+            return "From {$start} (Ongoing)";
+        }
+
+        $end = Carbon::parse($endDate)->format('M d, Y');
+        return "{$start} - {$end}";
+    }
+    // In App\Services\SoldierDataFormatter
+
+    /**
+     * Format CMD history data
+     */
+    public function formatCmdHistory(Soldier $soldier): array
+    {
+        return $soldier->cmds->map(function ($cmd) {
+            $startDate = $cmd->pivot->start_date;
+            $endDate = $cmd->pivot->end_date;
+
+            $today = Carbon::today();
+            $start = Carbon::parse($startDate);
+            $end = $endDate ? Carbon::parse($endDate) : null;
+
+            $isActive = $start->lte($today) && (!$end || $end->gte($today));
+            $status = $isActive ? 'active' : ($end && $end->isPast() ? 'completed' : 'scheduled');
+            $durationDays = $endDate ? $start->diffInDays($end) + 1 : null;
+
+            return [
+                'id' => $cmd->id,
+                'name' => $cmd->name,
+                'type' => 'Command',
+                'status' => $status,
+                'is_active' => $isActive,
+                'is_current' => $isActive,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'remarks' => $cmd->pivot->remarks,
+                'duration_days' => $durationDays,
+                'command_period' => $this->formatCmdPeriod($startDate, $endDate),
+                'cmd_status' => $cmd->status,
+                'status_badge' => $cmd->status ? 'Active' : 'Inactive',
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Format CMD period for display
+     */
+    protected function formatCmdPeriod($startDate, $endDate): string
+    {
+        if (!$startDate) {
+            return 'Not scheduled';
+        }
+
+        $start = Carbon::parse($startDate)->format('M d, Y');
+
+        if (!$endDate) {
+            return "From {$start} (Ongoing)";
+        }
+
+        $end = Carbon::parse($endDate)->format('M d, Y');
+        return "{$start} - {$end}";
+    }
 }

@@ -38,4 +38,20 @@ class Cmd extends Model
     {
         return $this->status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
     }
+    // // Relationships
+    // public function soldiers()
+    // {
+    //     return $this->belongsToMany(Soldier::class, 'soldiers_cmds')
+    //         ->withPivot(['remarks', 'start_date', 'end_date'])
+    //         ->withTimestamps();
+    // }
+    /**
+     * Relationship with soldiers
+     */
+    public function soldiers()
+    {
+        return $this->belongsToMany(Soldier::class, 'soldiers_cmds', 'cmd_id', 'soldier_id')
+            ->withPivot(['start_date', 'end_date', 'remarks'])
+            ->withTimestamps();
+    }
 }

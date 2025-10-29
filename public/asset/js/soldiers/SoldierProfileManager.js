@@ -106,6 +106,12 @@ export default class SoldierProfileManager {
             const soldier = this.soldiers.find((s) => s.id == soldierId);
             if (soldier) openProfileModal(soldier, "Leave details");
         }
+        else if (button.classList.contains('btn-att-history')) { // Add this case
+            openHistoryModal(soldierId, 'att');
+        }
+        else if (button.classList.contains('btn-cmd-history')) { // Add this case
+            openHistoryModal(soldierId, 'cmd');
+        }
         else if (button.classList.contains('view-btn')) {
             const url = routes.view.replace(':id', soldierId);
             window.open(url, "_blank");

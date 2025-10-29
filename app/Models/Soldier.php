@@ -163,9 +163,15 @@ class Soldier extends Model
             ->withTimestamps();
     }
 
+    // public function att(): BelongsToMany
+    // {
+    //     return $this->belongsToMany(Atts::class, 'soldiers_att')
+    //         ->withPivot(['start_date', 'end_date', 'remarks'])
+    //         ->withTimestamps();
+    // }
     public function att(): BelongsToMany
     {
-        return $this->belongsToMany(Atts::class, 'soldiers_att')
+        return $this->belongsToMany(Atts::class, 'soldiers_att', 'soldier_id', 'atts_id')
             ->withPivot(['start_date', 'end_date', 'remarks'])
             ->withTimestamps();
     }
@@ -514,5 +520,200 @@ class Soldier extends Model
     public function scopeWithEre($query)
     {
         return $query->whereHas('ere');
+    }
+
+    // In App\Models\Soldier
+
+    /**
+     * Get active ATT records
+     */
+    public function activeAtt(): BelongsToMany
+    {
+        return $this->att()
+            ->wherePivot(function ($query) {
+                $query->whereNull('end_date')
+                    ->orWhere('end_date', '>=', Carbon::today());
+            });
+    }
+
+    /**
+     * Check if soldier has active ATT records
+     */
+    public function hasActiveAtt(): bool
+    {
+        return $this->activeAtt()->exists();
+    }
+
+    /**
+     * Get ATT history with formatted data
+     */
+    public function getAttHistory(): array
+    {
+        return $this->att()
+            ->orderBy('pivot_start_date', 'desc')
+            ->get()
+            ->map(function ($att) {
+                return [
+                    'id' => $att->id,
+                    'name' => $att->name,
+                    'type' => $att->type ?? 'Annual Training',
+                    'start_date' => $att->pivot->start_date,
+                    'end_date' => $att->pivot->end_date,
+                    'remarks' => $att->pivot->remarks,
+                    'status' => $this->getAttStatus($att->pivot->start_date, $att->pivot->end_date),
+                    'is_active' => $this->isAttActive($att->pivot->start_date, $att->pivot->end_date),
+                    'duration_days' => $this->calculateAttDuration($att->pivot->start_date, $att->pivot->end_date),
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Calculate ATT status
+     */
+    protected function getAttStatus($startDate, $endDate): string
+    {
+        $today = Carbon::today();
+        $start = Carbon::parse($startDate);
+        $end = $endDate ? Carbon::parse($endDate) : null;
+
+        if (!$end || $end->isFuture()) {
+            return 'active';
+        }
+
+        if ($end->isPast()) {
+            return 'completed';
+        }
+
+        return 'scheduled';
+    }
+
+    /**
+     * Check if ATT is active
+     */
+    protected function isAttActive($startDate, $endDate): bool
+    {
+        $today = Carbon::today();
+        $start = Carbon::parse($startDate);
+        $end = $endDate ? Carbon::parse($endDate) : null;
+
+        return $start->lte($today) && (!$end || $end->gte($today));
+    }
+
+    /**
+     * Calculate ATT duration in days
+     */
+    protected function calculateAttDuration($startDate, $endDate): int
+    {
+        if (!$endDate) {
+            return 0;
+        }
+
+        $start = Carbon::parse($startDate);
+        $end = Carbon::parse($endDate);
+
+        return $start->diffInDays($end) + 1; // Inclusive of both start and end dates
+    }
+    // In App\Models\Soldier
+
+    /**
+     * CMD (Command) relationship
+     */
+    public function cmds(): BelongsToMany
+    {
+        return $this->belongsToMany(Cmd::class, 'soldiers_cmds', 'soldier_id', 'cmd_id')
+            ->withPivot(['start_date', 'end_date', 'remarks'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get active CMD records
+     */
+    public function activeCmds(): BelongsToMany
+    {
+        return $this->cmds()
+            ->wherePivot(function ($query) {
+                $query->whereNull('end_date')
+                    ->orWhere('end_date', '>=', Carbon::today());
+            });
+    }
+
+    /**
+     * Check if soldier has active CMD records
+     */
+    public function hasActiveCmds(): bool
+    {
+        return $this->activeCmds()->exists();
+    }
+
+    /**
+     * Get CMD history with formatted data
+     */
+    public function getCmdHistory(): array
+    {
+        return $this->cmds()
+            ->orderBy('pivot_start_date', 'desc')
+            ->get()
+            ->map(function ($cmd) {
+                return [
+                    'id' => $cmd->id,
+                    'name' => $cmd->name,
+                    'type' => 'Command',
+                    'start_date' => $cmd->pivot->start_date,
+                    'end_date' => $cmd->pivot->end_date,
+                    'remarks' => $cmd->pivot->remarks,
+                    'status' => $this->getCmdStatus($cmd->pivot->start_date, $cmd->pivot->end_date),
+                    'is_active' => $this->isCmdActive($cmd->pivot->start_date, $cmd->pivot->end_date),
+                    'duration_days' => $this->calculateCmdDuration($cmd->pivot->start_date, $cmd->pivot->end_date),
+                ];
+            })
+            ->toArray();
+    }
+
+    /**
+     * Calculate CMD status
+     */
+    protected function getCmdStatus($startDate, $endDate): string
+    {
+        $today = Carbon::today();
+        $start = Carbon::parse($startDate);
+        $end = $endDate ? Carbon::parse($endDate) : null;
+
+        if (!$end || $end->isFuture()) {
+            return 'active';
+        }
+
+        if ($end->isPast()) {
+            return 'completed';
+        }
+
+        return 'scheduled';
+    }
+
+    /**
+     * Check if CMD is active
+     */
+    protected function isCmdActive($startDate, $endDate): bool
+    {
+        $today = Carbon::today();
+        $start = Carbon::parse($startDate);
+        $end = $endDate ? Carbon::parse($endDate) : null;
+
+        return $start->lte($today) && (!$end || $end->gte($today));
+    }
+
+    /**
+     * Calculate CMD duration in days
+     */
+    protected function calculateCmdDuration($startDate, $endDate): int
+    {
+        if (!$endDate) {
+            return 0;
+        }
+
+        $start = Carbon::parse($startDate);
+        $end = Carbon::parse($endDate);
+
+        return $start->diffInDays($end) + 1;
     }
 }
