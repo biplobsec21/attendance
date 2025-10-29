@@ -20,7 +20,7 @@ class LeaveController extends Controller
         $profiles = Soldier::get();
 
         $query = LeaveApplication::query();
-        $leaveDatas = $query->paginate(30)->withQueryString();
+        $leaveDatas = $query->orderBy('created_at', 'desc')->paginate(30)->withQueryString();
 
         return view('mpm.page.leave.leaveList', compact('profiles', 'leaveType', 'leaveDatas'));
     }
