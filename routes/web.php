@@ -7,7 +7,7 @@ use App\Http\Controllers\AttsController;
 use App\Http\Controllers\DutyController;
 use App\Http\Controllers\EresController;
 use App\Http\Controllers\RankController;
-use App\Http\Controllers\ViewController;
+use App\Http\Controllers\AbsentController;
 use App\Http\Controllers\CadreController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\SkillController;
@@ -72,6 +72,14 @@ Route::middleware('auth', 'check.leaves')->group(function () {
         Route::get('approval/', [LeaveController::class, 'approvalList'])->name('leave.approveList');
         Route::post('approval/{id}', [LeaveController::class, 'approvalAction'])->name('leave.approveAction');
     });
+
+    // Absent Routes
+    Route::get('absent', [AbsentController::class, 'index'])->name('absent.index');
+    Route::post('absent/filter', [AbsentController::class, 'filter'])->name('absent.filter');
+    Route::post('absent/submit', [AbsentController::class, 'absentApplicationSubmit'])->name('absent.absentApplicationSubmit');
+    Route::post('absent/change-status', [AbsentController::class, 'changeStatus'])->name('absent.changeStatusSubmit');
+    Route::put('absent/{id}', [AbsentController::class, 'update'])->name('absent.update');
+    Route::delete('absent/{id}', [AbsentController::class, 'destroy'])->name('absent.destroy');
 
     Route::prefix('army')->group(function () {
         // Profile list
@@ -183,16 +191,16 @@ Route::middleware('auth', 'check.leaves')->group(function () {
     });
 
 
-    Route::get('sports', [ViewController::class, 'sportsIndex'])->name('sports.index');
-    Route::get('sports/create', [ViewController::class, 'sportsCreate'])->name('sports.create');
+    // Route::get('sports', [ViewController::class, 'sportsIndex'])->name('sports.index');
+    // Route::get('sports/create', [ViewController::class, 'sportsCreate'])->name('sports.create');
 
 
-    Route::get('otherQual/index', [ViewController::class, 'otherQualIndex'])->name('otherQual.index');
-    Route::get('otherQual/create', [ViewController::class, 'otherQualCreate'])->name('otherQual.create');
+    // Route::get('otherQual/index', [ViewController::class, 'otherQualIndex'])->name('otherQual.index');
+    // Route::get('otherQual/create', [ViewController::class, 'otherQualCreate'])->name('otherQual.create');
 
 
-    Route::get('absent/index', [ViewController::class, 'absentIndex'])->name('absent.index');
-    Route::get('absent/create', [ViewController::class, 'absentCreate'])->name('absent.create');
+    // Route::get('absent/index', [ViewController::class, 'absentIndex'])->name('absent.index');
+    // Route::get('absent/create', [ViewController::class, 'absentCreate'])->name('absent.create');
 
 
     // Route::get('leaveType/index', [ViewController::class, 'leaveTypeIndex'])->name('leaveType.index');
@@ -203,16 +211,16 @@ Route::middleware('auth', 'check.leaves')->group(function () {
     // Route::get('duty/create', [ViewController::class, 'dutyCreate'])->name('duty.create');
 
 
-    Route::get('assignDuty/index', [ViewController::class, 'assignDutyIndex'])->name('assignDuty.index');
-    Route::get('assignDuty/create', [ViewController::class, 'assignDutyCreate'])->name('assignDuty.create');
+    // Route::get('assignDuty/index', [ViewController::class, 'assignDutyIndex'])->name('assignDuty.index');
+    // Route::get('assignDuty/create', [ViewController::class, 'assignDutyCreate'])->name('assignDuty.create');
 
 
-    Route::get('approval/duty', [ViewController::class, 'approveDuty'])->name('approveDuty.duty');
-    Route::get('approval/leave', [ViewController::class, 'approveLeave'])->name('approveDuty.leave');
+    // Route::get('approval/duty', [ViewController::class, 'approveDuty'])->name('approveDuty.duty');
+    // Route::get('approval/leave', [ViewController::class, 'approveLeave'])->name('approveDuty.leave');
 
 
-    Route::get('assignLeave/index', [ViewController::class, 'assignLeaveIndex'])->name('assignLeave.index');
-    Route::get('assignLeave/create', [ViewController::class, 'assignLeaveCreate'])->name('assignLeave.create');
+    // Route::get('assignLeave/index', [ViewController::class, 'assignLeaveIndex'])->name('assignLeave.index');
+    // Route::get('assignLeave/create', [ViewController::class, 'assignLeaveCreate'])->name('assignLeave.create');
 
 
 

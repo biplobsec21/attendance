@@ -90,6 +90,23 @@
                         @endif
                     </a>
 
+                    <a href="{{ route('absent.index') }}"
+                        class="group relative px-4 py-2 rounded-xl font-medium transition-all duration-300 {{ Request::segment(1) === 'absent' ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/25' : 'hover:bg-white/10 hover:text-blue-200' }}">
+                        <span class="relative z-10 flex items-center space-x-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z">
+                                </path>
+                            </svg>
+                            <span>Absent</span>
+                        </span>
+                        @if (Request::segment(1) !== 'absent')
+                            <div
+                                class="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-indigo-500/0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            </div>
+                        @endif
+                    </a>
+
                     <a href="{{ route('appointmanager.index') }}"
                         class="group relative px-4 py-2 rounded-xl font-medium transition-all duration-300 {{ Request::segment(1) === 'appointmanager' ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/25' : 'hover:bg-white/10 hover:text-blue-200' }}">
                         <span class="relative z-10 flex items-center space-x-2">
