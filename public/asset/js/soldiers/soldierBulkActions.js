@@ -309,22 +309,100 @@ export class SoldierBulkActions {
     }
 
     /**
-     * Bulk delete selected soldiers
+     * Bulk delete selected soldiers - FIXED for 302 redirect
      */
     async bulkDelete() {
         const selectedIds = Array.from(this.manager.selectedRows);
 
+        if (selectedIds.length === 0) {
+            showToast('No soldiers selected', 'warning');
+            return;
+        }
+
         try {
+            console.log('=== BULK DELETE REQUEST ===');
+            console.log('Route:', routes.bulkDelete);
+            console.log('Selected IDs:', selectedIds);
+
+            // Get CSRF token
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            if (!csrfToken) {
+                throw new Error('CSRF token not found. Please refresh the page.');
+            }
+            console.log('CSRF Token:', csrfToken.substring(0, 20) + '...');
+
             const response = await fetch(routes.bulkDelete, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({ ids: selectedIds })
+                body: JSON.stringify({ ids: selectedIds }),
+                credentials: 'same-origin', // Include cookies for session
+                redirect: 'manual' // Don't follow redirects automatically
             });
 
+            console.log('Response Status:', response.status);
+            console.log('Response Type:', response.type);
+
+            // Handle redirects (302)
+            if (response.status === 302 || response.type === 'opaqueredirect') {
+                console.error('❌ 302 Redirect detected');
+
+                // Check if it's authentication redirect
+                const redirectLocation = response.headers.get('Location');
+                console.log('Redirect to:', redirectLocation);
+
+                if (redirectLocation && redirectLocation.includes('login')) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    setTimeout(() => {
+                        window.location.href = redirectLocation;
+                    }, 2000);
+                } else {
+                    throw new Error('Request was redirected (302). Possible CSRF token mismatch or authentication issue.');
+                }
+                return;
+            }
+
+            // Handle unauthorized (401)
+            if (response.status === 401) {
+                showToast('Unauthorized. Please log in.', 'error');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+                return;
+            }
+
+            // Check if response is OK
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Server error response:', errorText);
+                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            }
+
+            // Check content type
+            const contentType = response.headers.get('content-type');
+            console.log('Content-Type:', contentType);
+
+            if (!contentType || !contentType.includes('application/json')) {
+                const htmlResponse = await response.text();
+                console.error('Expected JSON but got HTML:', htmlResponse.substring(0, 500));
+
+                // Check if it's a login page
+                if (htmlResponse.includes('login') || htmlResponse.includes('Login')) {
+                    showToast('Session expired. Please log in again.', 'error');
+                    setTimeout(() => window.location.reload(), 2000);
+                    return;
+                }
+
+                throw new Error('Server returned HTML instead of JSON. Check Laravel logs for errors.');
+            }
+
             const result = await response.json();
+            console.log('Delete result:', result);
+            console.log('======================');
 
             if (result.success) {
                 showToast(`Successfully deleted ${selectedIds.length} soldier(s)`, 'success');
@@ -332,6 +410,10 @@ export class SoldierBulkActions {
 
                 // Clear selections
                 this.manager.selectedRows.clear();
+                if (this.manager.elements.selectAll) {
+                    this.manager.elements.selectAll.checked = false;
+                    this.manager.elements.selectAll.indeterminate = false;
+                }
 
                 // Reload data
                 await this.manager.loadData();
@@ -340,7 +422,22 @@ export class SoldierBulkActions {
             }
         } catch (error) {
             console.error('Bulk delete error:', error);
-            showToast('Failed to delete soldiers: ' + error.message, 'error');
+
+            let errorMessage = 'Failed to delete soldiers';
+
+            if (error.message.includes('CSRF token')) {
+                errorMessage = 'Security token expired. Please refresh the page and try again.';
+            } else if (error.message.includes('302') || error.message.includes('redirect')) {
+                errorMessage = 'Request was redirected. This usually means authentication failed or CSRF token is invalid. Please refresh the page.';
+            } else if (error.message.includes('HTML instead of JSON')) {
+                errorMessage = 'Server error: The server returned an error page. Check browser console and Laravel logs.';
+            } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                errorMessage = 'Network error: Please check your internet connection.';
+            } else {
+                errorMessage = error.message;
+            }
+
+            showToast(errorMessage, 'error');
         }
     }
 

@@ -784,12 +784,12 @@ class SoldierController extends Controller
     public function bulkDelete(Request $request)
     {
         $request->validate([
-            'soldier_ids' => 'required|array',
-            'soldier_ids.*' => 'exists:soldiers,id'
+            'ids' => 'required|array',
+            'ids.*' => 'exists:soldiers,id'
         ]);
 
         try {
-            $soldierIds = $request->get('soldier_ids');
+            $soldierIds = $request->get('ids');
             $soldiers = Soldier::whereIn('id', $soldierIds)->get();
 
             // Delete images
