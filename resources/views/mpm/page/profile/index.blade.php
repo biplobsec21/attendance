@@ -218,7 +218,7 @@
 
         <!-- Filters Sidebar -->
         <div id="filters-sidebar"
-            class="fixed top-16 right-0 h-[calc(100vh-4rem)] w-100 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-50 overflow-hidden flex flex-col">
+            class="fixed top-16 right-0 h-[calc(100vh-4rem)]  w-[35rem] bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-50 overflow-hidden flex flex-col">
             <!-- Sidebar Header -->
             <div
                 class="bg-gradient-to-r from-green-800 to-green-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
@@ -617,6 +617,14 @@
                     }
                 }
             });
+            document.addEventListener('click', (e) => {
+                // Only close if clicking outside any multi-select
+                if (!e.target.closest('.multi-select-container')) {
+                    document.querySelectorAll('.multi-select-dropdown.show').forEach(dropdown => {
+                        dropdown.classList.remove('show');
+                    });
+                }
+            });
         }
     </script>
     <script type="module" src="{{ asset('asset/js/soldiers/init.js') }}"></script>
@@ -756,9 +764,9 @@
 
         /* Ensure proper z-index hierarchy */
         /* .bg-gradient-to-r.from-green-800.to-green-600:not(#filters-sidebar .bg-gradient-to-r) {
-                                                                                                                                                                                    position: relative;
-                                                                                                                                                                                    z-index: 40;
-                                                                                                                                                                                } */
+                                                                                                                                                                                                        position: relative;
+                                                                                                                                                                                                        z-index: 40;
+                                                                                                                                                                                                    } */
 
         #filters-sidebar {
             z-index: 60 !important;

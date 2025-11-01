@@ -194,12 +194,16 @@ export class MultiSelect {
     }
 
     toggleDropdown() {
-        this.elements.dropdown.classList.toggle('show');
-        if (this.elements.dropdown.classList.contains('show')) {
-            this.elements.searchInput.focus();
-            this.elements.searchInput.value = '';
-            this.renderOptions(); // Reset to show all options
-        }
+        // Close all dropdowns first
+        document.querySelectorAll('.multi-select-dropdown.show').forEach(dropdown => {
+            dropdown.classList.remove('show');
+        });
+
+        // Then open this one
+        this.elements.dropdown.classList.add('show');
+        this.elements.searchInput.focus();
+        this.elements.searchInput.value = '';
+        this.renderOptions();
     }
 
     closeDropdown() {
@@ -227,4 +231,5 @@ export class MultiSelect {
         // Clean up event listeners if needed
         this.container.innerHTML = '';
     }
+
 }
