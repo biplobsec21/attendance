@@ -50,6 +50,8 @@ class SoldierDataFormatter
             'skills:id,name',
             'att:id,name',
             'ere:id,name',
+            'cmds:id,name',
+            'exAreas2:id,name',
             'medicalCategory:id,name',
             'sickness:id,name',
             'goodDiscipline:id,discipline_name,remarks',
@@ -112,7 +114,7 @@ class SoldierDataFormatter
                 $profile->family_mobile_2
             ])),
             'blood_group' => $profile->blood_group,
-            'image' => $profile->image ?? asset('/images/default-avatar.png'),
+            'image' => $profile->image ?? asset('images/default-avatar.png'),
             'service_duration' => $this->duration($profile->joining_date),
             'marital_status' => $this->maritalinfo($profile->marital_status, $profile->num_boys, $profile->num_girls),
             'address' => $this->addressInfo($profile->district?->name, $profile->permanent_address),
@@ -123,7 +125,9 @@ class SoldierDataFormatter
             'cadres'           => $this->formatCadres($profile),
             'cocurricular'     => $this->formatSkills($profile),
             'att'              => $this->formatAtt($profile),
+            'cmd'              => $this->formatCmd($profile),
             'ere'              => $this->formatEre($profile),
+            'ex_areas'         => $this->formatExAreas($profile),
             'medical'          => $this->formatMedical($profile),
             'sickness'         => $this->formatSickness($profile),
             'good_behavior'    => $this->formatGoodDiscipline($profile),
@@ -262,6 +266,20 @@ class SoldierDataFormatter
         }
 
         return $profile->att->map(function ($data) {
+            return [
+                'name'       => $data->name,
+                'start_date' => $data->pivot->start_date,
+                'end_date'   => $data->pivot->end_date,
+            ];
+        });
+    }
+    public function formatCmd(Soldier $profile)
+    {
+        if (!$profile->relationLoaded('cmds') || $profile->cmds->isEmpty()) {
+            return collect([]);
+        }
+
+        return $profile->cmds->map(function ($data) {
             return [
                 'name'       => $data->name,
                 'start_date' => $data->pivot->start_date,
@@ -653,6 +671,196 @@ class SoldierDataFormatter
      * Format CMD period for display
      */
     protected function formatCmdPeriod($startDate, $endDate): string
+    {
+        if (!$startDate) {
+            return 'Not scheduled';
+        }
+
+        $start = Carbon::parse($startDate)->format('M d, Y');
+
+        if (!$endDate) {
+            return "From {$start} (Ongoing)";
+        }
+
+        $end = Carbon::parse($endDate)->format('M d, Y');
+        return "{$start} - {$end}";
+    }
+
+    /**
+     * Format Ex-Areas data
+     */
+    public function formatExAreas(Soldier $profile)
+    {
+        if (!$profile->relationLoaded('exAreas2') || $profile->exAreas2->isEmpty()) {
+            return collect();
+        }
+
+        return $profile->exAreas2->map(fn($data) => [
+            'name'       => $data->name,
+            'start_date' => $data->pivot->start_date,
+            'end_date'   => $data->pivot->end_date,
+        ]);
+    }
+
+    /**
+     * Check if Ex-Area is active
+     */
+    protected function isExAreaActive($startDate, $endDate, $status): bool
+    {
+        // If status is explicitly set to 'active'
+        if ($status === 'active') {
+            return true;
+        }
+
+        // If status is explicitly set to 'completed' or 'inactive'
+        if (in_array($status, ['completed', 'inactive'])) {
+            return false;
+        }
+
+        // Fallback to date-based checking
+        $today = Carbon::today();
+
+        if (!$startDate) {
+            return false;
+        }
+
+        $start = Carbon::parse($startDate);
+
+        // If no end date, check if start date is in past
+        if (!$endDate) {
+            return $start->lte($today);
+        }
+
+        $end = Carbon::parse($endDate);
+
+        return $start->lte($today) && $end->gte($today);
+    }
+
+    /**
+     * Calculate Ex-Area duration in days
+     */
+    protected function calculateExAreaDuration($startDate, $endDate): ?int
+    {
+        if (!$startDate || !$endDate) {
+            return null;
+        }
+
+        try {
+            $start = Carbon::parse($startDate);
+            $end = Carbon::parse($endDate);
+
+            return $start->diffInDays($end) + 1; // Inclusive of both dates
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Format active Ex-Areas only
+     */
+    public function formatActiveExAreas(Soldier $profile)
+    {
+        if (!$profile->relationLoaded('exAreas') || $profile->exAreas->isEmpty()) {
+            return collect([]);
+        }
+
+        return $profile->exAreas->filter(function ($exArea) {
+            return $this->isExAreaActive($exArea->start_date, $exArea->end_date, $exArea->status);
+        })->map(function ($exArea) {
+            return [
+                'name' => $exArea->name,
+                'type' => $exArea->type ?? 'External Area',
+                'location' => $exArea->location,
+                'purpose' => $exArea->purpose,
+                'start_date' => $exArea->start_date,
+                'end_date' => $exArea->end_date,
+                'status' => 'active',
+                'remarks' => $exArea->remarks,
+                'duration_days' => $this->calculateExAreaDuration($exArea->start_date, $exArea->end_date),
+                'days_remaining' => $this->calculateDaysRemaining($exArea->end_date),
+            ];
+        });
+    }
+
+    /**
+     * Calculate days remaining for active Ex-Areas
+     */
+    protected function calculateDaysRemaining($endDate): ?int
+    {
+        if (!$endDate) {
+            return null;
+        }
+
+        try {
+            $end = Carbon::parse($endDate);
+            $today = Carbon::today();
+
+            return max(0, $today->diffInDays($end, false)); // Negative if past due
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Format Ex-Areas history for display
+     */
+    public function formatExAreasHistory(Soldier $profile): array
+    {
+        if (!$profile->relationLoaded('exAreas') || $profile->exAreas->isEmpty()) {
+            return [];
+        }
+
+        return $profile->exAreas->map(function ($exArea) {
+            $startDate = $exArea->start_date;
+            $endDate = $exArea->end_date;
+
+            $today = Carbon::today();
+            $start = $startDate ? Carbon::parse($startDate) : null;
+            $end = $endDate ? Carbon::parse($endDate) : null;
+
+            // Determine status
+            $status = $exArea->status;
+            if (!$status) {
+                if ($start && $end) {
+                    if ($end->isPast()) {
+                        $status = 'completed';
+                    } elseif ($start->lte($today) && $end->gte($today)) {
+                        $status = 'active';
+                    } else {
+                        $status = 'scheduled';
+                    }
+                } elseif ($start && $start->lte($today)) {
+                    $status = 'active';
+                } else {
+                    $status = 'scheduled';
+                }
+            }
+
+            $isActive = $status === 'active';
+            $durationDays = $this->calculateExAreaDuration($startDate, $endDate);
+
+            return [
+                'id' => $exArea->id,
+                'name' => $exArea->name,
+                'type' => $exArea->type ?? 'External Area',
+                'location' => $exArea->location,
+                'purpose' => $exArea->purpose,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'status' => $status,
+                'remarks' => $exArea->remarks,
+                'is_active' => $isActive,
+                'is_current' => $isActive,
+                'duration_days' => $durationDays,
+                'assignment_period' => $this->formatExAreaPeriod($startDate, $endDate),
+            ];
+        })->sortByDesc('start_date')->values()->toArray();
+    }
+
+    /**
+     * Format Ex-Area period for display
+     */
+    protected function formatExAreaPeriod($startDate, $endDate): string
     {
         if (!$startDate) {
             return 'Not scheduled';

@@ -9,7 +9,7 @@ export function renderTableRow(soldier) {
     const skills = getSkill(soldier.cocurricular);
     const educations = getEducations(soldier.educations);
     const courseAndCadres = getCourseAndCadres(soldier.courses, soldier.cadres);
-    const defaultAvatar = "/images/default-avatar.png";
+    const defaultAvatar = routes.defaultAvatar;
 
     // ERE status badge
     const ereBadge = soldier.has_ere ?
@@ -30,9 +30,8 @@ export function renderTableRow(soldier) {
                    <div class="flex flex-col items-center">
                     <!-- Image -->
                     <img class="h-40 w-32 rounded-lg object-cover border-2 border-gray-200"
-                        src="${soldier.image ? `/${soldier.image}` : defaultAvatar}"
-                        alt="${soldier.name || 'Soldier'}"
-                        onerror="this.src='/images/default-avatar.png'">
+                        src="${soldier.image}"
+                        alt="${soldier.name || 'Soldier'}"/>
 
                     <!-- Progress bar beneath the image -->
                     <div class="flex items-center mt-2 w-full justify-center">

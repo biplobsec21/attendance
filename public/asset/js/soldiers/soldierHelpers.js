@@ -1,4 +1,6 @@
 // public/js/soldiers/soldierHelpers.js
+import { memoize } from './performanceUtils.js';
+
 export function formatDate(dateString) {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -8,12 +10,12 @@ export function formatDate(dateString) {
     });
 }
 
-export function getStatusFromSoldier(soldier) {
+export const getStatusFromSoldier = memoize((soldier) => {
     if (soldier.is_leave === true) return 'leave';
     if (soldier.is_sick === true) return 'medical';
     if (soldier.status === true) return 'active';
     return 'inactive';
-}
+});
 export function getSkill(skillArray) {
     if (!Array.isArray(skillArray) || skillArray.length === 0) {
         return "N/A";
@@ -74,7 +76,7 @@ export function getCourseAndCadres(courses = [], cadres = []) {
 }
 
 
-export function calculateProgress(soldier) {
+export const calculateProgress = memoize((soldier) => {
     const completedSteps = [
         soldier.personal_completed,
         soldier.service_completed,
@@ -89,7 +91,7 @@ export function calculateProgress(soldier) {
     else if (percentage >= 50) color = 'yellow';
 
     return { percentage, color };
-}
+});
 
 export function getLeaveBadge(status) {
     const badges = {

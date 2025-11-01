@@ -9,7 +9,6 @@
         Available Personnel ({{ $availableSoldiers->count() }})
     </h3>
 
-
     <div class="relative">
         <div class="absolute inset-0 bg-gradient-to-r from-green-400/10 to-emerald-400/10 rounded-2xl"></div>
         <div id="available-soldier-repo"
@@ -24,7 +23,8 @@
                                 data-army-no="{{ strtolower(str_replace(' ', '', $soldier->army_no ?? '')) }}"
                                 data-full-name="{{ strtolower($soldier->full_name ?? '') }}"
                                 data-completed-today="{{ $soldier->hasCompletedAssignmentsToday() ? '1' : '0' }}"
-                                class="form-checkbox h-5 w-5 text-green-600 rounded-lg border-2 border-gray-300 focus:ring-green-500/50 focus:ring-2 transition-all duration-200 mt-0.5">
+                                class="form-checkbox h-5 w-5 text-green-600 rounded-lg border-2 border-gray-300 focus:ring-green-500/50 focus:ring-2 transition-all duration-200 mt-0.5 @error('soldier_ids') border-red-300 @enderror"
+                                {{ in_array($soldier->id, old('soldier_ids', [])) ? 'checked' : '' }}>
 
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center space-x-2 mb-1">
@@ -54,10 +54,38 @@
                                         {{ $soldier->army_no }}</p>
                                     <div class="flex flex-wrap gap-1">
                                         <span
-                                            class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{{ $soldier->rank->name }}</span>
+                                            class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{{ $soldier->rank->name ?? 'No Rank' }}</span>
                                         <span
-                                            class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">{{ $soldier->company->name }}</span>
+                                            class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">{{ $soldier->company->name ?? 'No Company' }}</span>
                                     </div>
+                                    @if (
+                                        $soldier->activeCourses->count() > 0 ||
+                                            $soldier->activeCadres->count() > 0 ||
+                                            ($soldier->activeExAreas && $soldier->activeExAreas->count() > 0))
+                                        <div class="mt-2 flex flex-wrap gap-1">
+                                            @if ($soldier->activeCourses->count() > 0)
+                                                <span
+                                                    class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full border border-blue-200">
+                                                    📚 {{ $soldier->activeCourses->count() }}
+                                                    Course{{ $soldier->activeCourses->count() > 1 ? 's' : '' }}
+                                                </span>
+                                            @endif
+                                            @if ($soldier->activeCadres->count() > 0)
+                                                <span
+                                                    class="text-xs bg-purple-50 text-purple-600 px-2 py-1 rounded-full border border-purple-200">
+                                                    👥 {{ $soldier->activeCadres->count() }}
+                                                    Cadre{{ $soldier->activeCadres->count() > 1 ? 's' : '' }}
+                                                </span>
+                                            @endif
+                                            @if ($soldier->activeExAreas && $soldier->activeExAreas->count() > 0)
+                                                <span
+                                                    class="text-xs bg-teal-50 text-teal-600 px-2 py-1 rounded-full border border-teal-200">
+                                                    🗺️ {{ $soldier->activeExAreas->count() }}
+                                                    Ex-Area{{ $soldier->activeExAreas->count() > 1 ? 's' : '' }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </label>
@@ -76,4 +104,55 @@
             @endif
         </div>
     </div>
+
+    @error('soldier_ids')
+        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
+    @enderror
 </div>
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Soldier filtering functionality
+            const armyInput = document.getElementById("filter-army-no");
+            const rankSelect = document.getElementById("filter-rank");
+            const companySelect = document.getElementById("filter-company");
+            const availableRepo = document.getElementById("available-soldier-repo");
+            const availableSoldierCards = Array.from(availableRepo.querySelectorAll("label"));
+
+            function normalize(str = '') {
+                return String(str).toLowerCase().replace(/\s+/g, '');
+            }
+
+            function filterAvailableSoldiers() {
+                const armyRaw = armyInput.value.trim();
+                const army = normalize(armyRaw);
+                const rank = rankSelect.value;
+                const company = companySelect.value;
+
+                // Filter available soldiers
+                availableSoldierCards.forEach(card => {
+                    const checkbox = card.querySelector('input[type="checkbox"]');
+                    const cardArmy = normalize(checkbox.dataset.armyNo || '');
+                    const cardName = normalize(checkbox.dataset.fullName || '');
+                    const cardRank = String(checkbox.dataset.rankId || '');
+                    const cardCompany = String(checkbox.dataset.companyId || '');
+
+                    const matchesArmy = !army || cardArmy.includes(army) || cardName.includes(army);
+                    const matchesRank = !rank || cardRank === rank;
+                    const matchesCompany = !company || cardCompany === company;
+
+                    card.style.display = (matchesArmy && matchesRank && matchesCompany) ? "flex" : "none";
+                });
+            }
+
+            // Wire up events
+            if (armyInput) armyInput.addEventListener("input", filterAvailableSoldiers);
+            if (rankSelect) rankSelect.addEventListener("change", filterAvailableSoldiers);
+            if (companySelect) companySelect.addEventListener("change", filterAvailableSoldiers);
+
+            // Run once on load to apply any defaults
+            filterAvailableSoldiers();
+        });
+    </script>
+@endpush

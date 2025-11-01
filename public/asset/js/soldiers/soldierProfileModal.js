@@ -1,7 +1,7 @@
 import { formatDate } from "./soldierHelpers.js";
 
 export function generateProfileModalContent(soldier) {
-    const defaultAvatar = "/images/default-avatar.png";
+    const defaultAvatar = routes.defaultAvatar;
 
     return `
         <div class="px-6 py-4">

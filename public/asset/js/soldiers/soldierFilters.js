@@ -1,8 +1,68 @@
-// public/js/soldiers/soldierFilters.js
+import { MultiSelect } from "./multiSelect.js";
+
 export function initFilters(manager) {
     let searchTimeout;
+    const multiSelects = {};
 
-    // Function to update active filters summary
+    console.log('🔧 Initializing filters with manager:', !!manager);
+
+    // Initialize multi-select components for filter categories
+    const initMultiSelects = () => {
+        console.log('🔄 Initializing multi-select components...');
+
+        const multiSelectConfigs = [
+            { id: 'rank', placeholder: 'Select Rank...' },
+            { id: 'company', placeholder: 'Select Company...' },
+            { id: 'skill', placeholder: 'Select Skills...' },
+            { id: 'course', placeholder: 'Select Courses...' },
+            { id: 'cadre', placeholder: 'Select Cadres...' },
+            { id: 'att', placeholder: 'Select ATT...' },
+            { id: 'education', placeholder: 'Select Education...' },
+            { id: 'district', placeholder: 'Select District...' },
+            { id: 'bloodGroup', placeholder: 'Select Blood Group...' },
+            { id: 'ere', placeholder: 'Select ERE Status...' },
+            { id: 'cmd', placeholder: 'Select CMD...' },
+            { id: 'exArea', placeholder: 'Select Ex-Areas...' },
+            { id: 'leave', placeholder: 'Select Leave Status...' }
+        ];
+
+        multiSelectConfigs.forEach(config => {
+            const containerId = `${config.id}-filter-container`;
+            const container = document.getElementById(containerId);
+
+            console.log(`🔧 Setting up ${config.id} filter:`, {
+                containerId,
+                containerExists: !!container
+            });
+
+            if (container) {
+                try {
+                    multiSelects[config.id] = new MultiSelect(containerId, {
+                        placeholder: config.placeholder,
+                        onChange: (selectedValues) => {
+                            console.log(`🎯 ${config.id} filter changed:`, selectedValues);
+                            manager.filters[config.id] = selectedValues.length > 0 ? selectedValues : '';
+                            updateFilterActiveStates();
+                            updateActiveFiltersSummary();
+                            updateFilterCount();
+                            manager.filterAndRender();
+                        }
+                    });
+                    console.log(`✅ ${config.id} multi-select initialized successfully`);
+                } catch (error) {
+                    console.error(`❌ Failed to initialize ${config.id} multi-select:`, error);
+                }
+            } else {
+                console.warn(`⚠️ Container not found for ${config.id}: #${containerId}`);
+            }
+        });
+
+        console.log('📊 Multi-select initialization complete:', {
+            initialized: Object.keys(multiSelects),
+            total: multiSelectConfigs.length
+        });
+    };
+
     // Function to update active filters summary
     const updateActiveFiltersSummary = () => {
         const summaryElement = document.getElementById('active-filters-summary');
@@ -10,7 +70,6 @@ export function initFilters(manager) {
 
         if (!summaryElement || !filtersListElement) return;
 
-        // Get filtered count
         const filteredSoldiers = manager.applyFilters(manager.soldiers);
         const filteredCount = filteredSoldiers.length;
         const totalCount = manager.soldiers.length;
@@ -20,7 +79,6 @@ export function initFilters(manager) {
             search: 'Search',
             rank: 'Rank',
             company: 'Company',
-            status: 'Status',
             skill: 'Skill',
             course: 'Course',
             cadre: 'Cadre',
@@ -29,52 +87,67 @@ export function initFilters(manager) {
             education: 'Education',
             leave: 'Leave',
             district: 'District',
+            cmd: 'CMD',
+            exArea: 'Ex-Areas',
             bloodGroup: 'Blood Group'
         };
 
         Object.entries(manager.filters).forEach(([key, value]) => {
             if (value && value !== '') {
-                activeFilters.push({
-                    key,
-                    label: filterLabels[key] || key,
-                    value: value
-                });
+                if (Array.isArray(value) && value.length > 0) {
+                    const selectedLabels = value.map(val => {
+                        if (key === 'leave') {
+                            return val === 'on-leave' ? 'On Leave' : 'Present';
+                        }
+                        return val;
+                    });
+
+                    activeFilters.push({
+                        key,
+                        label: filterLabels[key] || key,
+                        value: selectedLabels.join(', ')
+                    });
+                } else if (typeof value === 'string' && value !== '') {
+                    activeFilters.push({
+                        key,
+                        label: filterLabels[key] || key,
+                        value: value
+                    });
+                }
             }
         });
 
-        if (activeFilters.length > 0 || manager.filters.search) {
+        // FIXED: Only show summary if there are actual active filters or non-empty search
+        const hasActiveSearch = manager.filters.search && manager.filters.search.trim() !== '';
+        if (activeFilters.length > 0 || hasActiveSearch) {
             summaryElement.classList.remove('hidden');
-
-            // Update filters list
             filtersListElement.innerHTML = activeFilters.map(filter => `
             <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center space-x-1">
-                <span>${filter.label}: ${filter.value}</span>
-                <button class="clear-single-filter ml-1 hover:text-blue-900" data-filter="${filter.key}">
-                    <i class="fas fa-times"></i>
+                <span class="truncate max-w-[200px]">${filter.label}: ${filter.value}</span>
+                <button class="clear-single-filter ml-1 hover:text-blue-900 flex-shrink-0" data-filter="${filter.key}">
+                    <i class="fas fa-times text-xs"></i>
                 </button>
             </span>
         `).join('');
 
-            // Add or update counter
             let counterElement = document.getElementById('filtered-counter');
             if (!counterElement) {
                 counterElement = document.createElement('div');
                 counterElement.id = 'filtered-counter';
-                counterElement.className = 'text-green-700 text-sm font-medium';
-                // Insert counter after the filters list container
-                filtersListElement.parentNode.insertBefore(counterElement, filtersListElement.nextSibling);
+                counterElement.className = 'text-green-700 text-sm font-medium mt-2';
+                filtersListElement.parentNode.appendChild(counterElement);
             }
             counterElement.textContent = `Showing ${filteredCount} of ${totalCount} soldiers`;
 
-            // Re-attach event listeners for individual filter buttons
             document.querySelectorAll('.clear-single-filter').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const filterKey = e.target.closest('button').dataset.filter;
                     manager.filters[filterKey] = '';
 
-                    const elementId = filterKey === 'bloodGroup' ? 'blood-group-filter' : `${filterKey}-filter`;
-                    const formElement = document.getElementById(elementId);
-                    if (formElement) formElement.value = '';
+                    // Clear multi-select if it exists
+                    if (multiSelects[filterKey]) {
+                        multiSelects[filterKey].clear();
+                    }
 
                     if (filterKey === 'search') {
                         const searchInput = document.getElementById('search-input');
@@ -83,6 +156,7 @@ export function initFilters(manager) {
 
                     updateActiveFiltersSummary();
                     updateFilterActiveStates();
+                    updateFilterCount();
                     manager.filterAndRender();
                 });
             });
@@ -90,39 +164,25 @@ export function initFilters(manager) {
         } else {
             summaryElement.classList.add('hidden');
             filtersListElement.innerHTML = '';
-
-            // Remove counter if it exists
             const counterElement = document.getElementById('filtered-counter');
-            if (counterElement) {
-                counterElement.remove();
-            }
-            // const counterElement2 = document.getElementById('filter-count');
-            // if (counterElement2) {
-            //     counterElement2.remove();
-            // }
-
+            if (counterElement) counterElement.remove();
         }
     };
-    // Function to update filter active states (from Option 1)
+
+    // Function to update filter active states
     const updateFilterActiveStates = () => {
-        const filterIds = [
-            'rank-filter', 'company-filter', 'status-filter', 'skill-filter',
-            'course-filter', 'cadre-filter', 'ere-filter', 'att-filter',
-            'education-filter', 'leave-filter', 'district-filter', 'bloodGroup-filter'
-        ];
+        // Handle multi-select filters
+        Object.keys(multiSelects).forEach(filterType => {
+            const multiSelect = multiSelects[filterType];
+            if (multiSelect) {
+                const filterValue = manager.filters[filterType];
+                const hasSelection = filterValue &&
+                    (Array.isArray(filterValue) ? filterValue.length > 0 : filterValue !== '');
 
-        filterIds.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                const filterType = id.replace('-filter', '');
-                const actualFilterType = filterType === 'blood-group' ? 'bloodGroup' : filterType;
-
-                if (manager.filters[actualFilterType] && manager.filters[actualFilterType] !== '') {
-                    element.classList.add('filter-active');
-                    element.parentElement.classList.add('filter-container-active');
+                if (hasSelection) {
+                    multiSelect.elements.input.classList.add('filter-active');
                 } else {
-                    element.classList.remove('filter-active');
-                    element.parentElement.classList.remove('filter-container-active');
+                    multiSelect.elements.input.classList.remove('filter-active');
                 }
             }
         });
@@ -130,84 +190,199 @@ export function initFilters(manager) {
         // Handle search input
         const searchInput = document.getElementById('search-input');
         if (searchInput) {
-            if (manager.filters.search && manager.filters.search !== '') {
+            const hasSearchValue = manager.filters.search && manager.filters.search.trim() !== '';
+            if (hasSearchValue) {
                 searchInput.classList.add('filter-active');
-                searchInput.parentElement.classList.add('filter-container-active');
             } else {
                 searchInput.classList.remove('filter-active');
-                searchInput.parentElement.classList.remove('filter-container-active');
             }
         }
     };
 
-    // Search input event
-    document.getElementById('search-input').addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            manager.filters.search = e.target.value;
-            updateFilterActiveStates();
-            updateActiveFiltersSummary();
-            manager.filterAndRender();
-        }, 300);
-    });
+    // Update filter options when data is loaded
+    const updateMultiSelectOptions = () => {
+        Object.keys(multiSelects).forEach(filterType => {
+            // Skip ERE and Leave as they have predefined options
+            if (filterType === 'leave') return;
 
-    const filterIds = [
-        'rank-filter', 'company-filter', 'status-filter', 'skill-filter',
-        'course-filter', 'cadre-filter', 'ere-filter', 'att-filter',
-        'education-filter', 'leave-filter', 'district-filter', 'bloodGroup-filter'
-    ];
+            const options = getOptionsForFilterType(filterType, manager.soldiers);
+            multiSelects[filterType].setOptions(options);
+        });
+    };
 
-    filterIds.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.addEventListener('change', (e) => {
-                let filterType = id.replace('-filter', '');
+    // Helper function to get options for each filter type
+    const getOptionsForFilterType = (filterType, soldiers) => {
+        const options = new Set();
 
-                manager.filters[filterType] = e.target.value;
+        soldiers.forEach(soldier => {
+            switch (filterType) {
+                case 'rank':
+                    if (soldier.rank) options.add(soldier.rank);
+                    break;
+                case 'company':
+                    if (soldier.unit) options.add(soldier.unit);
+                    break;
+                case 'skill':
+                    soldier.cocurricular?.forEach(skill => {
+                        if (skill.name) options.add(skill.name);
+                    });
+                    break;
+                case 'course':
+                    soldier.courses?.forEach(course => {
+                        if (course.name) options.add(course.name);
+                    });
+                    break;
+                case 'cadre':
+                    soldier.cadres?.forEach(cadre => {
+                        if (cadre.name) options.add(cadre.name);
+                    });
+                    break;
+                case 'att':
+                    soldier.att?.forEach(att => {
+                        if (att.name) options.add(att.name);
+                    });
+                    break;
+                case 'ere':
+                    soldier.ere?.forEach(ere => {
+                        if (ere.name) options.add(ere.name);
+                    });
+                    break;
+                case 'education':
+                    soldier.educations?.forEach(education => {
+                        if (education.name) options.add(education.name);
+                    });
+                    break;
+                case 'district':
+                    if (soldier.districts) options.add(soldier.districts);
+                    break;
+                case 'cmd':
+                    soldier.cmd?.forEach(cmd => {
+                        if (cmd.name) options.add(cmd.name);
+                    });
+                    break;
+                case 'exArea':
+                    soldier.ex_areas?.forEach(exArea => {
+                        if (exArea.name) options.add(exArea.name);
+                    });
+                    break;
+                case 'bloodGroup':
+                    if (soldier.blood_group) options.add(soldier.blood_group);
+                    break;
+            }
+        });
 
-                updateFilterActiveStates();
-                updateActiveFiltersSummary();
+        return Array.from(options)
+            .filter(value => value && value.trim() !== '')
+            .map(value => ({
+                value: value,
+                label: value
+            }))
+            .sort((a, b) => a.label.localeCompare(b.label));
+    };
 
-                console.log(`Filter changed: ${filterType} = ${e.target.value}`);
-                manager.debugFilters();
-                manager.forceRerender();
-                // updateFilterCount();
-
-            });
-        }
-    });
-
-    // Clear all filters button
-    document.getElementById('clear-all-filters')?.addEventListener('click', () => {
-        manager.clearFilters();
-        updateFilterActiveStates();
-        updateActiveFiltersSummary();
-        updateFilterCount(); // This will now work
-
-    });
+    // Update filter count badge
     function updateFilterCount() {
-        const filters = document.querySelectorAll('#filters-sidebar select, #filters-sidebar input');
         let activeCount = 0;
 
-        filters.forEach(filter => {
-            if (filter.value && filter.value !== '' && filter.id !== 'search-input') {
-                activeCount++;
-            } else if (filter.id === 'search-input' && filter.value.trim() !== '') {
+        // Count search filter only if it has value
+        if (manager.filters.search && manager.filters.search.trim() !== '') {
+            activeCount++;
+        }
+
+        // Count multi-select filters only if they have selected values
+        Object.keys(multiSelects).forEach(filterType => {
+            const filterValue = manager.filters[filterType];
+            if (filterValue &&
+                (Array.isArray(filterValue) ? filterValue.length > 0 : filterValue !== '')) {
                 activeCount++;
             }
         });
 
         const filterCount = document.getElementById('filter-count');
+        const filteredCounter = document.getElementById('filtered-counter');
+
+        console.log('=== FILTER COUNT DEBUG ===');
+        console.log('Active filters count:', activeCount);
+        console.log('Filter count element:', filterCount);
+        console.log('Filter count element content:', filterCount?.textContent);
+        console.log('Filtered counter element:', filteredCounter);
+        console.log('Filtered counter content:', filteredCounter?.textContent);
+        console.log('Total soldiers:', manager.soldiers?.length || 0);
+        console.log('Filtered soldiers:', manager.applyFilters ? manager.applyFilters(manager.soldiers).length : 'N/A');
+        console.log('=== END DEBUG ===');
+
         if (!filterCount) return;
 
+        // Force set the correct value
+        filterCount.textContent = activeCount.toString();
+
         if (activeCount > 0) {
-            filterCount.textContent = activeCount;
             filterCount.classList.remove('hidden');
         } else {
             filterCount.classList.add('hidden');
         }
     }
+
+    // Search input event
+    document.getElementById('search-input')?.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const searchValue = e.target.value.trim();
+            manager.filters.search = searchValue; // Set to empty string if no value
+
+            updateFilterActiveStates();
+            updateActiveFiltersSummary();
+            updateFilterCount();
+            manager.filterAndRender();
+        }, 300);
+    });
+
+    // Clear all filters button
+    document.getElementById('clear-all-filters')?.addEventListener('click', () => {
+        manager.clearFilters();
+
+        // Clear all multi-selects
+        Object.values(multiSelects).forEach(multiSelect => {
+            multiSelect.clear();
+        });
+
+        // Clear search input
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.classList.remove('filter-active');
+        }
+
+        updateFilterActiveStates();
+        updateActiveFiltersSummary();
+        updateFilterCount();
+        manager.filterAndRender();
+    });
+
+    // Initialize multi-selects when manager is ready
+    setTimeout(() => {
+        initMultiSelects();
+        if (manager.soldiers && manager.soldiers.length > 0) {
+            updateMultiSelectOptions();
+        }
+    }, 100);
+
+    // Re-initialize when data is loaded
+    const originalLoadData = manager.loadData.bind(manager);
+    manager.loadData = async function () {
+        await originalLoadData();
+        setTimeout(() => {
+            updateMultiSelectOptions();
+        }, 150);
+    };
+
+    // Expose updateFilterCount for external use
+    manager.updateFilterCount = updateFilterCount;
+
     // Initialize
     updateFilterActiveStates();
     updateActiveFiltersSummary();
+    updateFilterCount();
+
+    console.log('✅ Filters initialization complete');
 }

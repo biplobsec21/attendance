@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
 
 class Soldier extends Model
 {
@@ -270,11 +271,14 @@ class Soldier extends Model
 
     // New method to check if soldier has active assignments
     // New method to check if soldier has active assignments
-    public function hasActiveAssignments(): bool
+    public function hasActiveAssignments()
     {
-        return $this->activeCourses()->exists() ||
-            $this->activeCadres()->exists() ||
-            $this->hasActiveServices();
+        $hasActiveCourses = $this->activeCourses()->exists();
+        $hasActiveCadres = $this->activeCadres()->exists();
+        $hasActiveExAreas = $this->activeExAreas()->exists();
+        $hasActiveServices = $this->activeServices()->exists();
+
+        return $hasActiveCourses || $hasActiveCadres || $hasActiveExAreas || $hasActiveServices;
     }
     // Helper method to check if soldier has active services
     public function hasActiveServices(): bool
@@ -480,21 +484,23 @@ class Soldier extends Model
             ->values()
             ->toArray();
     }
-    public function hasCompletedAssignmentsToday(): bool
+    public function hasCompletedAssignmentsToday()
     {
-        $today = Carbon::today();
+        $today = now()->toDateString();
 
-        // Check courses completed today
-        $coursesCompletedToday = $this->courses()
-            ->wherePivot('end_date', $today)
+        $completedCoursesToday = $this->courses()
+            ->whereDate('end_date', $today)
             ->exists();
 
-        // Check cadres completed today
-        $cadresCompletedToday = $this->cadres()
-            ->wherePivot('end_date', $today)
+        $completedCadresToday = $this->cadres()
+            ->whereDate('end_date', $today)
             ->exists();
 
-        return $coursesCompletedToday || $cadresCompletedToday;
+        $completedExAreasToday = $this->exAreas()
+            ->whereDate('end_date', $today)
+            ->exists();
+
+        return $completedCoursesToday || $completedCadresToday || $completedExAreasToday;
     }
 
     public function hasEreRecords(): bool
@@ -715,5 +721,38 @@ class Soldier extends Model
         $end = Carbon::parse($endDate);
 
         return $start->diffInDays($end) + 1;
+    }
+
+    public function exAreas()
+    {
+        return $this->hasMany(SoldierExArea::class);
+    }
+    public function exAreas2(): BelongsToMany
+    {
+        return $this->belongsToMany(ExArea::class, 'soldier_ex_areas', 'soldier_id', 'ex_area_id')
+            ->withPivot(['start_date', 'end_date', 'status', 'remarks'])
+            ->withTimestamps();
+    }
+
+
+    public function activeExAreas()
+    {
+        // Check if status column exists
+        if (Schema::hasColumn('soldier_ex_areas', 'status')) {
+            return $this->hasMany(SoldierExArea::class)->whereIn('status', ['active', 'scheduled']);
+        } else {
+            // Fallback: use date-based filtering if status column doesn't exist
+            return $this->hasMany(SoldierExArea::class)
+                ->where(function ($query) {
+                    $query->whereNull('end_date')
+                        ->orWhere('end_date', '>=', now()->toDateString());
+                })
+                ->where('start_date', '<=', now()->toDateString());
+        }
+    }
+
+    public function previousExAreas()
+    {
+        return $this->hasMany(SoldierExArea::class)->where('status', 'completed');
     }
 }

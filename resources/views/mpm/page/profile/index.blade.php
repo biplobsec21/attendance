@@ -3,7 +3,6 @@
 @section('title', 'Profile Details')
 @section('content')
     <div class="container mx-auto p-4 bg-gray-50">
-
         <div class="min-h-screen">
 
             <!-- Page Header -->
@@ -75,24 +74,38 @@
                 </div>
 
                 <!-- Filter Toggle Button -->
-                <!-- Filter Toggle Button -->
                 <div class="mx-auto px-4 sm:px-6 lg:px-8 mb-4">
                     <div class="flex items-center justify-between">
                         <button id="toggle-filters"
-                            class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-all duration-200">
+                            class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-all duration-200 relative">
                             <i class="fas fa-filter text-green-600"></i>
                             <span class="font-medium text-gray-700">Filters</span>
                             <span id="filter-count"
-                                class="hidden px-2 py-1 text-xs font-semibold text-white bg-green-600 rounded-full"></span>
+                                class="absolute -top-2 -right-2 px-2 py-1 text-xs font-semibold text-white bg-green-600 rounded-full hidden min-w-[20px] text-center"></span>
                             <i class="fas fa-chevron-right text-gray-400 ml-2" id="filter-toggle-icon"></i>
                         </button>
 
-                        <!-- Bulk Action Button (moved here) -->
-                        <button id="bulk-action"
-                            class="hidden items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm">
-                            <i class="fas fa-edit"></i>
-                            <span class="font-medium">Bulk Actions</span>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <!-- ✅ ADD THESE EXPORT BUTTONS -->
+                            <button id="export-excel"
+                                class="flex  items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 shadow-sm">
+                                <i class="fas fa-file-excel"></i>
+                                <span class="font-medium">Export Excel</span>
+                            </button>
+
+                            <button id="export-pdf"
+                                class="flex   items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm">
+                                <i class="fas fa-file-pdf"></i>
+                                <span class="font-medium">Export PDF</span>
+                            </button>
+
+                            <!-- Bulk Action Button (moved here) -->
+                            <button id="bulk-action"
+                                class="hidden items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm">
+                                <i class="fas fa-edit"></i>
+                                <span class="font-medium">Bulk Actions</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -157,7 +170,7 @@
 
         <!-- Filters Sidebar -->
         <div id="filters-sidebar"
-            class="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-50 overflow-hidden flex flex-col">
+            class="fixed top-16 right-0 h-[calc(100vh-4rem)] w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-50 overflow-hidden flex flex-col">
             <!-- Sidebar Header -->
             <div
                 class="bg-gradient-to-r from-green-800 to-green-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
@@ -171,7 +184,8 @@
             </div>
 
             <!-- Active Filters Summary (Inside Sidebar) -->
-            <div id="active-filters-summary" class="hidden bg-green-50 border-b border-green-200 px-6 py-3 flex-shrink-0">
+            <div id="active-filters-summary"
+                class="hidden bg-green-50 border-b border-green-200 px-6 py-3 sticky top-16 z-5">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-green-800 font-medium text-sm">Active:</span>
@@ -185,14 +199,15 @@
             </div>
 
             <!-- Scrollable Filters Content -->
-            <div class="flex-1 overflow-y-auto px-6 py-4 filter-scrollbar">
+            <div class="flex-1 px-6 py-4 overflow-auto filter-scrollbar">
                 <div class="space-y-4">
                     <!-- Search -->
+                    <!-- In your filters sidebar -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             <i class="fas fa-search text-gray-400 mr-2"></i>Search
                         </label>
-                        <input type="text" id="search-input" placeholder="Name, army number..."
+                        <input type="text" id="search-input" placeholder="Name, army number, mobile number..."
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200">
                     </div>
 
@@ -202,10 +217,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 RK
                             </label>
-                            <select id="rank-filter"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                <option value="">Select RK</option>
-                            </select>
+                            <div id="rank-filter-container"></div>
                         </div>
 
                         <!-- Company Filter -->
@@ -213,22 +225,17 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Coy
                             </label>
-                            <select id="company-filter"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                <option value="">Select Coy</option>
-                            </select>
+                            <div id="company-filter-container"></div>
                         </div>
                     </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <!-- Courses Filter -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Courses
                             </label>
-                            <select id="course-filter"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                <option value="">Select Courses</option>
-                            </select>
+                            <div id="course-filter-container"></div>
                         </div>
 
                         <!-- Cadres Filter -->
@@ -236,135 +243,100 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Cadres
                             </label>
-                            <select id="cadre-filter"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                <option value="">Select Cadres</option>
-                            </select>
+                            <div id="cadre-filter-container"></div>
                         </div>
                     </div>
-                    <!-- Status Filter (Hidden) -->
-                    <div class="hidden">
-                        <label for="status-filter" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                        <select id="status-filter"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                            <option value="">Select Status</option>
-                            <option value="active">Active</option>
-                            <option value="leave">On Leave</option>
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
 
+                    <div class="grid grid-cols-2 gap-4">
                         <!-- Skills Filter -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Skills
                             </label>
-                            <select id="skill-filter"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                <option value="">Select Skills</option>
-                            </select>
+                            <div id="skill-filter-container"></div>
                         </div>
+
                         <!-- Education Filter -->
                         <div>
-                            <label for="education-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Education
                             </label>
-                            <select id="education-filter"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                <option value="">Select Education</option>
-                            </select>
+                            <div id="education-filter-container"></div>
                         </div>
                     </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <!-- ERE Filter -->
                         <div>
-                            <label for="ere-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
                                 ERE Status
                             </label>
-                            <select id="ere-filter"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                <option value="">Select Soldiers</option>
-                                <option value="true">With ERE</option>
-                                <option value="false">Without ERE</option>
-                            </select>
+                            <div id="ere-filter-container"></div>
                         </div>
 
                         <!-- ATT Filter -->
                         <div>
-                            <label for="att-filter" class="block text-sm font-medium text-gray-700 mb-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Att
                             </label>
-                            <select id="att-filter"
-                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                                <option value="">Select Att</option>
-                            </select>
+                            <div id="att-filter-container"></div>
                         </div>
                     </div>
 
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Leave Filter -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Leave Status
+                            </label>
+                            <div id="leave-filter-container"></div>
+                        </div>
 
-                    <!-- Leave Filter -->
-                    <div>
-                        <label for="leave-filter" class="block text-sm font-medium text-gray-700 mb-2">
-                            Leave Status
-                        </label>
-                        <select id="leave-filter"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                            <option value="">Select Soldiers</option>
-                            <option value="on-leave">On Leave</option>
-                            <option value="not-on-leave">Not On Leave</option>
-                        </select>
+                        <!-- District Filter -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                District
+                            </label>
+                            <div id="district-filter-container"></div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Blood Group Filter -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Blood Group
+                            </label>
+                            <div id="bloodGroup-filter-container"></div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                CMD
+                            </label>
+                            <div id="cmd-filter-container"></div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Ex-Areas
+                            </label>
+                            <div id="exArea-filter-container"></div>
+                        </div>
                     </div>
 
-                    <!-- District Filter -->
-                    <div>
-                        <label for="district-filter" class="block text-sm font-medium text-gray-700 mb-2">
-                            District
-                        </label>
-                        <select id="district-filter"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                            <option value="">Select District</option>
-                        </select>
-                    </div>
-
-                    <!-- Blood Group Filter -->
-                    <div>
-                        <label for="bloodGroup-filter" class="block text-sm font-medium text-gray-700 mb-2">
-                            Blood Group
-                        </label>
-                        <select id="bloodGroup-filter"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500">
-                            <option value="">Select Blood Group</option>
-                        </select>
-                    </div>
                 </div>
             </div>
 
-            <!-- Sidebar Footer with Action Buttons -->
-            <!-- Sidebar Footer with Action Buttons -->
-            <div class="border-t border-gray-200 px-6 py-4 bg-gray-50 flex-shrink-0 hidden">
-                <div class="flex flex-col gap-3">
-                    <div class="flex gap-3">
-                    </div>
-                    <div class="flex gap-3">
-                        <button id="export-excel"
-                            class="flex-1 px-4 py-2 text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors duration-200 text-sm font-medium border border-green-200">
-                            <i class="fas fa-file-excel mr-2"></i>Export Excel
-                        </button>
-                        <button id="export-pdf"
-                            class="flex-1 px-4 py-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors duration-200 text-sm font-medium border border-red-200">
-                            <i class="fas fa-file-pdf mr-2"></i>Export PDF
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <!-- Sidebar Footer -->
+
         </div>
 
         <!-- Overlay -->
         <div id="filters-overlay"
-            class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300"></div>
+            class="fixed inset-0 bg-black bg-opacity-50 z-[55] hidden transition-opacity duration-300"></div>
 
         <!-- Profile Quick View Modal -->
-        <div id="profile-modal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div id="profile-modal" class="fixed inset-0 z-[70] hidden overflow-y-auto">
             <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
                 <div
@@ -385,7 +357,7 @@
         </div>
 
         <!-- History Modal -->
-        <div id="history-modal" class="fixed inset-0 z-50 hidden overflow-y-auto pt-16">
+        <div id="history-modal" class="fixed inset-0 z-[70] hidden overflow-y-auto pt-16">
             <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
                 <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
 
@@ -415,45 +387,29 @@
     <script>
         const routes = {
             getAllSoldiers: "{{ route('soldier.getAllData') }}",
-            delete: "{{ route('soldier.destroy', ['soldier' => ':id']) }}", // placeholder
+            delete: "{{ route('soldier.destroy', ['soldier' => ':id']) }}",
             edit: "{{ route('soldier.personalForm', ['profile' => ':id']) }}",
             bulkDelete: "{{ route('soldier.bulkDelete') }}",
             view: "{{ route('soldier.details', ['id' => ':id']) }}",
             getHistory: "{{ route('soldier.history', ['id' => ':id']) }}",
-
             getAttTypes: '/api/soldiers/att-types',
             addAttRecord: '/api/soldiers/:id/att',
             getCmdTypes: '/api/soldiers/cmd-types',
-            addCmdRecord: '/api/soldiers/:id/cmd'
-
-
+            addCmdRecord: '/api/soldiers/:id/cmd',
+            defaultAvatar: "{!! asset('images/default-avatar.png') !!}"
         };
 
-        // Debug ERE filter
+        // Sidebar functionality - ONLY basic open/close, no filter logic
         document.addEventListener('DOMContentLoaded', function() {
-            const ereFilter = document.getElementById('ere-filter');
-            if (ereFilter) {
-                console.log('ERE filter element found');
-                ereFilter.addEventListener('change', function() {
-                    console.log('ERE filter changed to:', this.value);
-                });
-            } else {
-                console.error('ERE filter element not found');
-            }
-
-            // Sidebar functionality
             const toggleBtn = document.getElementById('toggle-filters');
             const closeBtn = document.getElementById('close-filters');
             const sidebar = document.getElementById('filters-sidebar');
             const overlay = document.getElementById('filters-overlay');
-            const applyBtn = document.getElementById('apply-filters');
             const filterToggleIcon = document.getElementById('filter-toggle-icon');
-            const filterCount = document.getElementById('filter-count');
 
             // Toggle sidebar
             function openSidebar() {
-                sidebar.classList.add('show');
-                sidebar.style.transform = 'translateX(0)';
+                sidebar.classList.remove('translate-x-full');
                 overlay.classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
                 filterToggleIcon.classList.remove('fa-chevron-right');
@@ -461,72 +417,46 @@
             }
 
             function closeSidebar() {
-                sidebar.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    sidebar.classList.remove('show');
-                }, 300);
+                sidebar.classList.add('translate-x-full');
                 overlay.classList.add('hidden');
                 document.body.style.overflow = '';
                 filterToggleIcon.classList.remove('fa-chevron-left');
                 filterToggleIcon.classList.add('fa-chevron-right');
             }
 
-            toggleBtn.addEventListener('click', function() {
-                if (sidebar.classList.contains('show')) {
-                    closeSidebar();
-                } else {
-                    openSidebar();
-                }
-            });
-
-            closeBtn.addEventListener('click', closeSidebar);
-            overlay.addEventListener('click', closeSidebar);
-
-            // Optional: Close sidebar when apply is clicked
-            if (applyBtn) {
-                applyBtn.addEventListener('click', function() {
-                    closeSidebar();
-                    // Your existing filter apply logic will be triggered by your existing JS
-                });
-            }
-
-            // Update filter count badge
-            function updateFilterCount() {
-                const filters = document.querySelectorAll('#filters-sidebar select, #filters-sidebar input');
-                let activeCount = 0;
-
-                filters.forEach(filter => {
-                    if (filter.value && filter.value !== '' && filter.id !== 'search-input') {
-                        activeCount++;
-                    } else if (filter.id === 'search-input' && filter.value.trim() !== '') {
-                        activeCount++;
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (sidebar.classList.contains('translate-x-full')) {
+                        openSidebar();
+                    } else {
+                        closeSidebar();
                     }
                 });
-
-                if (activeCount > 0) {
-                    filterCount.textContent = activeCount;
-                    filterCount.classList.remove('hidden');
-                } else {
-                    filterCount.classList.add('hidden');
-                }
             }
 
-            // Listen for filter changes
-            const filterInputs = document.querySelectorAll('#filters-sidebar select, #filters-sidebar input');
-            filterInputs.forEach(input => {
-                input.addEventListener('change', updateFilterCount);
-                input.addEventListener('input', updateFilterCount);
-            });
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeSidebar();
+                });
+            }
+
+            if (overlay) {
+                overlay.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeSidebar();
+                });
+            }
 
             // Close sidebar on Escape key
             document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && sidebar.classList.contains('show')) {
+                if (e.key === 'Escape' && !sidebar.classList.contains('translate-x-full')) {
                     closeSidebar();
                 }
             });
-
-            // Initial count update
-            updateFilterCount();
         });
     </script>
     <script type="module" src="{{ asset('asset/js/soldiers/init.js') }}"></script>
@@ -535,12 +465,155 @@
 @push('styles')
     <link rel="stylesheet" href="{{ asset('asset/css/profile.css') }}">
     <style>
-        /* Sidebar styles */
-        #filters-sidebar {
-            box-shadow: -4px 0 6px -1px rgba(0, 0, 0, 0.1), -2px 0 4px -1px rgba(0, 0, 0, 0.06);
+        /* Multi-select dropdown styles */
+        .multi-select-container {
+            position: relative;
         }
 
-        /* Custom scrollbar for sidebar */
+        .multi-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            margin-top: 0.25rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            z-index: 100;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .multi-select-dropdown.show {
+            display: block;
+        }
+
+        .multi-select-option {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .multi-select-option:hover {
+            background-color: #f3f4f6;
+        }
+
+        .multi-select-option input[type="checkbox"] {
+            margin-right: 0.5rem;
+        }
+
+        .multi-select-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-top: 0.5rem;
+            max-width: 100%;
+        }
+
+        .multi-select-tag {
+            display: inline-flex;
+            align-items: center;
+            background-color: #10b981;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            max-width: 100%;
+            word-break: break-word;
+        }
+
+        .multi-select-tag button {
+            margin-left: 0.25rem;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .multi-select-tag button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .multi-select-input {
+            cursor: pointer;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+            background: white;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        .multi-select-input::after {
+            content: "▼";
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .multi-select-input.filter-active {
+            border-color: #10b981;
+            background-color: #f0fdf4;
+        }
+
+        .search-input {
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            width: 100%;
+        }
+
+        .search-input:focus {
+            outline: none;
+            ring: 2px;
+            ring-color: #10b981;
+            border-color: #10b981;
+        }
+
+        /* Filter count badge */
+        #filter-count {
+            line-height: 1;
+        }
+
+        /* Ensure proper z-index hierarchy */
+        /* .bg-gradient-to-r.from-green-800.to-green-600:not(#filters-sidebar .bg-gradient-to-r) {
+                                                                                                                                                            position: relative;
+                                                                                                                                                            z-index: 40;
+                                                                                                                                                        } */
+
+        #filters-sidebar {
+            z-index: 60 !important;
+        }
+
+        #filters-overlay {
+            z-index: 55 !important;
+        }
+
+        #profile-modal,
+        #history-modal {
+            z-index: 70 !important;
+        }
+
+        /* Custom scrollbar */
         .filter-scrollbar::-webkit-scrollbar {
             width: 6px;
         }
@@ -566,27 +639,60 @@
             }
         }
 
-        /* Animation for filter count badge */
-        #filter-count {
-            animation: fadeIn 0.3s ease-in-out;
+        /* Smooth transitions */
+        #filters-sidebar {
+            transition: transform 0.3s ease-in-out;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.8);
-            }
-
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+        #filters-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+@endpush
+@push('styles')
+    <style>
+        /* Export button styles */
+        #export-excel,
+        #export-pdf,
+        #bulk-action {
+            transition: all 0.2s ease-in-out;
         }
 
-        /* Ensure modals appear above sidebar */
-        #profile-modal,
-        #history-modal {
-            z-index: 60;
+        #export-excel:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+
+        #export-pdf:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        #bulk-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Responsive buttons */
+        @media (max-width: 768px) {
+            .mx-auto .flex.items-center.justify-between {
+                flex-direction: column;
+                gap: 12px;
+                align-items: stretch;
+            }
+
+            .mx-auto .flex.items-center.gap-2 {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            #export-excel,
+            #export-pdf,
+            #bulk-action {
+                flex: 1;
+                min-width: 140px;
+                justify-content: center;
+            }
         }
     </style>
 @endpush

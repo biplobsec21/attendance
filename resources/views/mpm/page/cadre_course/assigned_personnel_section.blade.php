@@ -46,9 +46,9 @@
                                             🆔 {{ $soldier->army_no }}</p>
                                         <div class="flex flex-wrap gap-1">
                                             <span
-                                                class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{{ $soldier->rank->name }}</span>
+                                                class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{{ $soldier->rank->name ?? 'No Rank' }}</span>
                                             <span
-                                                class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">{{ $soldier->company->name }}</span>
+                                                class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">{{ $soldier->company->name ?? 'No Company' }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -79,9 +79,22 @@
                                                     class="flex items-center p-2 bg-blue-50 rounded-lg border-l-4 border-blue-400 hover:bg-blue-100 transition-colors duration-150">
                                                     <div class="flex-1">
                                                         <div class="text-xs font-medium text-blue-800">
-                                                            {{ $course->name }}</div>
-                                                        <div class="text-xs text-blue-600 mt-0.5">Course Assignment
+                                                            {{ $course->course->name ?? 'N/A' }}</div>
+                                                        <div class="text-xs text-blue-600 mt-0.5">
+                                                            @if ($course->start_date)
+                                                                {{ \Carbon\Carbon::parse($course->start_date)->format('M d, Y') }}
+                                                            @endif
+                                                            @if ($course->end_date)
+                                                                -
+                                                                {{ \Carbon\Carbon::parse($course->end_date)->format('M d, Y') }}
+                                                            @endif
                                                         </div>
+                                                        @if ($course->remarks)
+                                                            <div class="text-xs text-blue-500 mt-0.5 truncate"
+                                                                title="{{ $course->remarks }}">
+                                                                {{ Str::limit($course->remarks, 30) }}
+                                                            </div>
+                                                        @endif
                                                     </div>
                                                     <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
                                                 </div>
@@ -99,7 +112,7 @@
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         stroke-width="2"
-                                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656-.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
                                                     </path>
                                                 </svg>
                                             </div>
@@ -113,10 +126,70 @@
                                                     class="flex items-center p-2 bg-purple-50 rounded-lg border-l-4 border-purple-400 hover:bg-purple-100 transition-colors duration-150">
                                                     <div class="flex-1">
                                                         <div class="text-xs font-medium text-purple-800">
-                                                            {{ $cadre->name }}</div>
-                                                        <div class="text-xs text-purple-600 mt-0.5">Cadre Role</div>
+                                                            {{ $cadre->cadre->name ?? 'N/A' }}</div>
+                                                        <div class="text-xs text-purple-600 mt-0.5">
+                                                            @if ($cadre->start_date)
+                                                                {{ \Carbon\Carbon::parse($cadre->start_date)->format('M d, Y') }}
+                                                            @endif
+                                                            @if ($cadre->end_date)
+                                                                -
+                                                                {{ \Carbon\Carbon::parse($cadre->end_date)->format('M d, Y') }}
+                                                            @endif
+                                                        </div>
+                                                        @if ($cadre->remarks)
+                                                            <div class="text-xs text-purple-500 mt-0.5 truncate"
+                                                                title="{{ $cadre->remarks }}">
+                                                                {{ Str::limit($cadre->remarks, 30) }}
+                                                            </div>
+                                                        @endif
                                                     </div>
                                                     <div class="w-2 h-2 bg-purple-400 rounded-full"></div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if ($soldier->activeExAreas && $soldier->activeExAreas->count() > 0)
+                                    <div class="assignment-section">
+                                        <div class="flex items-center mb-2">
+                                            <div
+                                                class="w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center mr-2">
+                                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
+                                                    </path>
+                                                </svg>
+                                            </div>
+                                            <span
+                                                class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Ex-Areas</span>
+                                        </div>
+                                        <div class="space-y-1 ml-8">
+                                            @foreach ($soldier->activeExAreas as $exArea)
+                                                <div
+                                                    class="flex items-center p-2 bg-teal-50 rounded-lg border-l-4 border-teal-400 hover:bg-teal-100 transition-colors duration-150">
+                                                    <div class="flex-1">
+                                                        <div class="text-xs font-medium text-teal-800">
+                                                            {{ $exArea->exArea->name ?? 'N/A' }}</div>
+                                                        <div class="text-xs text-teal-600 mt-0.5">
+                                                            @if ($exArea->start_date)
+                                                                {{ \Carbon\Carbon::parse($exArea->start_date)->format('M d, Y') }}
+                                                            @endif
+                                                            @if ($exArea->end_date)
+                                                                -
+                                                                {{ \Carbon\Carbon::parse($exArea->end_date)->format('M d, Y') }}
+                                                            @endif
+                                                        </div>
+                                                        @if ($exArea->remarks)
+                                                            <div class="text-xs text-teal-500 mt-0.5 truncate"
+                                                                title="{{ $exArea->remarks }}">
+                                                                {{ Str::limit($exArea->remarks, 30) }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                    <div class="w-2 h-2 bg-teal-400 rounded-full"></div>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -145,14 +218,44 @@
                                                     class="flex items-center p-2 bg-indigo-50 rounded-lg border-l-4 border-indigo-400 hover:bg-indigo-100 transition-colors duration-150">
                                                     <div class="flex-1">
                                                         <div class="text-xs font-medium text-indigo-800">
-                                                            {{ $service->appointments_name }}</div>
-                                                        <div class="text-xs text-indigo-600 mt-0.5">Service Appointment
+                                                            {{ $service->appointments_name ?? 'N/A' }}</div>
+                                                        <div class="text-xs text-indigo-600 mt-0.5">
+                                                            @if ($service->from_date)
+                                                                {{ \Carbon\Carbon::parse($service->from_date)->format('M d, Y') }}
+                                                            @endif
+                                                            @if ($service->to_date)
+                                                                -
+                                                                {{ \Carbon\Carbon::parse($service->to_date)->format('M d, Y') }}
+                                                            @endif
                                                         </div>
+                                                        @if ($service->remarks)
+                                                            <div class="text-xs text-indigo-500 mt-0.5 truncate"
+                                                                title="{{ $service->remarks }}">
+                                                                {{ Str::limit($service->remarks, 30) }}
+                                                            </div>
+                                                        @endif
                                                     </div>
                                                     <div class="w-2 h-2 bg-indigo-400 rounded-full"></div>
                                                 </div>
                                             @endforeach
                                         </div>
+                                    </div>
+                                @endif
+
+                                <!-- No Assignments Message -->
+                                @if (
+                                    !$soldier->activeCourses()->exists() &&
+                                        !$soldier->activeCadres()->exists() &&
+                                        (!$soldier->activeExAreas || $soldier->activeExAreas->count() == 0) &&
+                                        !$soldier->activeServices()->exists())
+                                    <div class="text-center py-4 text-gray-500">
+                                        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                            </path>
+                                        </svg>
+                                        <p class="text-xs">No active assignments</p>
                                     </div>
                                 @endif
                             </div>
@@ -161,7 +264,8 @@
                 </div>
             @else
                 <div class="flex flex-col items-center justify-center h-full text-gray-500">
-                    <svg class="w-16 h-16 mb-4 text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-16 h-16 mb-4 text-green-300" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
@@ -172,3 +276,31 @@
         </div>
     </div>
 </div>
+
+@push('styles')
+    <style>
+        .assignment-section {
+            border-left: 2px solid #e5e7eb;
+            padding-left: 0.5rem;
+        }
+
+        .assignment-section:last-child {
+            margin-bottom: 0;
+        }
+    </style>
+@endpush
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Assigned soldiers filtering functionality (if needed in the future)
+            const assignedRepo = document.getElementById("assigned-soldier-repo");
+            const assignedSoldierCards = Array.from(assignedRepo.querySelectorAll("div.group"));
+
+            // Future filtering functionality for assigned soldiers can be added here
+            function filterAssignedSoldiers() {
+                // Implementation for filtering assigned soldiers if needed
+            }
+        });
+    </script>
+@endpush

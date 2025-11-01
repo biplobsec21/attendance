@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Soldier;
 use App\Models\Course;
 use App\Models\Cadre;
+use App\Models\ExArea;
 use App\Models\Rank;
 use App\Models\Company;
 use App\Models\SoldierCadre;
 use App\Models\SoldierCourse;
+use App\Models\SoldierExArea;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
@@ -19,13 +21,17 @@ class CourseCadreManagerController extends Controller
     public function index()
     {
         try {
-            // Update statuses for all active courses and cadres
+            // Update statuses for all active assignments
             SoldierCourse::active()->each(function ($course) {
                 $course->updateStatus();
             });
 
             SoldierCadre::active()->each(function ($cadre) {
                 $cadre->updateStatus();
+            });
+
+            SoldierExArea::active()->each(function ($exArea) {
+                $exArea->updateStatus();
             });
 
             $currentCourses = SoldierCourse::with(['soldier.rank', 'soldier.company', 'course'])
@@ -48,15 +54,28 @@ class CourseCadreManagerController extends Controller
                 ->latest()
                 ->get();
 
+            // Ex-Areas data
+            $currentExAreas = SoldierExArea::with(['soldier.rank', 'soldier.company', 'exArea'])
+                ->whereIn('status', ['active', 'scheduled'])
+                ->latest()
+                ->get();
+
+            $previousExAreas = SoldierExArea::with(['soldier.rank', 'soldier.company', 'exArea'])
+                ->where('status', 'completed')
+                ->latest()
+                ->get();
+
             return view('mpm.page.cadre_course.index', compact(
                 'currentCourses',
                 'previousCourses',
                 'currentCadres',
-                'previousCadres'
+                'previousCadres',
+                'currentExAreas',
+                'previousExAreas'
             ));
         } catch (\Exception $e) {
             Log::error('Error in CourseCadreManagerController@index: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to load course/cadre data. Please try again.');
+            return redirect()->back()->with('error', 'Failed to load course/cadre/ex-area data. Please try again.');
         }
     }
 
@@ -65,11 +84,25 @@ class CourseCadreManagerController extends Controller
         try {
             $courses = Course::active()->get();
             $cadres = Cadre::active()->get();
+            $exAreas = ExArea::active()->get();
             $ranks = Rank::all();
             $companies = Company::all();
 
-            // Get soldiers with their active assignments using the new model methods
-            $soldiers = Soldier::with(['rank', 'company', 'activeCourses', 'activeCadres'])->get();
+            // Get soldiers with their active assignments including ex-areas
+            $soldiers = Soldier::with([
+                'rank',
+                'company',
+                'activeCourses',
+                'activeCadres',
+                'activeExAreas'
+            ])->get();
+
+            // Debug: Check if ex-areas are being loaded
+            foreach ($soldiers as $soldier) {
+                Log::info("Soldier {$soldier->id} - Active Courses: " . $soldier->activeCourses->count());
+                Log::info("Soldier {$soldier->id} - Active Cadres: " . $soldier->activeCadres->count());
+                Log::info("Soldier {$soldier->id} - Active ExAreas: " . $soldier->activeExAreas->count());
+            }
 
             // Separate soldiers into available and assigned
             $availableSoldiers = $soldiers->reject(function ($soldier) {
@@ -80,9 +113,15 @@ class CourseCadreManagerController extends Controller
                 return $soldier->hasActiveAssignments();
             });
 
+            // Debug counts
+            Log::info("Total Soldiers: " . $soldiers->count());
+            Log::info("Available Soldiers: " . $availableSoldiers->count());
+            Log::info("Assigned Soldiers: " . $assignedSoldiers->count());
+
             return view('mpm.page.cadre_course.create', compact(
                 'courses',
                 'cadres',
+                'exAreas',
                 'availableSoldiers',
                 'assignedSoldiers',
                 'ranks',
@@ -99,7 +138,7 @@ class CourseCadreManagerController extends Controller
         try {
             // Base validation rules
             $rules = [
-                'type' => 'required|in:course,cadre',
+                'type' => 'required|in:course,cadre,ex_area',
                 'soldier_ids' => 'required|array|min:1',
                 'soldier_ids.*' => 'exists:soldiers,id',
                 'start_date' => 'required|date',
@@ -110,8 +149,10 @@ class CourseCadreManagerController extends Controller
             // Add conditional validation rules based on type
             if ($request->type === 'course') {
                 $rules['course_id'] = 'required|exists:courses,id';
-            } else {
+            } elseif ($request->type === 'cadre') {
                 $rules['cadre_id'] = 'required|exists:cadres,id';
+            } else {
+                $rules['ex_area_id'] = 'required|exists:ex_areas,id';
             }
 
             $request->validate($rules);
@@ -157,26 +198,33 @@ class CourseCadreManagerController extends Controller
                 }
 
                 if ($type === 'course') {
-                    $course = SoldierCourse::create([
+                    $assignment = SoldierCourse::create([
                         'soldier_id' => $soldierId,
                         'course_id' => $request->course_id,
                         'start_date' => $startDate,
                         'end_date' => $endDate,
                         'remarks' => $note,
                     ]);
-                    // Update status based on dates
-                    $course->updateStatus();
-                } else {
-                    $cadre = SoldierCadre::create([
+                } elseif ($type === 'cadre') {
+                    $assignment = SoldierCadre::create([
                         'soldier_id' => $soldierId,
                         'cadre_id' => $request->cadre_id,
                         'start_date' => $startDate,
                         'end_date' => $endDate,
                         'remarks' => $note,
                     ]);
-                    // Update status based on dates
-                    $cadre->updateStatus();
+                } else {
+                    $assignment = SoldierExArea::create([
+                        'soldier_id' => $soldierId,
+                        'ex_area_id' => $request->ex_area_id,
+                        'start_date' => $startDate,
+                        'end_date' => $endDate,
+                        'remarks' => $note,
+                    ]);
                 }
+
+                // Update status based on dates
+                $assignment->updateStatus();
                 $createdCount++;
             }
 
@@ -204,10 +252,11 @@ class CourseCadreManagerController extends Controller
         }
     }
 
-    public function completeCourse($id, Request $request)
+    // Add ex-area completion method
+    public function completeExArea($id, Request $request)
     {
         try {
-            $assignment = SoldierCourse::findOrFail($id);
+            $assignment = SoldierExArea::findOrFail($id);
 
             // Set end_date to today if not already set
             if (!$assignment->end_date || $assignment->end_date->isFuture()) {
@@ -222,57 +271,97 @@ class CourseCadreManagerController extends Controller
             $assignment->status = 'completed';
             $assignment->save();
 
-            Log::info("Course {$id} marked as completed for soldier {$assignment->soldier_id}");
+            Log::info("Ex-Area {$id} marked as completed for soldier {$assignment->soldier_id}");
 
-            return redirect()->route('coursecadremanager.index')->with('success', 'Course marked as completed.');
+            return redirect()->route('coursecadremanager.index')->with('success', 'Ex-Area marked as completed.');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::warning("Course not found with ID: {$id}");
-            return redirect()->route('coursecadremanager.index')->with('error', 'Course not found.');
+            Log::warning("Ex-Area not found with ID: {$id}");
+            return redirect()->route('coursecadremanager.index')->with('error', 'Ex-Area not found.');
         } catch (\Exception $e) {
-            Log::error('Error in CourseCadreManagerController@completeCourse: ' . $e->getMessage());
-            return redirect()->route('coursecadremanager.index')->with('error', 'Failed to complete course. Please try again.');
+            Log::error('Error in CourseCadreManagerController@completeExArea: ' . $e->getMessage());
+            return redirect()->route('coursecadremanager.index')->with('error', 'Failed to complete ex-area. Please try again.');
         }
     }
 
-    public function completeCadre($id, Request $request)
+    // Add bulk completion for ex-areas
+    public function bulkCompleteExAreas(Request $request)
     {
         try {
-            $assignment = SoldierCadre::findOrFail($id);
+            $exAreaIds = $request->ex_area_ids;
 
-            // Set end_date to today if not already set
-            if (!$assignment->end_date || $assignment->end_date->isFuture()) {
-                $assignment->end_date = now();
+            // Decode JSON if string
+            if (is_string($exAreaIds)) {
+                $exAreaIds = json_decode($exAreaIds, true) ?? [];
             }
 
-            if ($request->has('completion_note')) {
-                $assignment->remarks = $request->completion_note;
+            // Manual validation to redirect back with errors
+            $validator = Validator::make(
+                [
+                    'ex_area_ids' => $exAreaIds,
+                    'remarks' => $request->completion_note,
+                ],
+                [
+                    'ex_area_ids' => 'required|array',
+                    'ex_area_ids.*' => 'exists:soldier_ex_areas,id',
+                    'remarks' => 'nullable|string|max:500',
+                ]
+            );
+
+            if ($validator->fails()) {
+                Log::warning('Validation error in CourseCadreManagerController@bulkCompleteExAreas: ' . json_encode($validator->errors()));
+                return redirect()
+                    ->back()
+                    ->withErrors($validator)
+                    ->withInput();
             }
 
-            // Update status to completed
-            $assignment->status = 'completed';
-            $assignment->save();
+            // Safe validated data
+            $data = $validator->validated();
+            $exAreaIds = $data['ex_area_ids'];
 
-            Log::info("Cadre {$id} marked as completed for soldier {$assignment->soldier_id}");
+            // Get ex-areas and update each one individually
+            $exAreas = SoldierExArea::whereIn('id', $exAreaIds)->get();
+            foreach ($exAreas as $exArea) {
+                // Set end_date to today if not already set
+                if (!$exArea->end_date || $exArea->end_date->isFuture()) {
+                    $exArea->end_date = now();
+                }
 
-            return redirect()->route('coursecadremanager.index')->with('success', 'Cadre marked as completed.');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::warning("Cadre not found with ID: {$id}");
-            return redirect()->route('coursecadremanager.index')->with('error', 'Cadre not found.');
+                if ($request->has('completion_note')) {
+                    $exArea->remarks = $request->completion_note;
+                }
+
+                // Update status to completed
+                $exArea->status = 'completed';
+                $exArea->save();
+            }
+
+            $count = count($exAreaIds);
+            Log::info("Bulk completed {$count} ex-areas: " . json_encode($exAreaIds));
+
+            return redirect()->route('coursecadremanager.index')
+                ->with('success', "{$count} ex-area" . ($count > 1 ? 's' : '') . " marked as completed.");
         } catch (\Exception $e) {
-            Log::error('Error in CourseCadreManagerController@completeCadre: ' . $e->getMessage());
-            return redirect()->route('coursecadremanager.index')->with('error', 'Failed to complete cadre. Please try again.');
+            Log::error('Error in CourseCadreManagerController@bulkCompleteExAreas: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Failed to complete ex-areas. Please try again.')
+                ->withInput();
         }
     }
 
+    // Update the destroy method to handle ex-areas
     public function destroy($type, $id)
     {
         try {
             if ($type === 'course') {
                 $assignment = SoldierCourse::findOrFail($id);
                 $modelName = 'Course';
-            } else {
+            } elseif ($type === 'cadre') {
                 $assignment = SoldierCadre::findOrFail($id);
                 $modelName = 'Cadre';
+            } else {
+                $assignment = SoldierExArea::findOrFail($id);
+                $modelName = 'ExArea';
             }
 
             $soldierId = $assignment->soldier_id;
@@ -290,150 +379,34 @@ class CourseCadreManagerController extends Controller
         }
     }
 
-    public function bulkCompleteCourses(Request $request)
-    {
-        try {
-            $courseIds = $request->course_ids;
-
-            // Decode JSON if string
-            if (is_string($courseIds)) {
-                $courseIds = json_decode($courseIds, true) ?? [];
-            }
-
-            // Manual validation to redirect back with errors
-            $validator = Validator::make(
-                [
-                    'course_ids' => $courseIds,
-                    'remarks' => $request->completion_note,
-                ],
-                [
-                    'course_ids' => 'required|array',
-                    'course_ids.*' => 'exists:soldier_courses,id',
-                    'remarks' => 'nullable|string|max:500',
-                ]
-            );
-
-            if ($validator->fails()) {
-                Log::warning('Validation error in CourseCadreManagerController@bulkCompleteCourses: ' . json_encode($validator->errors()));
-                return redirect()
-                    ->back()
-                    ->withErrors($validator)
-                    ->withInput();
-            }
-
-            // Safe validated data
-            $data = $validator->validated();
-            $courseIds = $data['course_ids'];
-
-            // Get courses and update each one individually
-            $courses = SoldierCourse::whereIn('id', $courseIds)->get();
-            foreach ($courses as $course) {
-                // Set end_date to today if not already set
-                if (!$course->end_date || $course->end_date->isFuture()) {
-                    $course->end_date = now();
-                }
-
-                if ($request->has('completion_note')) {
-                    $course->remarks = $request->completion_note;
-                }
-
-                // Update status to completed
-                $course->status = 'completed';
-                $course->save();
-            }
-
-            $count = count($courseIds);
-            Log::info("Bulk completed {$count} courses: " . json_encode($courseIds));
-
-            return redirect()->route('coursecadremanager.index')
-                ->with('success', "{$count} course" . ($count > 1 ? 's' : '') . " marked as completed.");
-        } catch (\Exception $e) {
-            Log::error('Error in CourseCadreManagerController@bulkCompleteCourses: ' . $e->getMessage());
-            return redirect()->back()
-                ->with('error', 'Failed to complete courses. Please try again.')
-                ->withInput();
-        }
-    }
-
-    public function bulkCompleteCadres(Request $request)
-    {
-        try {
-            $cadreIds = $request->cadre_ids;
-
-            // Decode JSON if string
-            if (is_string($cadreIds)) {
-                $cadreIds = json_decode($cadreIds, true) ?? [];
-            }
-
-            // Manually validate so we can redirect back with errors
-            $validator = Validator::make(
-                [
-                    'cadre_ids' => $cadreIds,
-                    'remarks' => $request->completion_note,
-                ],
-                [
-                    'cadre_ids' => 'required|array',
-                    'cadre_ids.*' => 'exists:soldier_cadres,id',
-                    'remarks' => 'nullable|string|max:500',
-                ]
-            );
-
-            if ($validator->fails()) {
-                Log::warning('Validation error in CourseCadreManagerController@bulkCompleteCadres: ' . json_encode($validator->errors()));
-                return redirect()
-                    ->back()
-                    ->withErrors($validator)
-                    ->withInput();
-            }
-
-            // Safe validated data
-            $data = $validator->validated();
-            $cadreIds = $data['cadre_ids'];
-
-            // Get cadres and update each one individually
-            $cadres = SoldierCadre::whereIn('id', $cadreIds)->get();
-            foreach ($cadres as $cadre) {
-                // Set end_date to today if not already set
-                if (!$cadre->end_date || $cadre->end_date->isFuture()) {
-                    $cadre->end_date = now();
-                }
-
-                if ($request->has('completion_note')) {
-                    $cadre->remarks = $request->completion_note;
-                }
-
-                // Update status to completed
-                $cadre->status = 'completed';
-                $cadre->save();
-            }
-
-            $count = count($cadreIds);
-            Log::info("Bulk completed {$count} cadres: " . json_encode($cadreIds));
-
-            return redirect()->route('coursecadremanager.index')
-                ->with('success', "{$count} cadre" . ($count > 1 ? 's' : '') . " marked as completed.");
-        } catch (\Exception $e) {
-            Log::error('Error in CourseCadreManagerController@bulkCompleteCadres: ' . $e->getMessage());
-            return redirect()->back()
-                ->with('error', 'Failed to complete cadres. Please try again.')
-                ->withInput();
-        }
-    }
+    // Update getEditData method for ex-areas
     public function getEditData($type, $id)
     {
         try {
             if ($type === 'course') {
                 $assignment = SoldierCourse::with(['soldier.rank', 'soldier.company', 'course'])->findOrFail($id);
                 $courses = Course::active()->get();
-                $cadres = collect(); // Empty collection for courses
+                $cadres = collect();
+                $exAreas = collect();
                 $courseId = $assignment->course_id;
                 $cadreId = null;
-            } else {
+                $exAreaId = null;
+            } elseif ($type === 'cadre') {
                 $assignment = SoldierCadre::with(['soldier.rank', 'soldier.company', 'cadre'])->findOrFail($id);
                 $cadres = Cadre::active()->get();
-                $courses = collect(); // Empty collection for cadres
+                $courses = collect();
+                $exAreas = collect();
                 $cadreId = $assignment->cadre_id;
                 $courseId = null;
+                $exAreaId = null;
+            } else {
+                $assignment = SoldierExArea::with(['soldier.rank', 'soldier.company', 'exArea'])->findOrFail($id);
+                $exAreas = ExArea::active()->get();
+                $courses = collect();
+                $cadres = collect();
+                $exAreaId = $assignment->ex_area_id;
+                $courseId = null;
+                $cadreId = null;
             }
 
             // Get all soldiers with their assignment status
@@ -451,6 +424,9 @@ class CourseCadreManagerController extends Controller
                 ->orWhereHas('cadres', function ($query) {
                     $query->where('completion_date', now()->toDateString());
                 })
+                ->orWhereHas('exAreas', function ($query) {
+                    $query->where('completion_date', now()->toDateString());
+                })
                 ->pluck('id')
                 ->toArray();
 
@@ -462,8 +438,10 @@ class CourseCadreManagerController extends Controller
                 'soldier_id' => $assignment->soldier_id,
                 'course_id' => $courseId,
                 'cadre_id' => $cadreId,
+                'ex_area_id' => $exAreaId,
                 'courses' => $courses,
                 'cadres' => $cadres,
+                'ex_areas' => $exAreas,
                 'soldiers' => $soldiers,
                 'completed_today_soldiers' => $completedTodaySoldiers
             ]);
@@ -472,6 +450,8 @@ class CourseCadreManagerController extends Controller
             return response()->json(['error' => 'Failed to load assignment data'], 500);
         }
     }
+
+    // Update the update method for ex-areas
     public function update(Request $request, $type, $id)
     {
         try {
@@ -487,9 +467,12 @@ class CourseCadreManagerController extends Controller
             if ($type === 'course') {
                 $rules['course_id'] = 'required|exists:courses,id';
                 $assignment = SoldierCourse::findOrFail($id);
-            } else {
+            } elseif ($type === 'cadre') {
                 $rules['cadre_id'] = 'required|exists:cadres,id';
                 $assignment = SoldierCadre::findOrFail($id);
+            } else {
+                $rules['ex_area_id'] = 'required|exists:ex_areas,id';
+                $assignment = SoldierExArea::findOrFail($id);
             }
 
             $request->validate($rules);
@@ -535,8 +518,10 @@ class CourseCadreManagerController extends Controller
 
             if ($type === 'course') {
                 $assignment->course_id = $request->course_id;
-            } else {
+            } elseif ($type === 'cadre') {
                 $assignment->cadre_id = $request->cadre_id;
+            } else {
+                $assignment->ex_area_id = $request->ex_area_id;
             }
 
             $assignment->save();
