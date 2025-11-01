@@ -692,8 +692,9 @@ export default class SoldierProfileManager {
         // 4. Leave status filter (special handling)
         // 4. FIXED: Leave status filter with proper logic
         // Leave filter logic
+        // 4. FIXED: Leave status filter with simple boolean logic
         if (this.filters.leave) {
-            console.log('Applying Leave filter:', this.filters.leave);
+            console.log('🎯 Applying Leave filter:', this.filters.leave);
 
             const beforeLeaveFilter = filtered.length;
 
@@ -701,12 +702,12 @@ export default class SoldierProfileManager {
                 const isOnLeave = soldier.is_leave === true;
                 const shouldInclude = this.filters.leave === "on-leave" ? isOnLeave : !isOnLeave;
 
-                console.log(`Soldier ${soldier.id}: is_leave=${soldier.is_leave}, shouldInclude=${shouldInclude}`);
+                console.log(`🎯 Soldier ${soldier.id}: is_leave=${soldier.is_leave}, shouldInclude=${shouldInclude}`);
 
                 return shouldInclude;
             });
 
-            console.log('After Leave filter:', filtered.length, '(removed', beforeLeaveFilter - filtered.length, 'soldiers)');
+            console.log('🎯 After Leave filter:', filtered.length, '(removed', beforeLeaveFilter - filtered.length, 'soldiers)');
         }
 
         console.log(`✅ Final filtered count: ${filtered.length} soldiers`);
