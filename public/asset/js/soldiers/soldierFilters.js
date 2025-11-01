@@ -55,6 +55,11 @@ export function initFilters(manager) {
             } else {
                 console.warn(`⚠️ Container not found for ${config.id}: #${containerId}`);
             }
+            if (config.id === 'leave') {
+                multiSelects.leave.setOptions([
+                    { value: 'on-leave', label: 'On Leave' }
+                ]);
+            }
         });
 
         console.log('📊 Multi-select initialization complete:', {
