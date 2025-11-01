@@ -75,36 +75,84 @@
 
                 <!-- Filter Toggle Button -->
                 <div class="mx-auto px-4 sm:px-6 lg:px-8 mb-4">
-                    <div class="flex items-center justify-between">
-                        <button id="toggle-filters"
-                            class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-all duration-200 relative">
-                            <i class="fas fa-filter text-green-600"></i>
-                            <span class="font-medium text-gray-700">Filters</span>
-                            <span id="filter-count"
-                                class="absolute -top-2 -right-2 px-2 py-1 text-xs font-semibold text-white bg-green-600 rounded-full hidden min-w-[20px] text-center"></span>
-                            <i class="fas fa-chevron-right text-gray-400 ml-2" id="filter-toggle-icon"></i>
-                        </button>
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <div class="flex items-center gap-3">
+                            <button id="toggle-filters"
+                                class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-all duration-200 relative">
+                                <i class="fas fa-filter text-green-600"></i>
+                                <span class="font-medium text-gray-700">Filters</span>
+                                <span id="filter-count"
+                                    class="absolute -top-2 -right-2 px-2 py-1 text-xs font-semibold text-white bg-green-600 rounded-full hidden min-w-[20px] text-center"></span>
+                                <i class="fas fa-chevron-right text-gray-400 ml-2" id="filter-toggle-icon"></i>
+                            </button>
 
-                        <div class="flex items-center gap-2">
-                            <!-- ✅ ADD THESE EXPORT BUTTONS -->
+                            <!-- NEW: Selection Status Badge -->
+                            <div id="selection-status" class="hidden">
+                                <div class="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <i class="fas fa-check-square text-blue-600"></i>
+                                    <span class="text-sm font-medium text-blue-900">
+                                        <span id="selection-count">0</span> selected
+                                    </span>
+                                    <button id="clear-selection"
+                                        class="ml-2 text-blue-600 hover:text-blue-800 transition-colors"
+                                        title="Clear selection">
+                                        <i class="fas fa-times text-sm"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <!-- Export buttons -->
                             <button id="export-excel"
-                                class="flex  items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 shadow-sm">
+                                class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-200 shadow-sm">
                                 <i class="fas fa-file-excel"></i>
                                 <span class="font-medium">Export Excel</span>
                             </button>
 
                             <button id="export-pdf"
-                                class="flex   items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm">
+                                class="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm">
                                 <i class="fas fa-file-pdf"></i>
                                 <span class="font-medium">Export PDF</span>
                             </button>
 
-                            <!-- Bulk Action Button (moved here) -->
+                            <!-- Bulk Action Button -->
                             <button id="bulk-action"
                                 class="hidden items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm">
                                 <i class="fas fa-edit"></i>
                                 <span class="font-medium">Bulk Actions</span>
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Selection info bar (shown when soldiers are selected) -->
+                    <div id="selection-info-bar"
+                        class="hidden mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-info-circle text-blue-600"></i>
+                                    <span class="text-sm text-blue-900">
+                                        <span id="selected-of-visible" class="font-semibold">0 of 0</span> visible soldiers
+                                        selected
+                                    </span>
+                                </div>
+                                <div class="text-xs text-blue-700">
+                                    (<span id="selection-percentage">0</span>% of visible)
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="select-all-visible"
+                                    class="text-sm px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                                    <i class="fas fa-check-double text-xs mr-1"></i>
+                                    Select All Visible
+                                </button>
+                                <button id="deselect-all"
+                                    class="text-sm px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">
+                                    <i class="fas fa-times text-xs mr-1"></i>
+                                    Clear All
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -384,6 +432,15 @@
 @endsection
 
 @push('scripts')
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- jsPDF for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- jsPDF AutoTable for PDF Tables -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
     <script>
         const routes = {
             getAllSoldiers: "{{ route('soldier.getAllData') }}",
@@ -458,6 +515,109 @@
                 }
             });
         });
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait for manager to be initialized
+            const checkManager = setInterval(() => {
+                if (window.manager) {
+                    clearInterval(checkManager);
+                    initSelectionUI();
+                }
+            }, 100);
+        });
+
+        function initSelectionUI() {
+            const manager = window.manager;
+
+            // Update selection UI whenever selection changes
+            const originalUpdateBulkAction = manager.bulkActions.updateBulkActionButton.bind(manager.bulkActions);
+            manager.bulkActions.updateBulkActionButton = function() {
+                originalUpdateBulkAction();
+                updateSelectionUI();
+            };
+
+            // Clear selection button
+            document.getElementById('clear-selection')?.addEventListener('click', () => {
+                manager.selectedRows.clear();
+                manager.elements.selectAll.checked = false;
+                manager.elements.selectAll.indeterminate = false;
+                manager.updateCheckboxStates();
+                manager.bulkActions.updateBulkActionButton();
+                showToast('Selection cleared', 'info');
+            });
+
+            // Select all visible button
+            document.getElementById('select-all-visible')?.addEventListener('click', () => {
+                manager.toggleSelectAllVisible(true);
+            });
+
+            // Deselect all button
+            document.getElementById('deselect-all')?.addEventListener('click', () => {
+                manager.toggleSelectAllVisible(false);
+            });
+
+            // Highlight selected rows
+            const originalHandleCheckboxChange = manager.handleCheckboxChange.bind(manager);
+            manager.handleCheckboxChange = function(event) {
+                originalHandleCheckboxChange(event);
+
+                // Add/remove highlight class
+                if (event.target.classList.contains('row-select')) {
+                    const row = event.target.closest('tr');
+                    if (row) {
+                        if (event.target.checked) {
+                            row.classList.add('row-selected');
+                        } else {
+                            row.classList.remove('row-selected');
+                        }
+                    }
+                }
+            };
+        }
+
+        function updateSelectionUI() {
+            const manager = window.manager;
+            const stats = manager.getSelectionStats();
+
+            // Update selection status badge
+            const selectionStatus = document.getElementById('selection-status');
+            const selectionCount = document.getElementById('selection-count');
+
+            if (stats.selected > 0) {
+                selectionStatus?.classList.remove('hidden');
+                if (selectionCount) selectionCount.textContent = stats.selected;
+            } else {
+                selectionStatus?.classList.add('hidden');
+            }
+
+            // Update selection info bar
+            const infoBar = document.getElementById('selection-info-bar');
+            const selectedOfVisible = document.getElementById('selected-of-visible');
+            const selectionPercentage = document.getElementById('selection-percentage');
+
+            if (stats.selected > 0) {
+                infoBar?.classList.remove('hidden');
+                if (selectedOfVisible) {
+                    selectedOfVisible.textContent = `${stats.selected} of ${stats.visible}`;
+                }
+                if (selectionPercentage) {
+                    selectionPercentage.textContent = stats.percentage;
+                }
+            } else {
+                infoBar?.classList.add('hidden');
+            }
+
+            // Highlight selected rows
+            document.querySelectorAll('.row-select').forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                if (row) {
+                    if (checkbox.checked) {
+                        row.classList.add('row-selected');
+                    } else {
+                        row.classList.remove('row-selected');
+                    }
+                }
+            });
+        }
     </script>
     <script type="module" src="{{ asset('asset/js/soldiers/init.js') }}"></script>
 @endpush
@@ -596,9 +756,9 @@
 
         /* Ensure proper z-index hierarchy */
         /* .bg-gradient-to-r.from-green-800.to-green-600:not(#filters-sidebar .bg-gradient-to-r) {
-                                                                                                                                                            position: relative;
-                                                                                                                                                            z-index: 40;
-                                                                                                                                                        } */
+                                                                                                                                                                                position: relative;
+                                                                                                                                                                                z-index: 40;
+                                                                                                                                                                            } */
 
         #filters-sidebar {
             z-index: 60 !important;
@@ -692,6 +852,56 @@
                 flex: 1;
                 min-width: 140px;
                 justify-content: center;
+            }
+        }
+    </style>
+    <!-- Add this CSS to your styles section -->
+    <style>
+        /* Selection status animations */
+        #selection-status,
+        #selection-info-bar {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Indeterminate checkbox styling */
+        input[type="checkbox"]:indeterminate {
+            background-color: #2563eb;
+            border-color: #2563eb;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'%3e%3cpath stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 8h8'/%3e%3c/svg%3e");
+        }
+
+        /* Selected row highlighting */
+        tr.row-selected {
+            background-color: #eff6ff !important;
+            border-left: 3px solid #3b82f6;
+        }
+
+        /* Pulse animation for bulk action button */
+        #bulk-action.pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .8;
             }
         }
     </style>

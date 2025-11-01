@@ -1,102 +1,354 @@
+/**
+ * UPDATED: SoldierBulkActions class - Works with visible soldiers only
+ * Complete file: soldierBulkActions.js
+ */
+
+import { showToast } from "./soldierHelpers.js";
+
 export class SoldierBulkActions {
     constructor(manager) {
-        this.manager = manager; // SoldierProfileManager instance
-        this.selectedRows = manager.selectedRows;
+        this.manager = manager;
+        this.init();
     }
 
+    init() {
+        const bulkActionBtn = document.getElementById('bulk-action');
+        if (bulkActionBtn) {
+            bulkActionBtn.addEventListener('click', () => {
+                this.showBulkActionModal();
+            });
+        }
+    }
+
+    /**
+     * UPDATED: Select all now only selects visible/filtered soldiers
+     */
     toggleSelectAll(checked) {
-        document.querySelectorAll('.row-select').forEach(cb => {
-            cb.checked = checked;
-            const id = cb.value;
-            if (checked) this.selectedRows.add(id);
-            else this.selectedRows.delete(id);
-        });
+        console.log(`🔄 Toggle Select All: ${checked}`);
+        console.log(`📊 Visible soldiers: ${this.manager.filteredSoldiers.length}`);
+        console.log(`📊 Total soldiers: ${this.manager.soldiers.length}`);
+
+        if (checked) {
+            // Select only currently visible soldiers
+            let selectedCount = 0;
+            this.manager.filteredSoldiers.forEach(soldier => {
+                this.manager.selectedRows.add(soldier.id.toString());
+                selectedCount++;
+            });
+
+            console.log(`✅ Selected ${selectedCount} visible soldiers`);
+            showToast(`Selected ${selectedCount} visible soldiers`, 'success');
+        } else {
+            // Deselect all
+            const previousCount = this.manager.selectedRows.size;
+            this.manager.selectedRows.clear();
+
+            console.log(`❌ Deselected ${previousCount} soldiers`);
+            showToast('All selections cleared', 'info');
+        }
+
+        // Update all checkboxes
+        this.updateAllCheckboxes();
         this.updateBulkActionButton();
     }
 
+    /**
+     * NEW: Update all checkbox states based on selection
+     */
+    updateAllCheckboxes() {
+        const checkboxes = document.querySelectorAll('.row-select');
+        checkboxes.forEach(checkbox => {
+            const soldierId = checkbox.value;
+            checkbox.checked = this.manager.selectedRows.has(soldierId);
+        });
+    }
+
+    /**
+     * UPDATED: Show/hide bulk action button based on selection
+     */
     updateBulkActionButton() {
-        const bulkButton = document.getElementById('bulk-action');
-        if (!bulkButton) return;
-        if (this.selectedRows.size > 0) {
-            bulkButton.classList.remove('hidden');
-            bulkButton.textContent = `Bulk Actions (${this.selectedRows.size})`;
-        } else {
-            bulkButton.classList.add('hidden');
-        }
-    }
+        const bulkActionBtn = document.getElementById('bulk-action');
+        const selectedCount = this.manager.selectedRows.size;
 
-    showBulkActions() {
-        const actions = [
-            { label: 'Export Selected', action: 'export' },
-            { label: 'Delete Selected', action: 'delete', dangerous: true }
-        ];
+        if (bulkActionBtn) {
+            if (selectedCount > 0) {
+                bulkActionBtn.classList.remove('hidden');
+                bulkActionBtn.classList.add('flex');
 
-        let html = '<div class="space-y-2">';
-        actions.forEach(a => {
-            const colorClass = a.dangerous ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-100';
-            html += `<button class="bulk-action-btn w-full text-left px-4 py-2 text-sm ${colorClass} rounded-md transition-colors duration-200" data-action="${a.action}">${a.label}</button>`;
-        });
-        html += '</div>';
-
-        this.manager.showModal('Bulk Actions', html);
-
-        // Attach event listeners
-        const modal = document.getElementById('bulk-modal');
-        modal.querySelectorAll('.bulk-action-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const action = btn.getAttribute('data-action');
-                this.performBulkAction(action);
-            });
-        });
-    }
-
-    performBulkAction(action) {
-        const count = this.selectedRows.size;
-        switch (action) {
-            case 'export':
-                this.exportSelected();
-                break;
-            case 'delete':
-                if (confirm(`Delete ${count} profiles?`)) {
-                    this.bulkDelete();
+                // Update button text with count
+                const buttonText = bulkActionBtn.querySelector('span');
+                if (buttonText) {
+                    buttonText.textContent = `Bulk Actions (${selectedCount})`;
                 }
-                break;
+            } else {
+                bulkActionBtn.classList.add('hidden');
+                bulkActionBtn.classList.remove('flex');
+            }
         }
+
+        console.log(`📊 Bulk action button: ${selectedCount} selected`);
+    }
+
+    /**
+     * Show bulk action modal with options
+     */
+    showBulkActionModal() {
+        const selectedCount = this.manager.selectedRows.size;
+        const stats = this.manager.getSelectionStats();
+
+        if (selectedCount === 0) {
+            showToast('Please select at least one soldier', 'warning');
+            return;
+        }
+
+        const modalContent = `
+            <div class="space-y-4">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-blue-900">Selection Summary</span>
+                        <span class="text-xs text-blue-600">${stats.percentage}% of visible</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 text-center">
+                        <div>
+                            <div class="text-2xl font-bold text-blue-600">${stats.selected}</div>
+                            <div class="text-xs text-blue-800">Selected</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-gray-600">${stats.visible}</div>
+                            <div class="text-xs text-gray-600">Visible</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold text-gray-400">${stats.total}</div>
+                            <div class="text-xs text-gray-500">Total</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <button onclick="bulkActions.exportSelected()"
+                        class="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center justify-center gap-2">
+                        <i class="fas fa-file-excel"></i>
+                        <span>Export Selected to Excel</span>
+                    </button>
+
+                    <button onclick="bulkActions.exportSelectedPDF()"
+                        class="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center justify-center gap-2">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Export Selected to PDF</span>
+                    </button>
+
+                    <button onclick="bulkActions.confirmBulkDelete()"
+                        class="w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center justify-center gap-2">
+                        <i class="fas fa-trash"></i>
+                        <span>Delete Selected (${selectedCount})</span>
+                    </button>
+
+                    <button onclick="bulkActions.deselectAll()"
+                        class="w-full px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors duration-200 flex items-center justify-center gap-2">
+                        <i class="fas fa-times"></i>
+                        <span>Clear Selection</span>
+                    </button>
+                </div>
+
+                <div class="text-xs text-gray-500 text-center mt-4">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Actions will only affect the ${selectedCount} selected soldier${selectedCount > 1 ? 's' : ''}
+                </div>
+            </div>
+        `;
+
+        this.manager.showModal(`Bulk Actions (${selectedCount} selected)`, modalContent);
+    }
+
+    /**
+     * Deselect all soldiers
+     */
+    deselectAll() {
+        this.manager.selectedRows.clear();
+
+        if (this.manager.elements.selectAll) {
+            this.manager.elements.selectAll.checked = false;
+            this.manager.elements.selectAll.indeterminate = false;
+        }
+
+        this.updateAllCheckboxes();
+        this.updateBulkActionButton();
         this.manager.closeModal('bulk-modal');
+
+        showToast('All selections cleared', 'info');
     }
 
+    /**
+     * Export selected soldiers to Excel
+     */
     exportSelected() {
-        const params = new URLSearchParams({ selected: Array.from(this.selectedRows).join(','), format: 'excel' });
-        window.open(`/army/export?${params}`, '_blank');
+        const selectedSoldiers = this.manager.getSelectedSoldiers();
+
+        if (selectedSoldiers.length === 0) {
+            showToast('No soldiers selected', 'warning');
+            return;
+        }
+
+        try {
+            const exportData = selectedSoldiers.map(soldier => ({
+                'Army No': soldier.army_no || '',
+                'Name': soldier.name || '',
+                'Rank': soldier.rank || '',
+                'Company': soldier.unit || '',
+                'Mobile': soldier.mobile || '',
+                'Blood Group': soldier.blood_group || '',
+                'District': soldier.districts || '',
+                'Skills': soldier.cocurricular?.map(s => s.name).join(', ') || '',
+                'Courses': soldier.courses?.map(c => c.name).join(', ') || '',
+                'Cadres': soldier.cadres?.map(c => c.name).join(', ') || '',
+                'ATT': soldier.att?.map(a => a.name).join(', ') || '',
+                'Education': soldier.educations?.map(e => e.name).join(', ') || '',
+                'ERE': soldier.ere?.map(e => e.name).join(', ') || '',
+                'CMD': soldier.cmd?.map(c => c.name).join(', ') || '',
+                'Ex-Areas': soldier.ex_areas?.map(e => e.name).join(', ') || ''
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Selected Soldiers');
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            const filename = `soldiers_selected_${timestamp}.xlsx`;
+
+            XLSX.writeFile(wb, filename);
+
+            showToast(`Successfully exported ${selectedSoldiers.length} selected soldiers`, 'success');
+            this.manager.closeModal('bulk-modal');
+        } catch (error) {
+            console.error('Excel export error:', error);
+            showToast('Failed to export: ' + error.message, 'error');
+        }
     }
 
-    async bulkDelete() {
+    /**
+     * Export selected soldiers to PDF
+     */
+    exportSelectedPDF() {
+        const selectedSoldiers = this.manager.getSelectedSoldiers();
+
+        if (selectedSoldiers.length === 0) {
+            showToast('No soldiers selected', 'warning');
+            return;
+        }
+
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-            const res = await fetch(routes.bulkDelete, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                body: JSON.stringify({ soldier_ids: Array.from(this.selectedRows) })
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
             });
 
-            if (res.ok) {
-                const count = this.selectedRows.size;
-                this.selectedRows.clear();
-                await this.manager.loadData();
-                this.manager.showSuccess(`${count} profiles deleted`);
-            } else {
-                const err = await res.json().catch(() => ({}));
-                console.error('Bulk delete failed:', err);
-                this.manager.showError('Failed to delete profiles');
-            }
-        } catch (err) {
-            console.error(err);
-            this.manager.showError('Failed to delete profiles');
+            doc.setFontSize(18);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Selected Soldier Profiles', 15, 15);
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            const exportDate = new Date().toLocaleString();
+            doc.text(`Generated: ${exportDate} | Selected: ${selectedSoldiers.length}`, 15, 22);
+
+            const tableData = selectedSoldiers.map(soldier => [
+                soldier.army_no || '',
+                soldier.name || '',
+                soldier.rank || '',
+                soldier.unit || '',
+                soldier.mobile || '',
+                soldier.blood_group || '',
+                soldier.cocurricular?.map(s => s.name).join(', ').substring(0, 20) || '',
+                soldier.courses?.map(c => c.name).join(', ').substring(0, 20) || ''
+            ]);
+
+            doc.autoTable({
+                startY: 28,
+                head: [['Army No', 'Name', 'Rank', 'Company', 'Mobile', 'Blood', 'Skills', 'Courses']],
+                body: tableData,
+                styles: { fontSize: 8, cellPadding: 2 },
+                headStyles: { fillColor: [34, 197, 94], textColor: 255, fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [240, 240, 240] },
+                columnStyles: {
+                    0: { cellWidth: 20 }, 1: { cellWidth: 40 }, 2: { cellWidth: 20 },
+                    3: { cellWidth: 15 }, 4: { cellWidth: 25 }, 5: { cellWidth: 15 },
+                    6: { cellWidth: 40 }, 7: { cellWidth: 40 }
+                },
+                margin: { top: 28, left: 15, right: 15 }
+            });
+
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            const filename = `soldiers_selected_${timestamp}.pdf`;
+
+            doc.save(filename);
+
+            showToast(`Successfully exported ${selectedSoldiers.length} selected soldiers`, 'success');
+            this.manager.closeModal('bulk-modal');
+        } catch (error) {
+            console.error('PDF export error:', error);
+            showToast('Failed to export: ' + error.message, 'error');
         }
     }
 
+    /**
+     * Confirm bulk delete
+     */
+    confirmBulkDelete() {
+        const selectedCount = this.manager.selectedRows.size;
+
+        if (selectedCount === 0) {
+            showToast('Please select soldiers to delete', 'warning');
+            return;
+        }
+
+        if (confirm(`Are you sure you want to delete ${selectedCount} selected soldier${selectedCount > 1 ? 's' : ''}? This action cannot be undone.`)) {
+            this.bulkDelete();
+        }
+    }
+
+    /**
+     * Bulk delete selected soldiers
+     */
+    async bulkDelete() {
+        const selectedIds = Array.from(this.manager.selectedRows);
+
+        try {
+            const response = await fetch(routes.bulkDelete, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ ids: selectedIds })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showToast(`Successfully deleted ${selectedIds.length} soldier(s)`, 'success');
+                this.manager.closeModal('bulk-modal');
+
+                // Clear selections
+                this.manager.selectedRows.clear();
+
+                // Reload data
+                await this.manager.loadData();
+            } else {
+                throw new Error(result.message || 'Failed to delete soldiers');
+            }
+        } catch (error) {
+            console.error('Bulk delete error:', error);
+            showToast('Failed to delete soldiers: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * Delete single profile
+     */
     async deleteProfile(soldierId) {
-        if (!confirm('Are you sure you want to delete this soldier profile? This action cannot be undone.')) {
+        if (!confirm('Are you sure you want to delete this soldier profile?')) {
             return;
         }
 
@@ -104,20 +356,29 @@ export class SoldierBulkActions {
             const response = await fetch(routes.delete.replace(':id', soldierId), {
                 method: 'DELETE',
                 headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 }
             });
 
-            if (response.ok) {
+            const result = await response.json();
+
+            if (result.success) {
+                showToast('Soldier profile deleted successfully', 'success');
                 await this.manager.loadData();
-                this.manager.showSuccess('Profile deleted successfully');
             } else {
-                throw new Error('Delete failed');
+                throw new Error(result.message || 'Failed to delete profile');
             }
         } catch (error) {
-            console.error('Error deleting profile:', error);
-            this.manager.showError('Failed to delete profile');
+            console.error('Delete error:', error);
+            showToast('Failed to delete profile: ' + error.message, 'error');
         }
     }
 }
+
+// Make bulkActions globally accessible for onclick handlers
+let bulkActions;
+document.addEventListener('DOMContentLoaded', () => {
+    // This will be set when SoldierProfileManager initializes
+    bulkActions = window.manager?.bulkActions;
+});

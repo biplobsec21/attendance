@@ -733,7 +733,7 @@ class SoldierController extends Controller
             ],
             [
                 'key'       => 'medical',
-                'title'     => 'Medical',
+                'title'     => 'Medical/Discip',
                 'routeName' => $profileId && $profile?->qualifications_completed
                     ? 'soldier.medicalForm'
                     : null,

@@ -70,9 +70,10 @@ export default class SoldierProfileManager {
 
             await this.loadData();
 
+            // FIXED: Select all only visible soldiers
             if (this.elements.selectAll) {
                 this.elements.selectAll.addEventListener("change", (e) => {
-                    this.bulkActions.toggleSelectAll(e.target.checked);
+                    this.toggleSelectAllVisible(e.target.checked);
                 });
             }
 
@@ -92,7 +93,53 @@ export default class SoldierProfileManager {
             showToast('Error initializing application', 'error');
         }
     }
+    /**
+     * NEW METHOD: Toggle selection for only visible/filtered soldiers
+     */
+    toggleSelectAllVisible(checked) {
+        console.log(`Select All Visible: ${checked ? 'Selecting' : 'Deselecting'} ${this.filteredSoldiers.length} visible soldiers`);
 
+        if (checked) {
+            // Select only visible soldiers
+            this.filteredSoldiers.forEach(soldier => {
+                this.selectedRows.add(soldier.id.toString());
+            });
+
+            showToast(`Selected ${this.filteredSoldiers.length} visible soldiers`, 'success');
+        } else {
+            // Deselect all
+            this.selectedRows.clear();
+            showToast('All selections cleared', 'info');
+        }
+
+        // Update checkboxes in the DOM
+        this.updateCheckboxStates();
+
+        // Update bulk action button
+        this.bulkActions.updateBulkActionButton();
+    }
+
+    /**
+     * NEW METHOD: Update checkbox states based on selectedRows
+     */
+    updateCheckboxStates() {
+        const checkboxes = document.querySelectorAll('.row-select');
+        checkboxes.forEach(checkbox => {
+            const soldierId = checkbox.value;
+            checkbox.checked = this.selectedRows.has(soldierId);
+        });
+
+        // Update select-all checkbox state
+        if (this.elements.selectAll) {
+            const visibleCheckboxes = Array.from(checkboxes);
+            const allVisibleChecked = visibleCheckboxes.length > 0 &&
+                visibleCheckboxes.every(cb => cb.checked);
+
+            this.elements.selectAll.checked = allVisibleChecked;
+            this.elements.selectAll.indeterminate =
+                !allVisibleChecked && visibleCheckboxes.some(cb => cb.checked);
+        }
+    }
     setupEventDelegation() {
         if (!this.elements.tbody) return;
 
@@ -139,6 +186,9 @@ export default class SoldierProfileManager {
         }
     }
 
+    /**
+  * UPDATED: Handle individual checkbox changes
+  */
     handleCheckboxChange(event) {
         const target = event.target;
 
@@ -148,11 +198,35 @@ export default class SoldierProfileManager {
                 this.selectedRows.add(soldierId);
             } else {
                 this.selectedRows.delete(soldierId);
-                if (this.elements.selectAll) {
-                    this.elements.selectAll.checked = false;
-                }
             }
+
+            // Update select-all checkbox state
+            this.updateSelectAllState();
+
             this.bulkActions.updateBulkActionButton();
+        }
+    }
+    /**
+ * NEW METHOD: Update select-all checkbox state (checked/indeterminate/unchecked)
+ */
+    updateSelectAllState() {
+        if (!this.elements.selectAll) return;
+
+        const visibleCheckboxes = Array.from(document.querySelectorAll('.row-select'));
+        const checkedCount = visibleCheckboxes.filter(cb => cb.checked).length;
+
+        if (checkedCount === 0) {
+            // None selected
+            this.elements.selectAll.checked = false;
+            this.elements.selectAll.indeterminate = false;
+        } else if (checkedCount === visibleCheckboxes.length) {
+            // All selected
+            this.elements.selectAll.checked = true;
+            this.elements.selectAll.indeterminate = false;
+        } else {
+            // Some selected
+            this.elements.selectAll.checked = false;
+            this.elements.selectAll.indeterminate = true;
         }
     }
 
@@ -321,14 +395,12 @@ export default class SoldierProfileManager {
         let currentIndex = 0;
         const signal = this.renderAbortController?.signal;
 
-        // Pre-create all rows HTML in memory (much faster than DOM manipulation)
         const renderNextBatch = (deadline) => {
             if (signal?.aborted) {
                 console.log('Render aborted');
                 return;
             }
 
-            // Render as many rows as we can in this frame (up to batchSize)
             const endIndex = Math.min(currentIndex + batchSize, soldiers.length);
             const fragment = document.createDocumentFragment();
 
@@ -342,29 +414,28 @@ export default class SoldierProfileManager {
             tbody.appendChild(fragment);
             currentIndex = endIndex;
 
-            // Continue rendering if there are more soldiers
             if (currentIndex < soldiers.length) {
-                // Use requestIdleCallback for better performance during idle time
                 if ('requestIdleCallback' in window) {
                     requestIdleCallback(renderNextBatch, { timeout: 100 });
                 } else {
-                    // Fallback to setTimeout
                     setTimeout(() => renderNextBatch({}), 0);
                 }
             } else {
-                // Finished rendering
+                // Finished rendering - update states
+                this.updateCheckboxStates();
+                this.updateSelectAllState();
                 this.bulkActions.updateBulkActionButton();
                 console.log('Finished rendering all soldiers');
             }
         };
 
-        // Start rendering
         if ('requestIdleCallback' in window) {
             requestIdleCallback(renderNextBatch, { timeout: 100 });
         } else {
             setTimeout(() => renderNextBatch({}), 0);
         }
     }
+
 
     async filterAndRender() {
         console.log('Filter and render called');
@@ -668,10 +739,39 @@ export default class SoldierProfileManager {
             this.elements.searchInput.value = '';
         }
 
-        console.log('All filters cleared');
+        // Clear selections when filters are cleared
+        this.selectedRows.clear();
+        if (this.elements.selectAll) {
+            this.elements.selectAll.checked = false;
+            this.elements.selectAll.indeterminate = false;
+        }
+
+        console.log('All filters and selections cleared');
         this.filterAndRender();
     }
+    /**
+     * Helper method to get selected soldier data
+     */
+    getSelectedSoldiers() {
+        return this.filteredSoldiers.filter(soldier =>
+            this.selectedRows.has(soldier.id.toString())
+        );
+    }
+    /**
+ * Helper method to get selection stats
+ */
+    getSelectionStats() {
+        const selected = this.selectedRows.size;
+        const visible = this.filteredSoldiers.length;
+        const total = this.soldiers.length;
 
+        return {
+            selected,
+            visible,
+            total,
+            percentage: visible > 0 ? ((selected / visible) * 100).toFixed(1) : 0
+        };
+    }
     retryLoadHistory(soldierId, type) {
         openHistoryModal(soldierId, type);
     }

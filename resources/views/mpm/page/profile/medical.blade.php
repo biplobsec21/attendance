@@ -8,7 +8,7 @@
     <main class="container mx-auto p-6">
         <div class="grid md:grid-cols-12 gap-6 items-center">
             <div class="md:col-span-7 mb-8">
-                <h1 class="text-3xl font-bold text-gray-800">Medical & Disciplinary</h1>
+                <h1 class="text-3xl font-bold text-gray-800">Medical/Discip</h1>
                 <p class="text-gray-500">Provide your medical status and any disciplinary records.</p>
             </div>
             <div class="md:col-span-5">
