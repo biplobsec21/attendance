@@ -690,26 +690,23 @@ export default class SoldierProfileManager {
         }
 
         // 4. Leave status filter (special handling)
-        if (this.filters.leave && (Array.isArray(this.filters.leave) ? this.filters.leave.length > 0 : this.filters.leave !== '')) {
-            const beforeFilter = filtered.length;
-            const leaveStatuses = Array.isArray(this.filters.leave) ? this.filters.leave : [this.filters.leave];
+        // 4. FIXED: Leave status filter with proper logic
+        // Leave filter logic
+        if (this.filters.leave) {
+            console.log('Applying Leave filter:', this.filters.leave);
 
-            filtered = filtered.filter(s => {
-                // Check if soldier has active leave
-                const hasActiveLeave = s.leave_records && s.leave_records.some(leave => {
-                    if (!leave.start_date || !leave.end_date) return false;
-                    const today = new Date();
-                    const startDate = new Date(leave.start_date);
-                    const endDate = new Date(leave.end_date);
-                    return today >= startDate && today <= endDate;
-                });
+            const beforeLeaveFilter = filtered.length;
 
-                if (leaveStatuses.includes('on-leave')) {
-                    return hasActiveLeave;
-                }
-                return true; // If not checking for on-leave, include all
+            filtered = filtered.filter(soldier => {
+                const isOnLeave = soldier.is_leave === true;
+                const shouldInclude = this.filters.leave === "on-leave" ? isOnLeave : !isOnLeave;
+
+                console.log(`Soldier ${soldier.id}: is_leave=${soldier.is_leave}, shouldInclude=${shouldInclude}`);
+
+                return shouldInclude;
             });
-            console.log(`🎯 Leave filter reduced from ${beforeFilter} to ${filtered.length}`);
+
+            console.log('After Leave filter:', filtered.length, '(removed', beforeLeaveFilter - filtered.length, 'soldiers)');
         }
 
         console.log(`✅ Final filtered count: ${filtered.length} soldiers`);
