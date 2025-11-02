@@ -241,9 +241,18 @@
         $leaveOfficerTotals = $leaveOfficerTotals ?? [];
         $withoutLeaveManpower = $withoutLeaveManpower ?? collect();
         $withoutLeaveOfficerTotals = $withoutLeaveOfficerTotals ?? [];
-        $leaveTypeManpower = $leaveTypeManpower ?? collect();
-        $leaveTypeTotals = $leaveTypeTotals ?? [];
-        $leaveTypeCompanyTotals = $leaveTypeCompanyTotals ?? [];
+
+        // Initialize absentDetails structure
+        $absentDetails = $absentDetails ?? [
+            'columns' => [],
+            'companyData' => [],
+            'columnTotals' => [],
+            'companyTotals' => [],
+        ];
+        $absentColumns = $absentDetails['columns'] ?? [];
+        $absentCompanyData = $absentDetails['companyData'] ?? [];
+        $absentColumnTotals = $absentDetails['columnTotals'] ?? [];
+        $absentCompanyTotals = $absentDetails['companyTotals'] ?? [];
     @endphp
 
     <!-- Auth Manpower Section -->
@@ -317,11 +326,6 @@
     </div>
     <!-- Received Manpower Distribution Table -->
     <table>
-        {{-- <thead>
-            <tr class="" style="text-align: center;">
-                <td colspan="{{ count($otherRanks) + 3 }}"></td>
-            </tr>
-        </thead> --}}
         <tbody>
             @foreach ($companies as $company)
                 @php
@@ -370,12 +374,6 @@
         Present
     </div>
     <table>
-
-        {{-- <thead>
-            <tr class="" style="text-align: center;">
-                <td colspan="{{ count($otherRanks) + 3 }}">Present Manpower</td>
-            </tr>
-        </thead> --}}
         <tbody>
             @foreach ($companies as $company)
                 @php
@@ -422,12 +420,6 @@
         Absent
     </div>
     <table>
-
-        {{-- <thead>
-            <tr class="" style="text-align: center;">
-                <td colspan="{{ count($otherRanks) + 3 }}">Leave Manpower</td>
-            </tr>
-        </thead> --}}
         <tbody>
             @foreach ($companies as $company)
                 @php
@@ -468,22 +460,20 @@
             </tr>
         </tfoot>
     </table>
-    <!-- Leave Types Distribution Table -->
+
+    <!-- Combined Absent Details (Leave Types + Additional Statuses) -->
     <div style="text-align: center;font-weight:bold;">
         Details of Absent
     </div>
 
     <table>
-        {{-- <tr class="" style="text-align: center;">
-            <td colspan="{{ count($leaveTypes) + 2 }}">Leave Details</td>
-        </tr> --}}
         <thead>
             <tr>
                 <th style="text-align: left;">Coy</th>
-                @foreach ($leaveTypes as $leaveType)
+                @foreach ($absentColumns as $column)
                     <th>
                         <div class="vertical-header2">
-                            <div class="vertical-text2">{{ $leaveType->name }}</div>
+                            <div class="vertical-text2">{{ $column['label'] }}</div>
                         </div>
                     </th>
                 @endforeach
@@ -498,84 +488,24 @@
             @foreach ($companies as $company)
                 <tr>
                     <td style="text-align: left;">{{ $company->name }}</td>
-                    @foreach ($leaveTypes as $leaveType)
-                        <td>{{ $leaveTypeManpower[$company->id][$leaveType->id]->count ?? 0 }}</td>
+                    @foreach ($absentColumns as $column)
+                        <td>{{ $absentCompanyData[$company->id][$column['id']] ?? 0 }}</td>
                     @endforeach
-                    <td>{{ $leaveTypeCompanyTotals[$company->id] ?? 0 }}</td>
+                    <td>{{ $absentCompanyTotals[$company->id] ?? 0 }}</td>
                 </tr>
             @endforeach
         </tbody>
         <tfoot>
             <tr class="total-row">
                 <td style="text-align: left;">Total</td>
-                @foreach ($leaveTypes as $leaveType)
-                    <td>{{ $leaveTypeTotals[$leaveType->id] ?? 0 }}</td>
+                @foreach ($absentColumns as $column)
+                    <td>{{ $absentColumnTotals[$column['id']] ?? 0 }}</td>
                 @endforeach
-                <td>{{ array_sum($leaveTypeCompanyTotals) }}</td>
+                <td>{{ array_sum($absentCompanyTotals) }}</td>
             </tr>
         </tfoot>
     </table>
-    <!-- Additional Statuses Distribution Table -->
-    <div style="text-align: center;font-weight:bold;">
-        Additional Details of Absent
-    </div>
 
-    @php
-        $additionalStatuses = $additionalStatuses ?? [
-            'data' => [],
-            'totals' => [],
-            'companyTotals' => [],
-            'labels' => [],
-        ];
-        $statusData = $additionalStatuses['data'] ?? [];
-        $statusTotals = $additionalStatuses['totals'] ?? [];
-        $statusCompanyTotals = $additionalStatuses['companyTotals'] ?? [];
-        $statusLabels = $additionalStatuses['labels'] ?? [];
-    @endphp
-
-    <table>
-        <thead>
-            <tr>
-                <th style="text-align: left;">Coy</th>
-                @foreach ($statusLabels as $key => $label)
-                    <th>
-                        <div class="vertical-header2">
-                            <div class="vertical-text2">{{ $label }}</div>
-                        </div>
-                    </th>
-                @endforeach
-                <th>
-                    <div class="vertical-header2">
-                        <div class="vertical-text2">Total</div>
-                    </div>
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($companies as $company)
-                <tr>
-                    <td style="text-align: left;">{{ $company->name }}</td>
-                    @foreach (array_keys($statusLabels) as $statusType)
-                        <td>{{ $statusData[$statusType][$company->id]->count ?? 0 }}</td>
-                    @endforeach
-                    <td>{{ $statusCompanyTotals[$company->id] ?? 0 }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            <tr class="total-row">
-                <td style="text-align: left;">Total</td>
-                @foreach (array_keys($statusLabels) as $statusType)
-                    <td>{{ $statusTotals[$statusType] ?? 0 }}</td>
-                @endforeach
-                <td>{{ array_sum($statusCompanyTotals) }}</td>
-            </tr>
-        </tfoot>
-    </table>
-    {{-- <div class="footer">
-        <!-- Signature Section -->
-        Generated on: {{ now()->format('F d, Y H:i:s') }}
-    </div> --}}
     <div class="signature-section">
         <div class="signature-line">BSM ______</div>
         <div class="signature-line">NSA ______</div>

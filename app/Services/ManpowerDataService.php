@@ -198,32 +198,11 @@ class ManpowerDataService
                 return $rows->keyBy('leave_type_id');
             });
 
-        // Calculate totals for each leave type
-        $leaveTypeTotals = [];
-        foreach ($leaveTypes as $leaveType) {
-            $total = 0;
-            foreach ($companies as $company) {
-                if (isset($leaveTypeManpower[$company->id][$leaveType->id])) {
-                    $total += $leaveTypeManpower[$company->id][$leaveType->id]->count;
-                }
-            }
-            $leaveTypeTotals[$leaveType->id] = $total;
-        }
-
-        // Calculate company totals for leave types
-        $leaveTypeCompanyTotals = [];
-        foreach ($companies as $company) {
-            $total = 0;
-            foreach ($leaveTypes as $leaveType) {
-                if (isset($leaveTypeManpower[$company->id][$leaveType->id])) {
-                    $total += $leaveTypeManpower[$company->id][$leaveType->id]->count;
-                }
-            }
-            $leaveTypeCompanyTotals[$company->id] = $total;
-        }
-
-        // Fetch additional soldier status data
+        // Fetch additional soldier status data (cadres, courses, ex_areas, att, cmds)
         $additionalStatuses = $this->getAdditionalStatuses($currentDate, $companies);
+
+        // Merge leave types with additional statuses for combined absent details
+        $absentDetails = $this->mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $additionalStatuses, $companies);
 
         return [
             'companies' => $companies,
@@ -238,10 +217,7 @@ class ManpowerDataService
             'leaveOfficerTotals' => $leaveOfficerTotals,
             'withoutLeaveManpower' => $withoutLeaveManpower,
             'withoutLeaveOfficerTotals' => $withoutLeaveOfficerTotals,
-            'leaveTypeManpower' => $leaveTypeManpower,
-            'leaveTypeTotals' => $leaveTypeTotals,
-            'leaveTypeCompanyTotals' => $leaveTypeCompanyTotals,
-            'additionalStatuses' => $additionalStatuses,
+            'absentDetails' => $absentDetails,
         ];
     }
 
@@ -255,49 +231,29 @@ class ManpowerDataService
     private function getAdditionalStatuses($currentDate, $companies)
     {
         $statuses = [
-            'cadres' => $this->getStatusCount('soldier_cadres', $currentDate, $companies),
-            'courses' => $this->getStatusCount('soldier_courses', $currentDate, $companies),
-            'ex_areas' => $this->getStatusCount('soldier_ex_areas', $currentDate, $companies),
-            'att' => $this->getStatusCount('soldiers_att', $currentDate, $companies),
-            'cmds' => $this->getStatusCount('soldiers_cmds', $currentDate, $companies),
-        ];
-
-        // Calculate totals for each status type
-        $statusTotals = [];
-        foreach ($statuses as $statusType => $statusData) {
-            $total = 0;
-            foreach ($companies as $company) {
-                if (isset($statusData[$company->id])) {
-                    $total += $statusData[$company->id]->count ?? 0;
-                }
-            }
-            $statusTotals[$statusType] = $total;
-        }
-
-        // Calculate company totals across all statuses
-        $companyTotals = [];
-        foreach ($companies as $company) {
-            $total = 0;
-            foreach ($statuses as $statusData) {
-                if (isset($statusData[$company->id])) {
-                    $total += $statusData[$company->id]->count ?? 0;
-                }
-            }
-            $companyTotals[$company->id] = $total;
-        }
-
-        return [
-            'data' => $statuses,
-            'totals' => $statusTotals,
-            'companyTotals' => $companyTotals,
-            'labels' => [
-                'cadres' => 'Cadres',
-                'courses' => 'Courses',
-                'ex_areas' => 'Ex Areas',
-                'att' => 'ATT',
-                'cmds' => 'CMDs',
+            'cadres' => [
+                'label' => 'Cadres',
+                'data' => $this->getStatusCount('soldier_cadres', $currentDate, $companies)
+            ],
+            'courses' => [
+                'label' => 'Courses',
+                'data' => $this->getStatusCount('soldier_courses', $currentDate, $companies)
+            ],
+            'ex_areas' => [
+                'label' => 'Ex Areas',
+                'data' => $this->getStatusCount('soldier_ex_areas', $currentDate, $companies)
+            ],
+            'att' => [
+                'label' => 'ATT',
+                'data' => $this->getStatusCount('soldiers_att', $currentDate, $companies)
+            ],
+            'cmds' => [
+                'label' => 'CMDs',
+                'data' => $this->getStatusCount('soldiers_cmds', $currentDate, $companies)
             ],
         ];
+
+        return $statuses;
     }
 
     /**
@@ -332,5 +288,97 @@ class ManpowerDataService
             ->groupBy('soldiers.company_id')
             ->get()
             ->keyBy('company_id');
+    }
+
+    /**
+     * Merge leave types with additional statuses for combined absent details
+     *
+     * @param \Illuminate\Support\Collection $leaveTypes
+     * @param \Illuminate\Support\Collection $leaveTypeManpower
+     * @param array $additionalStatuses
+     * @param \Illuminate\Support\Collection $companies
+     * @return array
+     */
+    private function mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $additionalStatuses, $companies)
+    {
+        $columns = [];
+        $columnTotals = [];
+        $companyData = [];
+
+        // Add leave type columns and calculate totals
+        foreach ($leaveTypes as $leaveType) {
+            $columns[] = [
+                'id' => 'leave_' . $leaveType->id,
+                'label' => $leaveType->name,
+                'type' => 'leave',
+                'type_id' => $leaveType->id,
+            ];
+
+            // Calculate total for this leave type
+            $total = 0;
+            foreach ($companies as $company) {
+                if (isset($leaveTypeManpower[$company->id][$leaveType->id])) {
+                    $count = $leaveTypeManpower[$company->id][$leaveType->id]->count ?? 0;
+                    $total += $count;
+
+                    // Add to company data
+                    if (!isset($companyData[$company->id])) {
+                        $companyData[$company->id] = [];
+                    }
+                    $companyData[$company->id]['leave_' . $leaveType->id] = $count;
+                } else {
+                    // Initialize with 0 if no data exists
+                    if (!isset($companyData[$company->id])) {
+                        $companyData[$company->id] = [];
+                    }
+                    $companyData[$company->id]['leave_' . $leaveType->id] = 0;
+                }
+            }
+            $columnTotals['leave_' . $leaveType->id] = $total;
+        }
+
+        // Add additional status columns
+        foreach ($additionalStatuses as $key => $status) {
+            $columns[] = [
+                'id' => 'status_' . $key,
+                'label' => $status['label'],
+                'type' => 'status',
+                'type_key' => $key,
+            ];
+
+            // Add status data to company data and calculate total
+            $total = 0;
+            foreach ($companies as $company) {
+                if (isset($status['data'][$company->id])) {
+                    $count = $status['data'][$company->id]->count ?? 0;
+                    $total += $count;
+                } else {
+                    $count = 0;
+                }
+
+                if (!isset($companyData[$company->id])) {
+                    $companyData[$company->id] = [];
+                }
+                $companyData[$company->id]['status_' . $key] = $count;
+            }
+            $columnTotals['status_' . $key] = $total;
+        }
+
+        // Calculate company totals
+        $companyTotals = [];
+        foreach ($companies as $company) {
+            $total = 0;
+            if (isset($companyData[$company->id])) {
+                $total = array_sum($companyData[$company->id]);
+            }
+            $companyTotals[$company->id] = $total;
+        }
+
+        return [
+            'columns' => $columns,
+            'companyData' => $companyData,
+            'columnTotals' => $columnTotals,
+            'companyTotals' => $companyTotals,
+        ];
     }
 }
