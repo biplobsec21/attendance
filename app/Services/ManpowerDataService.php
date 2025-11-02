@@ -8,6 +8,8 @@ use App\Models\CompanyRankManpower;
 use App\Models\Soldier;
 use App\Models\SoldierLeaveApplication;
 use App\Models\LeaveType;
+use App\Models\SoldierAbsent; // Add this
+use App\Models\AbsentType; // Add this
 use Carbon\Carbon;
 
 class ManpowerDataService
@@ -26,6 +28,7 @@ class ManpowerDataService
         $companies = Company::active()->orderBy('id')->get();
         $ranks = Rank::active()->orderBy('id')->get();
         $leaveTypes = LeaveType::active()->orderBy('id')->get();
+        $absentTypes = AbsentType::active()->orderBy('id')->get(); // Add this
 
         // Separate officer ranks from other ranks
         $officerRanks = $ranks->filter(function ($rank) {
@@ -198,17 +201,46 @@ class ManpowerDataService
                 return $rows->keyBy('leave_type_id');
             });
 
+        // Fetch absent type distribution data
+        $absentTypeManpower = Soldier::selectRaw('soldiers.company_id, soldier_absent.absent_type_id, COUNT(*) as count')
+            ->join('soldier_absent', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_absent.soldier_id')
+                    ->where('soldier_absent.absent_current_status', 'approved') // Assuming similar status field
+                    ->where('soldier_absent.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_absent.end_date')
+                            ->orWhere('soldier_absent.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldiers_ere', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldiers_ere.soldier_id')
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldiers_ere.end_date')
+                            ->orWhere('soldiers_ere.end_date', '>=', $currentDate);
+                    })
+                    ->where('soldiers_ere.start_date', '<=', $currentDate);
+            })
+            ->whereIn('soldiers.company_id', $companies->pluck('id'))
+            ->whereNull('soldiers_ere.id')
+            ->groupBy('soldiers.company_id', 'soldier_absent.absent_type_id')
+            ->get()
+            ->groupBy('company_id')
+            ->map(function ($rows) {
+                return $rows->keyBy('absent_type_id');
+            });
+
         // Fetch additional soldier status data (cadres, courses, ex_areas, att, cmds)
         $additionalStatuses = $this->getAdditionalStatuses($currentDate, $companies);
 
-        // Merge leave types with additional statuses for combined absent details
-        $absentDetails = $this->mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $additionalStatuses, $companies);
+        // Merge leave types with additional statuses and absent types for combined absent details
+        $absentDetails = $this->mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies);
 
         return [
             'companies' => $companies,
             'officerRanks' => $officerRanks,
             'otherRanks' => $otherRanks,
             'leaveTypes' => $leaveTypes,
+            'absentTypes' => $absentTypes, // Add this
             'manpower' => $manpower,
             'officerTotals' => $officerTotals,
             'receivedManpower' => $receivedManpower,
@@ -291,15 +323,17 @@ class ManpowerDataService
     }
 
     /**
-     * Merge leave types with additional statuses for combined absent details
+     * Merge leave types with additional statuses and absent types for combined absent details
      *
      * @param \Illuminate\Support\Collection $leaveTypes
      * @param \Illuminate\Support\Collection $leaveTypeManpower
+     * @param \Illuminate\Support\Collection $absentTypes
+     * @param \Illuminate\Support\Collection $absentTypeManpower
      * @param array $additionalStatuses
      * @param \Illuminate\Support\Collection $companies
      * @return array
      */
-    private function mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $additionalStatuses, $companies)
+    private function mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies)
     {
         $columns = [];
         $columnTotals = [];
@@ -320,23 +354,18 @@ class ManpowerDataService
                 if (isset($leaveTypeManpower[$company->id][$leaveType->id])) {
                     $count = $leaveTypeManpower[$company->id][$leaveType->id]->count ?? 0;
                     $total += $count;
-
-                    // Add to company data
-                    if (!isset($companyData[$company->id])) {
-                        $companyData[$company->id] = [];
-                    }
-                    $companyData[$company->id]['leave_' . $leaveType->id] = $count;
                 } else {
-                    // Initialize with 0 if no data exists
-                    if (!isset($companyData[$company->id])) {
-                        $companyData[$company->id] = [];
-                    }
-                    $companyData[$company->id]['leave_' . $leaveType->id] = 0;
+                    $count = 0;
                 }
+
+                // Add to company data
+                if (!isset($companyData[$company->id])) {
+                    $companyData[$company->id] = [];
+                }
+                $companyData[$company->id]['leave_' . $leaveType->id] = $count;
             }
             $columnTotals['leave_' . $leaveType->id] = $total;
         }
-
         // Add additional status columns
         foreach ($additionalStatuses as $key => $status) {
             $columns[] = [
@@ -363,6 +392,34 @@ class ManpowerDataService
             }
             $columnTotals['status_' . $key] = $total;
         }
+        // Add absent type columns and calculate totals
+        foreach ($absentTypes as $absentType) {
+            $columns[] = [
+                'id' => 'absent_' . $absentType->id,
+                'label' => $absentType->name,
+                'type' => 'absent',
+                'type_id' => $absentType->id,
+            ];
+
+            // Calculate total for this absent type
+            $total = 0;
+            foreach ($companies as $company) {
+                if (isset($absentTypeManpower[$company->id][$absentType->id])) {
+                    $count = $absentTypeManpower[$company->id][$absentType->id]->count ?? 0;
+                    $total += $count;
+                } else {
+                    $count = 0;
+                }
+
+                if (!isset($companyData[$company->id])) {
+                    $companyData[$company->id] = [];
+                }
+                $companyData[$company->id]['absent_' . $absentType->id] = $count;
+            }
+            $columnTotals['absent_' . $absentType->id] = $total;
+        }
+
+
 
         // Calculate company totals
         $companyTotals = [];
