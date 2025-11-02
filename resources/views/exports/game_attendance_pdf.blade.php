@@ -300,7 +300,7 @@
     <!-- Header -->
     <table class="spacing-small format1">
         <tr class="header-row">
-            <td colspan="100%">
+            <td colspan="100%" style="text-align: center">
                 {{ $reportTitle }}<br>
                 Date: {{ $date }}
             </td>
@@ -328,7 +328,7 @@
                 <th>
 
                     <div class="vertical-header">
-                        <div class="vertical-text">Excused</div>
+                        <div class="vertical-text">On Duty</div>
                     </div>
                 </th>
                 <th>
@@ -357,11 +357,11 @@
     <!-- Format 2: Exclusion by Duty / Appointment Type -->
     <table class="format2-table spacing-medium">
         <tr class="">
-            <td colspan="{{ count($companies) + 2 }}" style="text-align: center;font-weight:bold">Exclusion lists</td>
+            <td colspan="{{ count($companies) + 2 }}" style="text-align: center;font-weight:bold"> Onduty Details</td>
         </tr>
         <thead>
             <tr>
-                <th>Explanation</th>
+                <th>Details of absence</th>
                 @foreach ($companies as $company)
                     <th>{{ $company }}</th>
                 @endforeach

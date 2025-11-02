@@ -515,7 +515,63 @@
             </tr>
         </tfoot>
     </table>
+    <!-- Additional Statuses Distribution Table -->
+    <div style="text-align: center;font-weight:bold;">
+        Additional Details of Absent
+    </div>
 
+    @php
+        $additionalStatuses = $additionalStatuses ?? [
+            'data' => [],
+            'totals' => [],
+            'companyTotals' => [],
+            'labels' => [],
+        ];
+        $statusData = $additionalStatuses['data'] ?? [];
+        $statusTotals = $additionalStatuses['totals'] ?? [];
+        $statusCompanyTotals = $additionalStatuses['companyTotals'] ?? [];
+        $statusLabels = $additionalStatuses['labels'] ?? [];
+    @endphp
+
+    <table>
+        <thead>
+            <tr>
+                <th style="text-align: left;">Coy</th>
+                @foreach ($statusLabels as $key => $label)
+                    <th>
+                        <div class="vertical-header2">
+                            <div class="vertical-text2">{{ $label }}</div>
+                        </div>
+                    </th>
+                @endforeach
+                <th>
+                    <div class="vertical-header2">
+                        <div class="vertical-text2">Total</div>
+                    </div>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach ($companies as $company)
+                <tr>
+                    <td style="text-align: left;">{{ $company->name }}</td>
+                    @foreach (array_keys($statusLabels) as $statusType)
+                        <td>{{ $statusData[$statusType][$company->id]->count ?? 0 }}</td>
+                    @endforeach
+                    <td>{{ $statusCompanyTotals[$company->id] ?? 0 }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td style="text-align: left;">Total</td>
+                @foreach (array_keys($statusLabels) as $statusType)
+                    <td>{{ $statusTotals[$statusType] ?? 0 }}</td>
+                @endforeach
+                <td>{{ array_sum($statusCompanyTotals) }}</td>
+            </tr>
+        </tfoot>
+    </table>
     {{-- <div class="footer">
         <!-- Signature Section -->
         Generated on: {{ now()->format('F d, Y H:i:s') }}

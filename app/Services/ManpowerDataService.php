@@ -170,7 +170,7 @@ class ManpowerDataService
             $withoutLeaveOfficerTotals[$company->id] = $officerTotal;
         }
 
-        // NEW: Fetch leave type distribution data
+        // Fetch leave type distribution data
         $leaveTypeManpower = Soldier::selectRaw('soldiers.company_id, soldier_leave_applications.leave_type_id, COUNT(*) as count')
             ->join('soldier_leave_applications', function ($join) use ($currentDate) {
                 $join->on('soldiers.id', '=', 'soldier_leave_applications.soldier_id')
@@ -190,7 +190,7 @@ class ManpowerDataService
                     ->where('soldiers_ere.start_date', '<=', $currentDate);
             })
             ->whereIn('soldiers.company_id', $companies->pluck('id'))
-            ->whereNull('soldiers_ere.id') // Exclude soldiers with active ERE records
+            ->whereNull('soldiers_ere.id')
             ->groupBy('soldiers.company_id', 'soldier_leave_applications.leave_type_id')
             ->get()
             ->groupBy('company_id')
@@ -222,6 +222,9 @@ class ManpowerDataService
             $leaveTypeCompanyTotals[$company->id] = $total;
         }
 
+        // Fetch additional soldier status data
+        $additionalStatuses = $this->getAdditionalStatuses($currentDate, $companies);
+
         return [
             'companies' => $companies,
             'officerRanks' => $officerRanks,
@@ -238,6 +241,96 @@ class ManpowerDataService
             'leaveTypeManpower' => $leaveTypeManpower,
             'leaveTypeTotals' => $leaveTypeTotals,
             'leaveTypeCompanyTotals' => $leaveTypeCompanyTotals,
+            'additionalStatuses' => $additionalStatuses,
         ];
+    }
+
+    /**
+     * Fetch additional soldier statuses (cadres, courses, ex_areas, att, cmds)
+     *
+     * @param string $currentDate
+     * @param \Illuminate\Support\Collection $companies
+     * @return array
+     */
+    private function getAdditionalStatuses($currentDate, $companies)
+    {
+        $statuses = [
+            'cadres' => $this->getStatusCount('soldier_cadres', $currentDate, $companies),
+            'courses' => $this->getStatusCount('soldier_courses', $currentDate, $companies),
+            'ex_areas' => $this->getStatusCount('soldier_ex_areas', $currentDate, $companies),
+            'att' => $this->getStatusCount('soldiers_att', $currentDate, $companies),
+            'cmds' => $this->getStatusCount('soldiers_cmds', $currentDate, $companies),
+        ];
+
+        // Calculate totals for each status type
+        $statusTotals = [];
+        foreach ($statuses as $statusType => $statusData) {
+            $total = 0;
+            foreach ($companies as $company) {
+                if (isset($statusData[$company->id])) {
+                    $total += $statusData[$company->id]->count ?? 0;
+                }
+            }
+            $statusTotals[$statusType] = $total;
+        }
+
+        // Calculate company totals across all statuses
+        $companyTotals = [];
+        foreach ($companies as $company) {
+            $total = 0;
+            foreach ($statuses as $statusData) {
+                if (isset($statusData[$company->id])) {
+                    $total += $statusData[$company->id]->count ?? 0;
+                }
+            }
+            $companyTotals[$company->id] = $total;
+        }
+
+        return [
+            'data' => $statuses,
+            'totals' => $statusTotals,
+            'companyTotals' => $companyTotals,
+            'labels' => [
+                'cadres' => 'Cadres',
+                'courses' => 'Courses',
+                'ex_areas' => 'Ex Areas',
+                'att' => 'ATT',
+                'cmds' => 'CMDs',
+            ],
+        ];
+    }
+
+    /**
+     * Get soldier count for a specific status table
+     *
+     * @param string $tableName
+     * @param string $currentDate
+     * @param \Illuminate\Support\Collection $companies
+     * @return \Illuminate\Support\Collection
+     */
+    private function getStatusCount($tableName, $currentDate, $companies)
+    {
+        return Soldier::selectRaw('soldiers.company_id, COUNT(*) as count')
+            ->join($tableName, function ($join) use ($currentDate, $tableName) {
+                $join->on('soldiers.id', '=', $tableName . '.soldier_id')
+                    ->where($tableName . '.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate, $tableName) {
+                        $query->whereNull($tableName . '.end_date')
+                            ->orWhere($tableName . '.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldiers_ere', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldiers_ere.soldier_id')
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldiers_ere.end_date')
+                            ->orWhere('soldiers_ere.end_date', '>=', $currentDate);
+                    })
+                    ->where('soldiers_ere.start_date', '<=', $currentDate);
+            })
+            ->whereIn('soldiers.company_id', $companies->pluck('id'))
+            ->whereNull('soldiers_ere.id') // Exclude soldiers with active ERE records
+            ->groupBy('soldiers.company_id')
+            ->get()
+            ->keyBy('company_id');
     }
 }

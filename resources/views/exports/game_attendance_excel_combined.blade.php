@@ -149,11 +149,11 @@
     <!-- Format 2: Exclusion by Duty / Appointment Type -->
     <table>
         <tr class="section-title-row">
-            <td colspan="{{ count($companies) + 2 }}" style="text-align: center;font-weight:bold"> Exclusion lists</td>
+            <td colspan="{{ count($companies) + 2 }}" style="text-align: center;font-weight:bold"> Onduty Details</td>
         </tr>
         <thead>
             <tr>
-                <th class="text-left">Explanation</th>
+                <th class="text-left">Details of absence</th>
                 @foreach ($companies as $company)
                     <th>{{ $company }}</th>
                 @endforeach

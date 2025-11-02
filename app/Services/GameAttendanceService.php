@@ -184,12 +184,12 @@ class GameAttendanceService
 
         // Check all excusal conditions with priority
         $excusalChecks = [
-            [
-                'name' => 'Leave',
-                'priority' => self::PRIORITY_LEAVE,
-                'check' => fn() => $this->isOnApprovedLeaveOnDate($soldier, $carbonDate),
-                'details_fn' => fn() => $this->getLeaveDetails($soldier, $carbonDate)
-            ],
+            // [
+            //     'name' => 'Leave',
+            //     'priority' => self::PRIORITY_LEAVE,
+            //     'check' => fn() => $this->isOnApprovedLeaveOnDate($soldier, $carbonDate),
+            //     'details_fn' => fn() => $this->getLeaveDetails($soldier, $carbonDate)
+            // ],
             [
                 'name' => 'Roster Duty',
                 'priority' => self::PRIORITY_ROSTER_DUTY,
@@ -202,24 +202,24 @@ class GameAttendanceService
                 'check' => fn() => $this->hasFixedDutyWithExcusal($soldier, $carbonDate, $sessionTimeRange),
                 'details_fn' => fn() => $this->getFixedDutyDetails($soldier)
             ],
-            [
-                'name' => 'Appointment',
-                'priority' => self::PRIORITY_APPOINTMENT,
-                'check' => fn() => $this->hasActiveAppointmentOnDate($soldier, $carbonDate),
-                'details_fn' => fn() => $this->getAppointmentDetails($soldier, $carbonDate)
-            ],
-            [
-                'name' => 'Course',
-                'priority' => self::PRIORITY_COURSE,
-                'check' => fn() => $this->hasActiveCourseOnDate($soldier, $carbonDate),
-                'details_fn' => fn() => $this->getCourseDetails($soldier, $carbonDate)
-            ],
-            [
-                'name' => 'Cadre',
-                'priority' => self::PRIORITY_CADRE,
-                'check' => fn() => $this->hasActiveCadreOnDate($soldier, $carbonDate),
-                'details_fn' => fn() => $this->getCadreDetails($soldier, $carbonDate)
-            ],
+            // [
+            //     'name' => 'Appointment',
+            //     'priority' => self::PRIORITY_APPOINTMENT,
+            //     'check' => fn() => $this->hasActiveAppointmentOnDate($soldier, $carbonDate),
+            //     'details_fn' => fn() => $this->getAppointmentDetails($soldier, $carbonDate)
+            // ],
+            // [
+            //     'name' => 'Course',
+            //     'priority' => self::PRIORITY_COURSE,
+            //     'check' => fn() => $this->hasActiveCourseOnDate($soldier, $carbonDate),
+            //     'details_fn' => fn() => $this->getCourseDetails($soldier, $carbonDate)
+            // ],
+            // [
+            //     'name' => 'Cadre',
+            //     'priority' => self::PRIORITY_CADRE,
+            //     'check' => fn() => $this->hasActiveCadreOnDate($soldier, $carbonDate),
+            //     'details_fn' => fn() => $this->getCadreDetails($soldier, $carbonDate)
+            // ],
         ];
 
         // Find the highest priority (lowest number) excusal reason
@@ -424,7 +424,7 @@ class GameAttendanceService
 
     /**
      * Check if soldier has active appointment (date only)
-     */
+     */ // obsolete
     private function hasActiveAppointmentOnDate($soldier, $carbonDate)
     {
         $hasAppointment = SoldierServices::where('soldier_id', $soldier->id)
@@ -445,7 +445,7 @@ class GameAttendanceService
 
     /**
      * Check if soldier has active course (date only)
-     */
+     */ // obsolete
     private function hasActiveCourseOnDate($soldier, $carbonDate)
     {
         $hasCourse = SoldierCourse::where('soldier_id', $soldier->id)
@@ -466,7 +466,7 @@ class GameAttendanceService
 
     /**
      * Check if soldier has active cadre (date only)
-     */
+     */ // obsolete
     private function hasActiveCadreOnDate($soldier, $carbonDate)
     {
         $hasCadre = SoldierCadre::where('soldier_id', $soldier->id)
@@ -614,7 +614,7 @@ class GameAttendanceService
 
         return $details;
     }
-
+    // obsolete
     private function getAppointmentDetails($soldier, $carbonDate)
     {
         $appointment = SoldierServices::where('soldier_id', $soldier->id)
@@ -628,7 +628,7 @@ class GameAttendanceService
 
         return $appointment ? $appointment->appointments_name : 'Appointment';
     }
-
+    // obsolete
     private function getCourseDetails($soldier, $carbonDate)
     {
         $course = SoldierCourse::where('soldier_id', $soldier->id)
@@ -643,7 +643,7 @@ class GameAttendanceService
 
         return $course && $course->course ? $course->course->name : 'Course';
     }
-
+    // obsolete
     private function getCadreDetails($soldier, $carbonDate)
     {
         $cadre = SoldierCadre::where('soldier_id', $soldier->id)
@@ -675,8 +675,8 @@ class GameAttendanceService
         $titles = [
             self::REPORT_GAME => 'Game Attendance Report',
             self::REPORT_PT => 'PT Attendance Report',
-            self::REPORT_ROLL_CALL => 'Roll Call Attendance Report',
-            self::REPORT_PARADE => 'Parade Attendance Report',
+            self::REPORT_ROLL_CALL => 'Roll Call Report',
+            self::REPORT_PARADE => '2nd Fall in Report',
         ];
 
         return $titles[$this->reportType] ?? 'Attendance Report';
@@ -692,7 +692,7 @@ class GameAttendanceService
             self::REPORT_GAME => "game_attendance_report_{$formattedDate}",
             self::REPORT_PT => "pt_attendance_report_{$formattedDate}",
             self::REPORT_ROLL_CALL => "roll_call_attendance_report_{$formattedDate}",
-            self::REPORT_PARADE => "parade_attendance_report_{$formattedDate}",
+            self::REPORT_PARADE => "2nd_fallin_report_{$formattedDate}",
         ];
 
         return $fileNames[$this->reportType] ?? "attendance_report_{$formattedDate}";
