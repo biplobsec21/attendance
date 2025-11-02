@@ -393,7 +393,7 @@ class ManpowerDataService
                 'data' => $this->getStatusCount('soldiers_att', $currentDate, $companies)
             ],
             'cmds' => [
-                'label' => 'CMDs',
+                'label' => 'Comd',
                 'data' => $this->getStatusCount('soldiers_cmds', $currentDate, $companies)
             ],
         ];

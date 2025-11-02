@@ -191,7 +191,7 @@ class GameAttendanceService
             //     'details_fn' => fn() => $this->getLeaveDetails($soldier, $carbonDate)
             // ],
             [
-                'name' => 'Roster Duty',
+                'name' => 'Roaster Duty',
                 'priority' => self::PRIORITY_ROSTER_DUTY,
                 'check' => fn() => $this->hasActiveDutyWithTimeOrExcusal($soldier, $carbonDate, $sessionTimeRange),
                 'details_fn' => fn() => $this->getRosterDutyDetails($soldier, $carbonDate, $sessionTimeRange)
@@ -549,7 +549,7 @@ class GameAttendanceService
             });
 
         if (!$duty || !$duty->duty) {
-            return 'Roster Duty';
+            return 'Roaster Duty';
         }
 
         $details = $duty->duty->duty_name;
@@ -589,7 +589,7 @@ class GameAttendanceService
             ->with('duty')
             ->first();
 
-        return $duty && $duty->duty ? $duty->duty->duty_name : 'Roster Duty';
+        return $duty && $duty->duty ? $duty->duty->duty_name : 'Roaster Duty';
     }
 
     private function getFixedDutyDetails($soldier)
@@ -807,7 +807,7 @@ class GameAttendanceService
 
         // Group by simple duty types
         $dutyGroups = [
-            'Roster Duties' => [],
+            'Roaster Duties' => [],
             'Fixed Duties' => [],
             'Leave' => [],
             'Appointments' => [],
@@ -828,7 +828,7 @@ class GameAttendanceService
 
                 // Map to simple group names
                 $groupName = match ($category) {
-                    'Roster Duty' => 'Roster Duties',
+                    'Roaster Duty' => 'Roaster Duties',
                     'Fixed Duty' => 'Fixed Duties',
                     'Leave' => 'Leave',
                     'Appointment' => 'Appointments',
@@ -1053,7 +1053,7 @@ class GameAttendanceService
         $checks = [
             'ERE' => $this->hasActiveEreOnDate($soldier, $date),
             'Leave' => $this->isOnApprovedLeaveOnDate($soldier, $carbonDate),
-            'Roster Duty' => $this->hasActiveDutyWithTimeOrExcusal($soldier, $carbonDate, $sessionTimeRange),
+            'Roaster Duty' => $this->hasActiveDutyWithTimeOrExcusal($soldier, $carbonDate, $sessionTimeRange),
             'Fixed Duty' => $this->hasFixedDutyWithExcusal($soldier, $carbonDate, $sessionTimeRange),
             'Appointment' => $this->hasActiveAppointmentOnDate($soldier, $carbonDate),
             'Course' => $this->hasActiveCourseOnDate($soldier, $carbonDate),
