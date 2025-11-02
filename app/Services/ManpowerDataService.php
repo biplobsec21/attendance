@@ -8,8 +8,8 @@ use App\Models\CompanyRankManpower;
 use App\Models\Soldier;
 use App\Models\SoldierLeaveApplication;
 use App\Models\LeaveType;
-use App\Models\SoldierAbsent; // Add this
-use App\Models\AbsentType; // Add this
+use App\Models\SoldierAbsent;
+use App\Models\AbsentType;
 use Carbon\Carbon;
 
 class ManpowerDataService
@@ -28,7 +28,7 @@ class ManpowerDataService
         $companies = Company::active()->orderBy('id')->get();
         $ranks = Rank::active()->orderBy('id')->get();
         $leaveTypes = LeaveType::active()->orderBy('id')->get();
-        $absentTypes = AbsentType::active()->orderBy('id')->get(); // Add this
+        $absentTypes = AbsentType::active()->orderBy('id')->get();
 
         // Separate officer ranks from other ranks
         $officerRanks = $ranks->filter(function ($rank) {
@@ -90,15 +90,64 @@ class ManpowerDataService
             $receivedOfficerTotals[$company->id] = $officerTotal;
         }
 
-        // Fetch soldiers with active leave (without ERE)
-        $leaveManpower = Soldier::selectRaw('soldiers.company_id, soldiers.rank_id, COUNT(*) as count')
-            ->join('soldier_leave_applications', function ($join) use ($currentDate) {
+        // Fetch soldiers with active leave OR in cadres/courses/ex_areas/att/cmds OR absent (without ERE)
+        $leaveManpower = Soldier::selectRaw('soldiers.company_id, soldiers.rank_id, COUNT(DISTINCT soldiers.id) as count')
+            ->leftJoin('soldier_leave_applications', function ($join) use ($currentDate) {
                 $join->on('soldiers.id', '=', 'soldier_leave_applications.soldier_id')
                     ->where('soldier_leave_applications.application_current_status', 'approved')
                     ->where('soldier_leave_applications.start_date', '<=', $currentDate)
                     ->where(function ($query) use ($currentDate) {
                         $query->whereNull('soldier_leave_applications.end_date')
                             ->orWhere('soldier_leave_applications.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldier_cadres', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_cadres.soldier_id')
+                    ->where('soldier_cadres.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_cadres.end_date')
+                            ->orWhere('soldier_cadres.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldier_courses', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_courses.soldier_id')
+                    ->where('soldier_courses.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_courses.end_date')
+                            ->orWhere('soldier_courses.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldier_ex_areas', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_ex_areas.soldier_id')
+                    ->where('soldier_ex_areas.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_ex_areas.end_date')
+                            ->orWhere('soldier_ex_areas.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldiers_att', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldiers_att.soldier_id')
+                    ->where('soldiers_att.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldiers_att.end_date')
+                            ->orWhere('soldiers_att.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldiers_cmds', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldiers_cmds.soldier_id')
+                    ->where('soldiers_cmds.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldiers_cmds.end_date')
+                            ->orWhere('soldiers_cmds.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldier_absent', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_absent.soldier_id')
+                    ->where('soldier_absent.absent_current_status', 'approved')
+                    ->where('soldier_absent.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_absent.end_date')
+                            ->orWhere('soldier_absent.end_date', '>=', $currentDate);
                     });
             })
             ->leftJoin('soldiers_ere', function ($join) use ($currentDate) {
@@ -112,6 +161,15 @@ class ManpowerDataService
             ->whereIn('soldiers.company_id', $companies->pluck('id'))
             ->whereIn('soldiers.rank_id', $ranks->pluck('id'))
             ->whereNull('soldiers_ere.id') // Exclude soldiers with active ERE records
+            ->where(function ($query) {
+                $query->whereNotNull('soldier_leave_applications.id')
+                    ->orWhereNotNull('soldier_cadres.id')
+                    ->orWhereNotNull('soldier_courses.id')
+                    ->orWhereNotNull('soldier_ex_areas.id')
+                    ->orWhereNotNull('soldiers_att.id')
+                    ->orWhereNotNull('soldiers_cmds.id')
+                    ->orWhereNotNull('soldier_absent.id');
+            })
             ->groupBy('soldiers.company_id', 'soldiers.rank_id')
             ->get()
             ->groupBy('company_id')
@@ -131,7 +189,7 @@ class ManpowerDataService
             $leaveOfficerTotals[$company->id] = $officerTotal;
         }
 
-        // Fetch soldiers without active leave (without ERE)
+        // Fetch soldiers without active leave AND not in cadres/courses/ex_areas/att/cmds AND not absent (without ERE)
         $withoutLeaveManpower = Soldier::selectRaw('soldiers.company_id, soldiers.rank_id, COUNT(*) as count')
             ->leftJoin('soldier_leave_applications', function ($join) use ($currentDate) {
                 $join->on('soldiers.id', '=', 'soldier_leave_applications.soldier_id')
@@ -140,6 +198,55 @@ class ManpowerDataService
                     ->where(function ($query) use ($currentDate) {
                         $query->whereNull('soldier_leave_applications.end_date')
                             ->orWhere('soldier_leave_applications.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldier_cadres', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_cadres.soldier_id')
+                    ->where('soldier_cadres.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_cadres.end_date')
+                            ->orWhere('soldier_cadres.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldier_courses', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_courses.soldier_id')
+                    ->where('soldier_courses.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_courses.end_date')
+                            ->orWhere('soldier_courses.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldier_ex_areas', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_ex_areas.soldier_id')
+                    ->where('soldier_ex_areas.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_ex_areas.end_date')
+                            ->orWhere('soldier_ex_areas.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldiers_att', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldiers_att.soldier_id')
+                    ->where('soldiers_att.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldiers_att.end_date')
+                            ->orWhere('soldiers_att.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldiers_cmds', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldiers_cmds.soldier_id')
+                    ->where('soldiers_cmds.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldiers_cmds.end_date')
+                            ->orWhere('soldiers_cmds.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldier_absent', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_absent.soldier_id')
+                    ->where('soldier_absent.absent_current_status', 'approved')
+                    ->where('soldier_absent.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_absent.end_date')
+                            ->orWhere('soldier_absent.end_date', '>=', $currentDate);
                     });
             })
             ->leftJoin('soldiers_ere', function ($join) use ($currentDate) {
@@ -153,7 +260,13 @@ class ManpowerDataService
             ->whereIn('soldiers.company_id', $companies->pluck('id'))
             ->whereIn('soldiers.rank_id', $ranks->pluck('id'))
             ->whereNull('soldiers_ere.id') // Exclude soldiers with active ERE records
-            ->whereNull('soldier_leave_applications.id') // Only count soldiers without active leave
+            ->whereNull('soldier_leave_applications.id') // No active leave
+            ->whereNull('soldier_cadres.id') // Not in cadres
+            ->whereNull('soldier_courses.id') // Not in courses
+            ->whereNull('soldier_ex_areas.id') // Not in ex areas
+            ->whereNull('soldiers_att.id') // Not in ATT
+            ->whereNull('soldiers_cmds.id') // Not in CMDs
+            ->whereNull('soldier_absent.id') // Not absent
             ->groupBy('soldiers.company_id', 'soldiers.rank_id')
             ->get()
             ->groupBy('company_id')
@@ -205,7 +318,7 @@ class ManpowerDataService
         $absentTypeManpower = Soldier::selectRaw('soldiers.company_id, soldier_absent.absent_type_id, COUNT(*) as count')
             ->join('soldier_absent', function ($join) use ($currentDate) {
                 $join->on('soldiers.id', '=', 'soldier_absent.soldier_id')
-                    ->where('soldier_absent.absent_current_status', 'approved') // Assuming similar status field
+                    ->where('soldier_absent.absent_current_status', 'approved')
                     ->where('soldier_absent.start_date', '<=', $currentDate)
                     ->where(function ($query) use ($currentDate) {
                         $query->whereNull('soldier_absent.end_date')
@@ -233,14 +346,14 @@ class ManpowerDataService
         $additionalStatuses = $this->getAdditionalStatuses($currentDate, $companies);
 
         // Merge leave types with additional statuses and absent types for combined absent details
-        $absentDetails = $this->mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies);
+        $absentDetails = $this->mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $leaveManpower);
 
         return [
             'companies' => $companies,
             'officerRanks' => $officerRanks,
             'otherRanks' => $otherRanks,
             'leaveTypes' => $leaveTypes,
-            'absentTypes' => $absentTypes, // Add this
+            'absentTypes' => $absentTypes,
             'manpower' => $manpower,
             'officerTotals' => $officerTotals,
             'receivedManpower' => $receivedManpower,
@@ -331,9 +444,10 @@ class ManpowerDataService
      * @param \Illuminate\Support\Collection $absentTypeManpower
      * @param array $additionalStatuses
      * @param \Illuminate\Support\Collection $companies
+     * @param \Illuminate\Support\Collection $leaveManpower
      * @return array
      */
-    private function mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies)
+    private function mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $leaveManpower = null)
     {
         $columns = [];
         $columnTotals = [];
@@ -366,6 +480,7 @@ class ManpowerDataService
             }
             $columnTotals['leave_' . $leaveType->id] = $total;
         }
+
         // Add additional status columns
         foreach ($additionalStatuses as $key => $status) {
             $columns[] = [
@@ -392,6 +507,7 @@ class ManpowerDataService
             }
             $columnTotals['status_' . $key] = $total;
         }
+
         // Add absent type columns and calculate totals
         foreach ($absentTypes as $absentType) {
             $columns[] = [
@@ -419,14 +535,15 @@ class ManpowerDataService
             $columnTotals['absent_' . $absentType->id] = $total;
         }
 
-
-
-        // Calculate company totals
+        // Calculate company totals - use the leaveManpower data to avoid double counting
         $companyTotals = [];
         foreach ($companies as $company) {
             $total = 0;
-            if (isset($companyData[$company->id])) {
-                $total = array_sum($companyData[$company->id]);
+            // Sum up the leaveManpower counts for this company (unique soldiers)
+            if ($leaveManpower && isset($leaveManpower[$company->id])) {
+                foreach ($leaveManpower[$company->id] as $rankData) {
+                    $total += $rankData->count;
+                }
             }
             $companyTotals[$company->id] = $total;
         }
