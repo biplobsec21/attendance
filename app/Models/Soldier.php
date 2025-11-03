@@ -755,4 +755,434 @@ class Soldier extends Model
     {
         return $this->hasMany(SoldierExArea::class)->where('status', 'completed');
     }
+    public function absents(): HasMany
+    {
+        return $this->hasMany(Absent::class, 'soldier_id');
+    }
+    // ------- ------------------ New Methods for Soldier Model ----------------- //
+    // ------- ------------------ New Methods for Soldier Model ----------------- //
+    // ------- ------------------ New Methods for Soldier Model ----------------- //
+    // ------- ------------------ New Methods for Soldier Model ----------------- //
+    // ------- ------------------ New Methods for Soldier Model ----------------- //
+    /**
+     * Get all active assignments for a specific date
+     *
+     * @param string|Carbon|null $date
+     * @return array
+     */
+    public function getActiveAssignmentsSummary($date = null): array
+    {
+        $date = $date ? Carbon::parse($date) : Carbon::today();
+        $assignments = [];
+
+        // Active Cadres
+        $activeCadres = $this->cadres()
+            ->wherePivot('status', 'active')
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+            ->get();
+
+        foreach ($activeCadres as $cadre) {
+            $assignments[] = [
+                'type' => 'cadre',
+                'name' => $cadre->name,
+                'start_date' => $cadre->pivot->start_date,
+                'end_date' => $cadre->pivot->end_date,
+                'status' => $cadre->pivot->status,
+            ];
+        }
+
+        // Active Courses
+        $activeCourses = $this->courses()
+            ->wherePivot('status', 'active')
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+            ->get();
+
+        foreach ($activeCourses as $course) {
+            $assignments[] = [
+                'type' => 'course',
+                'name' => $course->name,
+                'start_date' => $course->pivot->start_date,
+                'end_date' => $course->pivot->end_date,
+                'status' => $course->pivot->status,
+            ];
+        }
+
+        // Active Ex Areas
+        $activeExAreas = $this->exAreas()
+            ->where('status', 'active')
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+            ->get();
+
+        foreach ($activeExAreas as $exArea) {
+            $assignments[] = [
+                'type' => 'ex_area',
+                'name' => $exArea->ex_area_id ?? 'Ex Area',
+                'start_date' => $exArea->start_date,
+                'end_date' => $exArea->end_date,
+                'status' => $exArea->status,
+            ];
+        }
+
+        // Active Services
+        $activeServices = $this->services()
+            ->where('status', 'active')
+            ->whereDate('appointments_from_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('appointments_to_date')
+                    ->orWhereDate('appointments_to_date', '>=', $date);
+            })
+            ->get();
+
+        foreach ($activeServices as $service) {
+            $assignments[] = [
+                'type' => 'service',
+                'name' => $service->appointments_name ?? 'Service',
+                'start_date' => $service->appointments_from_date,
+                'end_date' => $service->appointments_to_date,
+                'status' => $service->status,
+            ];
+        }
+
+        // Fixed Duty Assignments
+        $fixedDuties = $this->dutyRanks()
+            ->where('duty_type', 'fixed')
+            ->whereHas('duty', function ($q) {
+                $q->where('status', 'Active');
+            })
+            ->with('duty')
+            ->get();
+
+        foreach ($fixedDuties as $dutyRank) {
+            $assignments[] = [
+                'type' => 'fixed_duty',
+                'name' => $dutyRank->duty->duty_name ?? 'Fixed Duty',
+                'duty_details' => [
+                    'start_time' => $dutyRank->duty->start_time,
+                    'end_time' => $dutyRank->duty->end_time,
+                    'duration_days' => $dutyRank->duty->duration_days,
+                ],
+                'status' => 'active',
+            ];
+        }
+
+        // Active Leave
+        $activeLeaves = $this->leaveApplications()
+            ->where('application_current_status', 'approved')
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+            ->with('leaveType')
+            ->get();
+
+        foreach ($activeLeaves as $leave) {
+            $assignments[] = [
+                'type' => 'leave',
+                'name' => $leave->leaveType->name ?? 'Leave',
+                'reason' => $leave->reason,
+                'start_date' => $leave->start_date,
+                'end_date' => $leave->end_date,
+                'status' => 'approved',
+            ];
+        }
+
+        // Active CMD
+        $activeCmds = $this->cmds()
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+            ->get();
+
+        foreach ($activeCmds as $cmd) {
+            $assignments[] = [
+                'type' => 'cmd',
+                'name' => $cmd->name,
+                'start_date' => $cmd->pivot->start_date,
+                'end_date' => $cmd->pivot->end_date,
+                'status' => 'active',
+            ];
+        }
+
+        // Active ATT
+        $activeAtts = $this->att()
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+            ->get();
+
+        foreach ($activeAtts as $att) {
+            $assignments[] = [
+                'type' => 'att',
+                'name' => $att->name,
+                'start_date' => $att->pivot->start_date,
+                'end_date' => $att->pivot->end_date,
+                'status' => 'active',
+            ];
+        }
+
+        // Active ERE
+        $activeEres = $this->ere()
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+            ->get();
+
+        foreach ($activeEres as $ere) {
+            $assignments[] = [
+                'type' => 'ere',
+                'name' => $ere->name,
+                'start_date' => $ere->pivot->start_date,
+                'end_date' => $ere->pivot->end_date,
+                'status' => 'active',
+            ];
+        }
+
+        // Active Absents
+        $activeAbsents = $this->absents()
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+            ->get();
+
+        foreach ($activeAbsents as $absent) {
+            $assignments[] = [
+                'type' => 'absent',
+                'name' => 'Absent',
+                'start_date' => $absent->start_date,
+                'end_date' => $absent->end_date,
+                'reason' => $absent->reason ?? null,
+                'status' => 'approved',
+            ];
+        }
+
+        return $assignments;
+    }
+    /**
+     * Scope to get soldiers who are excluded (have active assignments)
+     *
+     * @param Builder $query
+     * @param string|Carbon $date
+     * @return Builder
+     */
+    public function scopeExcluded($query, $date = null)
+    {
+        $date = $date ? Carbon::parse($date) : Carbon::today();
+
+        return $query->where(function ($q) use ($date) {
+            // Has active cadres
+            $q->orWhereHas('cadres', function ($query) use ($date) {
+                $query->wherePivot('status', 'active')
+                    ->whereDate('start_date', '<=', $date)
+                    ->where(function ($q) use ($date) {
+                        $q->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', $date);
+                    });
+            })
+                // Has active courses
+                ->orWhereHas('courses', function ($query) use ($date) {
+                    $query->wherePivot('status', 'active')
+                        ->whereDate('start_date', '<=', $date)
+                        ->where(function ($q) use ($date) {
+                            $q->whereNull('end_date')
+                                ->orWhereDate('end_date', '>=', $date);
+                        });
+                })
+                // Has active ex areas
+                ->orWhereHas('exAreas', function ($query) use ($date) {
+                    $query->where('status', 'active')
+                        ->whereDate('start_date', '<=', $date)
+                        ->where(function ($q) use ($date) {
+                            $q->whereNull('end_date')
+                                ->orWhereDate('end_date', '>=', $date);
+                        });
+                })
+                // Has active services
+                ->orWhereHas('services', function ($query) use ($date) {
+                    $query->where('status', 'active')
+                        ->whereDate('appointments_from_date', '<=', $date)
+                        ->where(function ($q) use ($date) {
+                            $q->whereNull('appointments_to_date')
+                                ->orWhereDate('appointments_to_date', '>=', $date);
+                        });
+                })
+                // Has fixed duty assignments
+                ->orWhereHas('dutyRanks', function ($query) {
+                    $query->where('duty_type', 'fixed')
+                        ->whereHas('duty', function ($q) {
+                            $q->where('status', 'Active');
+                        });
+                })
+                // Has active leave
+                ->orWhereHas('leaveApplications', function ($query) use ($date) {
+                    $query->where('application_current_status', 'approved')
+                        ->whereDate('start_date', '<=', $date)
+                        ->where(function ($q) use ($date) {
+                            $q->whereNull('end_date')
+                                ->orWhereDate('end_date', '>=', $date);
+                        });
+                })
+                // Has active CMD
+                ->orWhereHas('cmds', function ($query) use ($date) {
+                    $query->whereDate('start_date', '<=', $date)
+                        ->where(function ($q) use ($date) {
+                            $q->whereNull('end_date')
+                                ->orWhereDate('end_date', '>=', $date);
+                        });
+                })
+                // Has active ATT
+                ->orWhereHas('att', function ($query) use ($date) {
+                    $query->whereDate('start_date', '<=', $date)
+                        ->where(function ($q) use ($date) {
+                            $q->whereNull('end_date')
+                                ->orWhereDate('end_date', '>=', $date);
+                        });
+                })
+                // Has active ERE
+                ->orWhereHas('ere', function ($query) use ($date) {
+                    $query->whereDate('start_date', '<=', $date)
+                        ->where(function ($q) use ($date) {
+                            $q->whereNull('end_date')
+                                ->orWhereDate('end_date', '>=', $date);
+                        });
+                })
+                // Has active absent records
+                ->orWhereHas('absents', function ($query) use ($date) {
+                    $query->where('status', 'approved')
+                        ->whereDate('start_date', '<=', $date)
+                        ->where(function ($q) use ($date) {
+                            $q->whereNull('end_date')
+                                ->orWhereDate('end_date', '>=', $date);
+                        });
+                });
+        });
+    }
+
+    /**
+     * Scope to get soldiers who are available (NOT excluded)
+     */
+    public function scopeAvailable($query, $date = null)
+    {
+        $date = $date ? Carbon::parse($date) : Carbon::today();
+
+        // Get excluded soldier IDs
+        $excludedIds = self::excluded($date)->pluck('id')->toArray();
+
+        // Return soldiers NOT in excluded list
+        return $query->whereNotIn('id', $excludedIds);
+    }
+
+    /**
+     * Load active assignments for a specific date
+     */
+    public function scopeWithActiveAssignments($query, $date = null)
+    {
+        $date = $date ? Carbon::parse($date) : Carbon::today();
+
+        return $query->with([
+            'cadres' => function ($q) use ($date) {
+                $q->wherePivot('status', 'active')
+                    ->whereDate('start_date', '<=', $date)
+                    ->where(function ($query) use ($date) {
+                        $query->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', $date);
+                    });
+            },
+            'courses' => function ($q) use ($date) {
+                $q->wherePivot('status', 'active')
+                    ->whereDate('start_date', '<=', $date)
+                    ->where(function ($query) use ($date) {
+                        $query->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', $date);
+                    });
+            },
+            'exAreas' => function ($q) use ($date) {
+                $q->where('status', 'active')
+                    ->whereDate('start_date', '<=', $date)
+                    ->where(function ($query) use ($date) {
+                        $query->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', $date);
+                    });
+            },
+            'services' => function ($q) use ($date) {
+                $q->where('status', 'active')
+                    ->whereDate('appointments_from_date', '<=', $date)
+                    ->where(function ($query) use ($date) {
+                        $query->whereNull('appointments_to_date')
+                            ->orWhereDate('appointments_to_date', '>=', $date);
+                    });
+            },
+            'dutyRanks' => function ($q) {
+                $q->where('duty_type', 'fixed')
+                    ->whereHas('duty', function ($query) {
+                        $query->where('status', 'Active');
+                    });
+            },
+            'dutyRanks.duty',
+            'leaveApplications' => function ($q) use ($date) {
+                $q->where('application_current_status', 'approved')
+                    ->whereDate('start_date', '<=', $date)
+                    ->where(function ($query) use ($date) {
+                        $query->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', $date);
+                    });
+            },
+            'leaveApplications.leaveType',
+            'cmds' => function ($q) use ($date) {
+                $q->whereDate('start_date', '<=', $date)
+                    ->where(function ($query) use ($date) {
+                        $query->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', $date);
+                    });
+            },
+            'att' => function ($q) use ($date) {
+                $q->whereDate('start_date', '<=', $date)
+                    ->where(function ($query) use ($date) {
+                        $query->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', $date);
+                    });
+            },
+            'ere' => function ($q) use ($date) {
+                $q->whereDate('start_date', '<=', $date)
+                    ->where(function ($query) use ($date) {
+                        $query->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', $date);
+                    });
+            },
+            'absents' => function ($q) use ($date) {
+                $q->where('status', 'approved')
+                    ->whereDate('start_date', '<=', $date)
+                    ->where(function ($query) use ($date) {
+                        $query->whereNull('end_date')
+                            ->orWhereDate('end_date', '>=', $date);
+                    });
+            }
+        ]);
+    }
+    // ------- ------------------ New Methods for Soldier Model ----------------- //
+    // ------- ------------------ New Methods for Soldier Model ----------------- //
+    // ------- ------------------ New Methods for Soldier Model ----------------- //
+    // ------- ------------------ New Methods for Soldier Model ----------------- //
+    // ------- ------------------ New Methods for Soldier Model ----------------- //
 }

@@ -146,6 +146,7 @@ Route::middleware('auth', 'check.leaves')->group(function () {
 
     Route::get('/coursecadremanager/{type}/{id}/edit-data', [CourseCadreManagerController::class, 'getEditData'])->name('coursecadremanager.edit-data');
     Route::put('/coursecadremanager/{type}/{id}', [CourseCadreManagerController::class, 'update'])->name('coursecadremanager.update');
+    Route::put('/coursecadremanager/ex_area/{id}/complete', [CourseCadreManagerController::class, 'completeExArea'])->name('coursecadremanager.exarea.complete');
 
     Route::get('/soldiers/by-rank/{rank}', [ProfileController::class, 'getByRank'])->name('soldiers.byRank');
     Route::get('ranks-data', [RankController::class, 'getRanks'])->name('ranks.data');

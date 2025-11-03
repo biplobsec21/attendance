@@ -2,13 +2,16 @@
 
 namespace App\Services;
 
+use App\Models\Absent;
 use App\Models\Duty;
 use App\Models\DutyRank;
+use App\Models\LeaveApplication;
 use App\Models\Soldier;
 use App\Models\SoldierDuty;
 use App\Models\SoldierCadre;
 use App\Models\SoldierCourse;
 use App\Models\SoldierServices;
+use App\Models\SoldierExArea;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -752,7 +755,8 @@ class DutyAssignmentService
 
         Log::info('Cadre exclusions', [
             'count' => count($cadreIds),
-            'soldier_ids' => $cadreIds
+            // Consider removing soldier_ids from log for large datasets to avoid log bloat
+            // 'soldier_ids' => $cadreIds
         ]);
 
         // Soldiers in ACTIVE courses
@@ -767,7 +771,22 @@ class DutyAssignmentService
 
         Log::info('Course exclusions', [
             'count' => count($courseIds),
-            'soldier_ids' => $courseIds
+            // 'soldier_ids' => $courseIds
+        ]);
+
+        // Soldiers with ACTIVE Ex Areas (using model scope with date filtering)
+        $exAreaIds = SoldierExArea::active()
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+            ->pluck('soldier_id')
+            ->toArray();
+
+        Log::info('Ex Area exclusions', [
+            'count' => count($exAreaIds),
+            // 'soldier_ids' => $exAreaIds
         ]);
 
         // Soldiers in ACTIVE services
@@ -782,7 +801,7 @@ class DutyAssignmentService
 
         Log::info('Service exclusions', [
             'count' => count($serviceIds),
-            'soldier_ids' => $serviceIds
+            // 'soldier_ids' => $serviceIds
         ]);
 
         // Soldiers with fixed duty assignments (CRITICAL)
@@ -796,10 +815,94 @@ class DutyAssignmentService
 
         Log::info('Fixed duty exclusions', [
             'count' => count($fixedDutyIds),
-            'soldier_ids' => $fixedDutyIds
+            // 'soldier_ids' => $fixedDutyIds
         ]);
 
-        $excluded = array_unique(array_merge($cadreIds, $courseIds, $serviceIds, $fixedDutyIds));
+        // Soldiers on LEAVE (approved and active for the specific date)
+        $leaveIds = LeaveApplication::approved()
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+            ->pluck('soldier_id')
+            ->toArray();
+
+        Log::info('Leave exclusions', [
+            'count' => count($leaveIds),
+            // 'soldier_ids' => $leaveIds
+        ]);
+
+        // Soldiers with ACTIVE CMD (Command) - following same pattern
+        $cmdIds = Soldier::whereHas('cmds', function ($query) use ($date) {
+            $query->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+                ->whereDate('start_date', '<=', $date);
+        })->pluck('id')->toArray();
+
+        Log::info('CMD exclusions', [
+            'count' => count($cmdIds),
+            // 'soldier_ids' => $cmdIds
+        ]);
+
+        // Soldiers with ACTIVE ATT (Annual Training) - following same pattern
+        $attIds = Soldier::whereHas('att', function ($query) use ($date) {
+            $query->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+                ->whereDate('start_date', '<=', $date);
+        })->pluck('id')->toArray();
+
+        Log::info('ATT exclusions', [
+            'count' => count($attIds),
+            // 'soldier_ids' => $attIds
+        ]);
+
+        // Soldiers with ACTIVE ERE - following same pattern
+        $ereIds = Soldier::whereHas('ere', function ($query) use ($date) {
+            $query->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+                ->whereDate('start_date', '<=', $date);
+        })->pluck('id')->toArray();
+
+        Log::info('ERE exclusions', [
+            'count' => count($ereIds),
+            // 'soldier_ids' => $ereIds
+        ]);
+
+        // Soldiers with ACTIVE Absent records (using model scopes)
+        $absentIds = Absent::approved()
+            ->whereDate('start_date', '<=', $date)
+            ->where(function ($q) use ($date) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $date);
+            })
+            ->pluck('soldier_id')
+            ->toArray();
+
+        Log::info('Absent exclusions', [
+            'count' => count($absentIds),
+            // 'soldier_ids' => $absentIds
+        ]);
+
+        // Combine all exclusion lists
+        $excluded = array_unique(array_merge(
+            $cadreIds,
+            $courseIds,
+            $serviceIds,
+            $fixedDutyIds,
+            $leaveIds,
+            $exAreaIds,
+            $cmdIds,
+            $attIds,
+            $ereIds,
+            $absentIds
+        ));
 
         Log::info('Exclusion list finalized', [
             'date' => $date->toDateString(),
@@ -808,9 +911,16 @@ class DutyAssignmentService
                 'cadres' => count($cadreIds),
                 'courses' => count($courseIds),
                 'services' => count($serviceIds),
-                'fixed_duties' => count($fixedDutyIds)
+                'fixed_duties' => count($fixedDutyIds),
+                'leave' => count($leaveIds),
+                'ex_areas' => count($exAreaIds),
+                'cmd' => count($cmdIds),
+                'att' => count($attIds),
+                'ere' => count($ereIds),
+                'absent' => count($absentIds)
             ],
-            'excluded_soldier_ids' => $excluded
+            // Consider removing full soldier_ids array from final log
+            // 'excluded_soldier_ids' => $excluded
         ]);
 
         // Cache the result
