@@ -23,7 +23,14 @@ export function initFilters(manager) {
             { id: 'ere', placeholder: 'Select ERE Status...' },
             { id: 'cmd', placeholder: 'Select CMD...' },
             { id: 'exArea', placeholder: 'Select Ex-Areas...' },
-            { id: 'leave', placeholder: 'Select Leave Status...' }
+            {
+                id: 'leave',
+                placeholder: 'Select Leave Status...',
+                predefinedOptions: [
+                    { value: 'on-leave', label: 'On Leave' },
+                    { value: 'present', label: 'Present' }
+                ]
+            }
         ];
 
         multiSelectConfigs.forEach(config => {
@@ -48,6 +55,11 @@ export function initFilters(manager) {
                             manager.filterAndRender();
                         }
                     });
+                    // Set predefined options for leave filter immediately
+                    if (config.id === 'leave' && config.predefinedOptions) {
+                        console.log('📝 Setting predefined options for leave filter:', config.predefinedOptions);
+                        multiSelects.leave.setOptions(config.predefinedOptions);
+                    }
                     console.log(`✅ ${config.id} multi-select initialized successfully`);
                 } catch (error) {
                     console.error(`❌ Failed to initialize ${config.id} multi-select:`, error);
@@ -55,11 +67,7 @@ export function initFilters(manager) {
             } else {
                 console.warn(`⚠️ Container not found for ${config.id}: #${containerId}`);
             }
-            if (config.id === 'leave') {
-                multiSelects.leave.setOptions([
-                    { value: 'on-leave', label: 'On Leave' }
-                ]);
-            }
+
         });
 
         console.log('📊 Multi-select initialization complete:', {

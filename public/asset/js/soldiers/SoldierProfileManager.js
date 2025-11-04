@@ -306,6 +306,7 @@ export default class SoldierProfileManager {
             // Create lowercase search strings
             soldier._searchStr = `${soldier.name || ''} ${soldier.army_no || ''} ${soldier.mobile || ''} ${soldier.family_mobile_1 || ''} ${soldier.family_mobile_2 || ''}`.toLowerCase();
             // Create lookup sets for array properties
+            soldier.is_leave = Boolean(soldier.is_leave);
             soldier._skillSet = new Set(soldier.cocurricular?.map(s => s.name) || []);
             soldier._courseSet = new Set(soldier.courses?.map(c => c.name) || []);
             soldier._cadreSet = new Set(soldier.cadres?.map(c => c.name) || []);
@@ -555,24 +556,20 @@ export default class SoldierProfileManager {
     /**
      * Optimized filter application using preprocessed data
      */
-    /**
-  * Optimized filter application using preprocessed data
-  */
-    /**
-  * FIXED: Complete filter application with proper logic
-  * Replace the applyFilters method in SoldierProfileManager
-  */
+    /**/
+
     applyFilters(soldiers) {
         console.log('🎯 applyFilters called with:', {
             totalSoldiers: soldiers.length,
             activeFilters: Object.entries(this.filters).filter(([key, value]) =>
                 value && value !== '' && (!Array.isArray(value) || value.length > 0)
-            )
+            ),
+            leaveFilter: this.filters.leave
         });
 
         let filtered = soldiers;
 
-        // 1. Search filter (works - keep as is)
+        // 1. Search filter
         if (this.filters.search) {
             const term = this.filters.search.toLowerCase().trim();
             console.log(`🔍 Applying search filter: "${term}"`);
@@ -689,15 +686,28 @@ export default class SoldierProfileManager {
             console.log(`🎯 Ex-Area filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
-        // 4. Leave status filter (special handling)
-        // 4. FIXED: Leave status filter with proper logic
-        // Leave filter logic
-        // 4. FIXED: Leave status filter - only filter when "on-leave" is selected
-        if (this.filters.leave && Array.isArray(this.filters.leave) && this.filters.leave.includes('on-leave')) {
+        // 4. FIXED: Leave status filter with proper logic for both options
+        if (this.filters.leave && Array.isArray(this.filters.leave) && this.filters.leave.length > 0) {
             const beforeFilter = filtered.length;
-            console.log('🎯 Filtering for soldiers on leave only');
+            console.log('🎯 Applying leave filter:', this.filters.leave);
 
-            filtered = filtered.filter(soldier => soldier.is_leave === true);
+            filtered = filtered.filter(soldier => {
+                const isOnLeave = soldier.is_leave === true;
+
+                // If "on-leave" is selected, show soldiers who are on leave
+                if (this.filters.leave.includes('on-leave') && this.filters.leave.includes('present')) {
+                    // If both are selected, show all (no filtering)
+                    return true;
+                } else if (this.filters.leave.includes('on-leave')) {
+                    // Show only soldiers on leave
+                    return isOnLeave;
+                } else if (this.filters.leave.includes('present')) {
+                    // Show only soldiers who are present (not on leave)
+                    return !isOnLeave;
+                }
+
+                return true;
+            });
 
             console.log(`🎯 Leave filter reduced from ${beforeFilter} to ${filtered.length} soldiers`);
         }
