@@ -3,6 +3,8 @@ import { MultiSelect } from "./multiSelect.js";
 export function initFilters(manager) {
     let searchTimeout;
     const multiSelects = {};
+    let updateInProgress = false;
+    let filterRenderTimeout;
 
     console.log('🔧 Initializing filters with manager:', !!manager);
 
@@ -48,13 +50,21 @@ export function initFilters(manager) {
                         placeholder: config.placeholder,
                         onChange: (selectedValues) => {
                             console.log(`🎯 ${config.id} filter changed:`, selectedValues);
+
+                            // Update filter value
                             manager.filters[config.id] = selectedValues.length > 0 ? selectedValues : '';
+                            // DIRECT UI updates
                             updateFilterActiveStates();
                             updateActiveFiltersSummary();
                             updateFilterCount();
-                            manager.filterAndRender();
+                            // Debounced render only
+                            clearTimeout(filterRenderTimeout);
+                            filterRenderTimeout = setTimeout(() => {
+                                manager.filterAndRender();
+                            }, 150);
                         }
                     });
+
                     // Set predefined options for leave filter immediately
                     if (config.id === 'leave' && config.predefinedOptions) {
                         console.log('📝 Setting predefined options for leave filter:', config.predefinedOptions);
@@ -67,7 +77,6 @@ export function initFilters(manager) {
             } else {
                 console.warn(`⚠️ Container not found for ${config.id}: #${containerId}`);
             }
-
         });
 
         console.log('📊 Multi-select initialization complete:', {
@@ -130,18 +139,17 @@ export function initFilters(manager) {
             }
         });
 
-        // FIXED: Only show summary if there are actual active filters or non-empty search
         const hasActiveSearch = manager.filters.search && manager.filters.search.trim() !== '';
         if (activeFilters.length > 0 || hasActiveSearch) {
             summaryElement.classList.remove('hidden');
             filtersListElement.innerHTML = activeFilters.map(filter => `
-            <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center space-x-1">
-                <span class="truncate max-w-[200px]">${filter.label}: ${filter.value}</span>
-                <button class="clear-single-filter ml-1 hover:text-blue-900 flex-shrink-0" data-filter="${filter.key}">
-                    <i class="fas fa-times text-xs"></i>
-                </button>
-            </span>
-        `).join('');
+                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center space-x-1">
+                    <span class="truncate max-w-[200px]">${filter.label}: ${filter.value}</span>
+                    <button class="clear-single-filter ml-1 hover:text-blue-900 flex-shrink-0" data-filter="${filter.key}">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </span>
+            `).join('');
 
             let counterElement = document.getElementById('filtered-counter');
             if (!counterElement) {
@@ -157,7 +165,6 @@ export function initFilters(manager) {
                     const filterKey = e.target.closest('button').dataset.filter;
                     manager.filters[filterKey] = '';
 
-                    // Clear multi-select if it exists
                     if (multiSelects[filterKey]) {
                         multiSelects[filterKey].clear();
                     }
@@ -184,7 +191,6 @@ export function initFilters(manager) {
 
     // Function to update filter active states
     const updateFilterActiveStates = () => {
-        // Handle multi-select filters
         Object.keys(multiSelects).forEach(filterType => {
             const multiSelect = multiSelects[filterType];
             if (multiSelect) {
@@ -200,7 +206,6 @@ export function initFilters(manager) {
             }
         });
 
-        // Handle search input
         const searchInput = document.getElementById('search-input');
         if (searchInput) {
             const hasSearchValue = manager.filters.search && manager.filters.search.trim() !== '';
@@ -215,7 +220,6 @@ export function initFilters(manager) {
     // Update filter options when data is loaded
     const updateMultiSelectOptions = () => {
         Object.keys(multiSelects).forEach(filterType => {
-            // Skip ERE and Leave as they have predefined options
             if (filterType === 'leave') return;
 
             const options = getOptionsForFilterType(filterType, manager.soldiers);
@@ -297,12 +301,10 @@ export function initFilters(manager) {
     function updateFilterCount() {
         let activeCount = 0;
 
-        // Count search filter only if it has value
         if (manager.filters.search && manager.filters.search.trim() !== '') {
             activeCount++;
         }
 
-        // Count multi-select filters only if they have selected values
         Object.keys(multiSelects).forEach(filterType => {
             const filterValue = manager.filters[filterType];
             if (filterValue &&
@@ -312,21 +314,16 @@ export function initFilters(manager) {
         });
 
         const filterCount = document.getElementById('filter-count');
-        const filteredCounter = document.getElementById('filtered-counter');
 
-        console.log('=== FILTER COUNT DEBUG ===');
-        console.log('Active filters count:', activeCount);
-        console.log('Filter count element:', filterCount);
-        console.log('Filter count element content:', filterCount?.textContent);
-        console.log('Filtered counter element:', filteredCounter);
-        console.log('Filtered counter content:', filteredCounter?.textContent);
-        console.log('Total soldiers:', manager.soldiers?.length || 0);
-        console.log('Filtered soldiers:', manager.applyFilters ? manager.applyFilters(manager.soldiers).length : 'N/A');
-        console.log('=== END DEBUG ===');
+        console.log('🔢 Filter count update:', {
+            activeCount,
+            hasElement: !!filterCount,
+            totalSoldiers: manager.soldiers?.length || 0,
+            filteredSoldiers: manager.filteredSoldiers?.length || 0
+        });
 
         if (!filterCount) return;
 
-        // Force set the correct value
         filterCount.textContent = activeCount.toString();
 
         if (activeCount > 0) {
@@ -336,22 +333,38 @@ export function initFilters(manager) {
         }
     }
 
-    // Search input event
+    // Search input event with improved debouncing
     document.getElementById('search-input')?.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
             const searchValue = e.target.value.trim();
-            manager.filters.search = searchValue; // Set to empty string if no value
+            manager.filters.search = searchValue;
 
-            updateFilterActiveStates();
-            updateActiveFiltersSummary();
-            updateFilterCount();
-            manager.filterAndRender();
+            // Batch UI updates
+            requestAnimationFrame(() => {
+                updateFilterActiveStates();
+                updateActiveFiltersSummary();
+                updateFilterCount();
+            });
+
+            // Debounced render
+            clearTimeout(filterRenderTimeout);
+            filterRenderTimeout = setTimeout(() => {
+                manager.filterAndRender();
+            }, 200);
         }, 300);
     });
 
     // Clear all filters button
+    // Clear all filters button
     document.getElementById('clear-all-filters')?.addEventListener('click', () => {
+        console.log('🧹 Clearing all filters');
+
+        // Clear all timeouts
+        clearTimeout(searchTimeout);
+        clearTimeout(filterRenderTimeout);
+
+        // Clear manager filters
         manager.clearFilters();
 
         // Clear all multi-selects
@@ -366,9 +379,17 @@ export function initFilters(manager) {
             searchInput.classList.remove('filter-active');
         }
 
+        // Immediate UI updates
         updateFilterActiveStates();
         updateActiveFiltersSummary();
         updateFilterCount();
+        // Clear selections DIRECTLY (no need for requestAnimationFrame)
+        manager.selectedRows.clear();
+        if (manager.elements.selectAll) {
+            manager.elements.selectAll.checked = false;
+            manager.elements.selectAll.indeterminate = false;
+        }
+        // Force render
         manager.filterAndRender();
     });
 
@@ -393,9 +414,11 @@ export function initFilters(manager) {
     manager.updateFilterCount = updateFilterCount;
 
     // Initialize
-    updateFilterActiveStates();
-    updateActiveFiltersSummary();
-    updateFilterCount();
+    requestAnimationFrame(() => {
+        updateFilterActiveStates();
+        updateActiveFiltersSummary();
+        updateFilterCount();
+    });
 
     console.log('✅ Filters initialization complete');
 }

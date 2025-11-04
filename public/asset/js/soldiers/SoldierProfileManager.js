@@ -28,21 +28,24 @@ export default class SoldierProfileManager {
         };
         this.selectedRows = new Set();
         this.soldiers = [];
-        this.filteredSoldiers = []; // Cache filtered results
+        this.filteredSoldiers = [];
         this.bulkActions = new SoldierBulkActions(this);
         this.isLoading = false;
         this.isRendering = false;
-        this.renderBatchSize = 50; // Increased batch size
+        this.renderBatchSize = 20;
         this.currentRenderFrame = null;
         this.renderAbortController = null;
 
-        // Cache DOM elements
-        this.cacheElements();
+        // NEW: Render queue to prevent conflicts
+        this.renderQueue = Promise.resolve();
+        this.pendingRender = false;
+        this.rowCache = new Map(); // Row caching
+        this.lastRenderedCount = 0;
 
-        // Bind methods for event listeners
+        this.cacheElements();
         this.handleTableClick = this.handleTableClick.bind(this);
         this.handleCheckboxChange = this.handleCheckboxChange.bind(this);
-        this.debouncedFilterAndRender = this.debounce(this.filterAndRender.bind(this), 150);
+        this.debouncedFilterAndRender = this.debounce(this.filterAndRender.bind(this), 200);
     }
 
     cacheElements() {
@@ -70,7 +73,6 @@ export default class SoldierProfileManager {
 
             await this.loadData();
 
-            // FIXED: Select all only visible soldiers
             if (this.elements.selectAll) {
                 this.elements.selectAll.addEventListener("change", (e) => {
                     this.toggleSelectAllVisible(e.target.checked);
@@ -93,18 +95,21 @@ export default class SoldierProfileManager {
             showToast('Error initializing application', 'error');
         }
     }
+
     /**
-     * NEW METHOD: Toggle selection for only visible/filtered soldiers
+     * FIXED: Toggle selection with proper state management
      */
     toggleSelectAllVisible(checked) {
         console.log(`Select All Visible: ${checked ? 'Selecting' : 'Deselecting'} ${this.filteredSoldiers.length} visible soldiers`);
+
+        // Cancel any pending renders
+        this.abortCurrentRender();
 
         if (checked) {
             // Select only visible soldiers
             this.filteredSoldiers.forEach(soldier => {
                 this.selectedRows.add(soldier.id.toString());
             });
-
             showToast(`Selected ${this.filteredSoldiers.length} visible soldiers`, 'success');
         } else {
             // Deselect all
@@ -112,34 +117,33 @@ export default class SoldierProfileManager {
             showToast('All selections cleared', 'info');
         }
 
-        // Update checkboxes in the DOM
-        this.updateCheckboxStates();
-
-        // Update bulk action button
+        // Update UI synchronously
+        this.syncUpdateCheckboxStates();
         this.bulkActions.updateBulkActionButton();
     }
 
     /**
-     * NEW METHOD: Update checkbox states based on selectedRows
+     * NEW: Synchronous checkbox update (doesn't wait for render)
      */
-    updateCheckboxStates() {
+    syncUpdateCheckboxStates() {
         const checkboxes = document.querySelectorAll('.row-select');
         checkboxes.forEach(checkbox => {
             const soldierId = checkbox.value;
             checkbox.checked = this.selectedRows.has(soldierId);
         });
 
-        // Update select-all checkbox state
-        if (this.elements.selectAll) {
-            const visibleCheckboxes = Array.from(checkboxes);
-            const allVisibleChecked = visibleCheckboxes.length > 0 &&
-                visibleCheckboxes.every(cb => cb.checked);
-
-            this.elements.selectAll.checked = allVisibleChecked;
-            this.elements.selectAll.indeterminate =
-                !allVisibleChecked && visibleCheckboxes.some(cb => cb.checked);
-        }
+        this.updateSelectAllState();
     }
+
+    /**
+     * UPDATED: Async-safe checkbox update
+     */
+    updateCheckboxStates() {
+        // Use requestAnimationFrame to batch DOM updates
+        this.syncUpdateCheckboxStates();
+
+    }
+
     setupEventDelegation() {
         if (!this.elements.tbody) return;
 
@@ -186,9 +190,6 @@ export default class SoldierProfileManager {
         }
     }
 
-    /**
-  * UPDATED: Handle individual checkbox changes
-  */
     handleCheckboxChange(event) {
         const target = event.target;
 
@@ -200,15 +201,11 @@ export default class SoldierProfileManager {
                 this.selectedRows.delete(soldierId);
             }
 
-            // Update select-all checkbox state
             this.updateSelectAllState();
-
             this.bulkActions.updateBulkActionButton();
         }
     }
-    /**
- * NEW METHOD: Update select-all checkbox state (checked/indeterminate/unchecked)
- */
+
     updateSelectAllState() {
         if (!this.elements.selectAll) return;
 
@@ -216,15 +213,12 @@ export default class SoldierProfileManager {
         const checkedCount = visibleCheckboxes.filter(cb => cb.checked).length;
 
         if (checkedCount === 0) {
-            // None selected
             this.elements.selectAll.checked = false;
             this.elements.selectAll.indeterminate = false;
         } else if (checkedCount === visibleCheckboxes.length) {
-            // All selected
             this.elements.selectAll.checked = true;
             this.elements.selectAll.indeterminate = false;
         } else {
-            // Some selected
             this.elements.selectAll.checked = false;
             this.elements.selectAll.indeterminate = true;
         }
@@ -262,7 +256,6 @@ export default class SoldierProfileManager {
             const data = await response.json();
             this.soldiers = data.data || [];
 
-            // Pre-process soldiers for faster filtering
             this.preprocessSoldiers();
 
             const fetchTime = performance.now() - startTime;
@@ -298,14 +291,9 @@ export default class SoldierProfileManager {
         }
     }
 
-    /**
-     * Pre-process soldiers to create lookup maps for faster filtering
-     */
     preprocessSoldiers() {
         this.soldiers.forEach(soldier => {
-            // Create lowercase search strings
             soldier._searchStr = `${soldier.name || ''} ${soldier.army_no || ''} ${soldier.mobile || ''} ${soldier.family_mobile_1 || ''} ${soldier.family_mobile_2 || ''}`.toLowerCase();
-            // Create lookup sets for array properties
             soldier.is_leave = Boolean(soldier.is_leave);
             soldier._skillSet = new Set(soldier.cocurricular?.map(s => s.name) || []);
             soldier._courseSet = new Set(soldier.courses?.map(c => c.name) || []);
@@ -315,7 +303,6 @@ export default class SoldierProfileManager {
             soldier._ere = new Set(soldier.ere?.map(e => e.name) || []);
             soldier._cmd = new Set(soldier.cmd?.map(c => c.name) || []);
             soldier._exAreaSet = new Set(soldier.ex_areas?.map(e => e.name) || []);
-
         });
     }
 
@@ -334,45 +321,87 @@ export default class SoldierProfileManager {
     }
 
     /**
-     * Optimized rendering with virtual scrolling concept
+     * FIXED: Queue-based rendering to prevent conflicts
      */
     async optimizedRender() {
-        // Prevent multiple simultaneous renders
+        // Cancel any current render
+        this.abortCurrentRender();
+
+        this.isRendering = true;
+        this.renderAbortController = new AbortController();
+
+        try {
+            const filtered = this.applyFilters(this.soldiers);
+            this.filteredSoldiers = filtered;
+
+            console.log('🎯 Filter results:', {
+                total: this.soldiers.length,
+                filtered: filtered.length
+            });
+
+            if (!this.elements.tbody) return;
+
+            if (filtered.length === 0) {
+                if (this.elements.emptyState) this.elements.emptyState.classList.remove('hidden');
+                this.elements.tbody.innerHTML = '';
+                return;
+            }
+
+            if (this.elements.emptyState) this.elements.emptyState.classList.add('hidden');
+
+            await this.batchRenderOptimized(filtered);
+
+        } catch (error) {
+            console.error('❌ Render error:', error);
+        } finally {
+            this.isRendering = false;
+        }
+    }
+
+    /**
+     * NEW: Internal render method
+     */
+    async _doRender() {
         if (this.isRendering) {
-            this.abortCurrentRender();
+            throw new Error('Render already in progress');
         }
 
         this.isRendering = true;
         this.renderAbortController = new AbortController();
 
-        const filtered = this.applyFilters(this.soldiers);
-        this.filteredSoldiers = filtered;
+        try {
+            const filtered = this.applyFilters(this.soldiers);
+            this.filteredSoldiers = filtered;
 
-        console.log('Rendering - filtered soldiers:', filtered.length);
+            console.log('🎯 Filter results:', {
+                total: this.soldiers.length,
+                filtered: filtered.length,
+                previousRender: this.lastRenderedCount
+            });
 
-        if (!this.elements.tbody) {
+            if (!this.elements.tbody) {
+                throw new Error('Table body not found');
+            }
+
+            if (filtered.length === 0) {
+                console.log('📭 No soldiers found after filtering');
+                if (this.elements.emptyState) this.elements.emptyState.classList.remove('hidden');
+                this.elements.tbody.innerHTML = '';
+                return;
+            }
+
+            if (this.elements.emptyState) this.elements.emptyState.classList.add('hidden');
+
+            await this.batchRenderOptimized(filtered);
+
+        } catch (error) {
+            console.error('❌ Render error:', error);
+            throw error;
+        } finally {
             this.isRendering = false;
-            return;
         }
-
-        if (filtered.length === 0) {
-            console.log('No soldiers found after filtering - showing empty state');
-            if (this.elements.emptyState) this.elements.emptyState.classList.remove('hidden');
-            this.elements.tbody.innerHTML = '';
-            this.isRendering = false;
-            return;
-        }
-
-        console.log(`Rendering ${filtered.length} soldiers`);
-        if (this.elements.emptyState) this.elements.emptyState.classList.add('hidden');
-
-        await this.batchRenderOptimized(filtered);
-        this.isRendering = false;
     }
 
-    /**
-     * Abort current rendering operation
-     */
     abortCurrentRender() {
         if (this.renderAbortController) {
             this.renderAbortController.abort();
@@ -383,7 +412,7 @@ export default class SoldierProfileManager {
     }
 
     /**
-     * Highly optimized batch rendering using requestIdleCallback
+     * FIXED: Improved batch rendering with better state management
      */
     async batchRenderOptimized(soldiers) {
         const tbody = this.elements.tbody;
@@ -391,56 +420,92 @@ export default class SoldierProfileManager {
 
         // Clear existing content
         tbody.innerHTML = '';
-
+        if (soldiers.length === 0) {
+            console.log('No soldiers to render');
+            return;
+        }
         const batchSize = this.renderBatchSize;
         let currentIndex = 0;
         const signal = this.renderAbortController?.signal;
 
-        const renderNextBatch = (deadline) => {
+        // Store checkbox states before rendering
+        const checkboxStates = new Map();
+        this.selectedRows.forEach(id => checkboxStates.set(id, true));
+
+        const renderNextBatch = () => {
             if (signal?.aborted) {
                 console.log('Render aborted');
                 return;
             }
 
+            const startTime = performance.now();
             const endIndex = Math.min(currentIndex + batchSize, soldiers.length);
+
+            // Use DocumentFragment for batch DOM insertion
             const fragment = document.createDocumentFragment();
 
+            let renderedCount = 0;
             for (let i = currentIndex; i < endIndex; i++) {
-                if (signal?.aborted) return;
+                if (signal?.aborted) break;
 
                 const row = this.createSoldierRow(soldiers[i]);
                 fragment.appendChild(row);
+                renderedCount++;
             }
 
+            // Single DOM operation per batch
             tbody.appendChild(fragment);
+
             currentIndex = endIndex;
+            const batchTime = performance.now() - startTime;
+
+            console.log(`🔄 Batch ${Math.ceil(currentIndex / batchSize)}: ${renderedCount} rows in ${batchTime.toFixed(2)}ms`);
 
             if (currentIndex < soldiers.length) {
-                if ('requestIdleCallback' in window) {
-                    requestIdleCallback(renderNextBatch, { timeout: 100 });
-                } else {
-                    setTimeout(() => renderNextBatch({}), 0);
-                }
+                // Use setTimeout to allow UI thread to breathe
+                setTimeout(renderNextBatch, 10);
             } else {
-                // Finished rendering - update states
-                this.updateCheckboxStates();
-                this.updateSelectAllState();
+                // Finished rendering all soldiers
+                console.log(`✅ Finished rendering all ${soldiers.length} soldiers`);
+                this.lastRenderedCount = soldiers.length;
+
+                // Update UI states after render complete
+                this.syncUpdateCheckboxStates();
                 this.bulkActions.updateBulkActionButton();
-                console.log('Finished rendering all soldiers');
+
+                // Reattach event listeners
+                this.setupEventDelegation();
             }
         };
+        setTimeout(renderNextBatch, 0);
 
-        if ('requestIdleCallback' in window) {
-            requestIdleCallback(renderNextBatch, { timeout: 100 });
-        } else {
-            setTimeout(() => renderNextBatch({}), 0);
-        }
+
     }
 
-
     async filterAndRender() {
-        console.log('Filter and render called');
-        await this.optimizedRender();
+        // Prevent multiple simultaneous renders
+        if (this.isRendering) {
+            console.log('⏳ Render in progress, queuing request...');
+            this.pendingRender = true;
+            return;
+        }
+
+        console.log('🔍 Starting filter and render process...');
+
+        try {
+            await this.optimizedRender();
+        } catch (error) {
+            console.error('❌ Error in filterAndRender:', error);
+            this.isRendering = false;
+            this.pendingRender = false;
+        }
+
+        // Check if another render was requested during this render
+        if (this.pendingRender) {
+            console.log('🔄 Processing pending render request...');
+            this.pendingRender = false;
+            setTimeout(() => this.filterAndRender(), 50);
+        }
     }
 
     forceRerender() {
@@ -454,20 +519,31 @@ export default class SoldierProfileManager {
         this.optimizedRender();
     }
 
-    /**
-     * Create a single soldier row element with minimal DOM operations
-     */
     createSoldierRow(soldier) {
+        // Check cache first for better performance
+        const cacheKey = `${soldier.id}_${JSON.stringify(this.filters)}`;
+        if (this.rowCache.has(cacheKey)) {
+            return this.rowCache.get(cacheKey).cloneNode(true);
+        }
+
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-gray-50 transition-colors duration-150';
         tr.dataset.soldierId = soldier.id;
         tr.innerHTML = renderTableRow(soldier);
 
+        // Cache the row
+        this.rowCache.set(cacheKey, tr.cloneNode(true));
+
+        // Prevent cache from growing too large
+        if (this.rowCache.size > 1000) {
+            const firstKey = this.rowCache.keys().next().value;
+            this.rowCache.delete(firstKey);
+        }
+
         return tr;
     }
 
     generateFiltersFromData() {
-        // Use Map for O(1) lookups instead of Set
         const filterData = {
             ranks: new Map(),
             companies: new Map(),
@@ -483,7 +559,6 @@ export default class SoldierProfileManager {
             eres: new Map(),
         };
 
-        // Single pass through soldiers
         this.soldiers.forEach(s => {
             if (s.rank) filterData.ranks.set(s.rank, true);
             if (s.unit) filterData.companies.set(s.unit, true);
@@ -494,15 +569,12 @@ export default class SoldierProfileManager {
             s.cocurricular?.forEach(skill => {
                 if (skill.name) filterData.skills.set(skill.name, true);
             });
-
             s.courses?.forEach(course => {
                 if (course.name) filterData.courses.set(course.name, true);
             });
-
             s.cadres?.forEach(cadre => {
                 if (cadre.name) filterData.cadres.set(cadre.name, true);
             });
-
             s.att?.forEach(att => {
                 if (att.name) filterData.atts.set(att.name, true);
             });
@@ -517,7 +589,6 @@ export default class SoldierProfileManager {
             });
         });
 
-        // Populate selects
         this.populateSelect('rank-filter', filterData.ranks.keys());
         this.populateSelect('company-filter', filterData.companies.keys());
         this.populateSelect('skill-filter', filterData.skills.keys());
@@ -536,10 +607,8 @@ export default class SoldierProfileManager {
         const select = document.getElementById(selectId);
         if (!select) return;
 
-        // Convert iterator to array and sort
         const sortedItems = Array.from(items).filter(item => item && item.trim() !== '').sort();
 
-        // Use DocumentFragment for batch DOM operations
         const fragment = document.createDocumentFragment();
         sortedItems.forEach(item => {
             const option = document.createElement('option');
@@ -548,168 +617,121 @@ export default class SoldierProfileManager {
             fragment.appendChild(option);
         });
 
-        // Clear existing options (except first empty one) and append new ones
         Array.from(select.options).slice(1).forEach(opt => opt.remove());
         select.appendChild(fragment);
     }
-
-    /**
-     * Optimized filter application using preprocessed data
-     */
-    /**/
 
     applyFilters(soldiers) {
         console.log('🎯 applyFilters called with:', {
             totalSoldiers: soldiers.length,
             activeFilters: Object.entries(this.filters).filter(([key, value]) =>
                 value && value !== '' && (!Array.isArray(value) || value.length > 0)
-            ),
-            leaveFilter: this.filters.leave
+            )
         });
 
         let filtered = soldiers;
 
-        // 1. Search filter
         if (this.filters.search) {
             const term = this.filters.search.toLowerCase().trim();
-            console.log(`🔍 Applying search filter: "${term}"`);
-
             const beforeSearch = filtered.length;
             filtered = filtered.filter(s => {
                 if (s._searchStr && s._searchStr.includes(term)) return true;
-
                 const mobileFields = [s.mobile, s.family_mobile_1, s.family_mobile_2].filter(Boolean);
                 return mobileFields.some(mobile => mobile.toLowerCase().includes(term));
             });
             console.log(`📊 Search reduced from ${beforeSearch} to ${filtered.length} soldiers`);
         }
 
-        // 2. Simple property filters (rank, company, district, blood group)
         if (this.filters.rank && (Array.isArray(this.filters.rank) ? this.filters.rank.length > 0 : this.filters.rank !== '')) {
-            const beforeFilter = filtered.length;
             const ranks = Array.isArray(this.filters.rank) ? this.filters.rank : [this.filters.rank];
             filtered = filtered.filter(s => ranks.includes(s.rank));
-            console.log(`🎯 Rank filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
         if (this.filters.company && (Array.isArray(this.filters.company) ? this.filters.company.length > 0 : this.filters.company !== '')) {
-            const beforeFilter = filtered.length;
             const companies = Array.isArray(this.filters.company) ? this.filters.company : [this.filters.company];
             filtered = filtered.filter(s => companies.includes(s.unit));
-            console.log(`🎯 Company filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
         if (this.filters.district && (Array.isArray(this.filters.district) ? this.filters.district.length > 0 : this.filters.district !== '')) {
-            const beforeFilter = filtered.length;
             const districts = Array.isArray(this.filters.district) ? this.filters.district : [this.filters.district];
             filtered = filtered.filter(s => districts.includes(s.districts));
-            console.log(`🎯 District filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
         if (this.filters.bloodGroup && (Array.isArray(this.filters.bloodGroup) ? this.filters.bloodGroup.length > 0 : this.filters.bloodGroup !== '')) {
-            const beforeFilter = filtered.length;
             const bloodGroups = Array.isArray(this.filters.bloodGroup) ? this.filters.bloodGroup : [this.filters.bloodGroup];
             filtered = filtered.filter(s => bloodGroups.includes(s.blood_group));
-            console.log(`🎯 Blood Group filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
-        // 3. Array-based filters (skills, courses, cadres, etc.)
         if (this.filters.skill && (Array.isArray(this.filters.skill) ? this.filters.skill.length > 0 : this.filters.skill !== '')) {
-            const beforeFilter = filtered.length;
             const skills = Array.isArray(this.filters.skill) ? this.filters.skill : [this.filters.skill];
             filtered = filtered.filter(s =>
                 s._skillSet && skills.some(skill => s._skillSet.has(skill))
             );
-            console.log(`🎯 Skill filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
         if (this.filters.course && (Array.isArray(this.filters.course) ? this.filters.course.length > 0 : this.filters.course !== '')) {
-            const beforeFilter = filtered.length;
             const courses = Array.isArray(this.filters.course) ? this.filters.course : [this.filters.course];
             filtered = filtered.filter(s =>
                 s._courseSet && courses.some(course => s._courseSet.has(course))
             );
-            console.log(`🎯 Course filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
         if (this.filters.cadre && (Array.isArray(this.filters.cadre) ? this.filters.cadre.length > 0 : this.filters.cadre !== '')) {
-            const beforeFilter = filtered.length;
             const cadres = Array.isArray(this.filters.cadre) ? this.filters.cadre : [this.filters.cadre];
             filtered = filtered.filter(s =>
                 s._cadreSet && cadres.some(cadre => s._cadreSet.has(cadre))
             );
-            console.log(`🎯 Cadre filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
         if (this.filters.att && (Array.isArray(this.filters.att) ? this.filters.att.length > 0 : this.filters.att !== '')) {
-            const beforeFilter = filtered.length;
             const atts = Array.isArray(this.filters.att) ? this.filters.att : [this.filters.att];
             filtered = filtered.filter(s =>
                 s._attSet && atts.some(att => s._attSet.has(att))
             );
-            console.log(`🎯 ATT filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
         if (this.filters.education && (Array.isArray(this.filters.education) ? this.filters.education.length > 0 : this.filters.education !== '')) {
-            const beforeFilter = filtered.length;
             const educations = Array.isArray(this.filters.education) ? this.filters.education : [this.filters.education];
             filtered = filtered.filter(s =>
                 s._educationSet && educations.some(education => s._educationSet.has(education))
             );
-            console.log(`🎯 Education filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
         if (this.filters.ere && (Array.isArray(this.filters.ere) ? this.filters.ere.length > 0 : this.filters.ere !== '')) {
-            const beforeFilter = filtered.length;
             const eres = Array.isArray(this.filters.ere) ? this.filters.ere : [this.filters.ere];
             filtered = filtered.filter(s =>
                 s._ere && eres.some(ere => s._ere.has(ere))
             );
-            console.log(`🎯 ERE filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
         if (this.filters.cmd && (Array.isArray(this.filters.cmd) ? this.filters.cmd.length > 0 : this.filters.cmd !== '')) {
-            const beforeFilter = filtered.length;
             const cmds = Array.isArray(this.filters.cmd) ? this.filters.cmd : [this.filters.cmd];
             filtered = filtered.filter(s =>
                 s._cmd && cmds.some(cmd => s._cmd.has(cmd))
             );
-            console.log(`🎯 CMD filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
         if (this.filters.exArea && (Array.isArray(this.filters.exArea) ? this.filters.exArea.length > 0 : this.filters.exArea !== '')) {
-            const beforeFilter = filtered.length;
             const exAreas = Array.isArray(this.filters.exArea) ? this.filters.exArea : [this.filters.exArea];
             filtered = filtered.filter(s =>
                 s._exAreaSet && exAreas.some(exArea => s._exAreaSet.has(exArea))
             );
-            console.log(`🎯 Ex-Area filter reduced from ${beforeFilter} to ${filtered.length}`);
         }
 
-        // 4. FIXED: Leave status filter with proper logic for both options
         if (this.filters.leave && Array.isArray(this.filters.leave) && this.filters.leave.length > 0) {
-            const beforeFilter = filtered.length;
-            console.log('🎯 Applying leave filter:', this.filters.leave);
-
             filtered = filtered.filter(soldier => {
                 const isOnLeave = soldier.is_leave === true;
 
-                // If "on-leave" is selected, show soldiers who are on leave
                 if (this.filters.leave.includes('on-leave') && this.filters.leave.includes('present')) {
-                    // If both are selected, show all (no filtering)
                     return true;
                 } else if (this.filters.leave.includes('on-leave')) {
-                    // Show only soldiers on leave
                     return isOnLeave;
                 } else if (this.filters.leave.includes('present')) {
-                    // Show only soldiers who are present (not on leave)
                     return !isOnLeave;
                 }
 
                 return true;
             });
-
-            console.log(`🎯 Leave filter reduced from ${beforeFilter} to ${filtered.length} soldiers`);
         }
 
         console.log(`✅ Final filtered count: ${filtered.length} soldiers`);
@@ -739,27 +761,35 @@ export default class SoldierProfileManager {
             this.elements.searchInput.value = '';
         }
 
-        // Clear selections when filters are cleared
         this.selectedRows.clear();
         if (this.elements.selectAll) {
             this.elements.selectAll.checked = false;
             this.elements.selectAll.indeterminate = false;
         }
+        this.rowCache.clear();
 
         console.log('All filters and selections cleared');
         this.filterAndRender();
     }
-    /**
-     * Helper method to get selected soldier data
-     */
+
     getSelectedSoldiers() {
         return this.filteredSoldiers.filter(soldier =>
             this.selectedRows.has(soldier.id.toString())
         );
     }
-    /**
- * Helper method to get selection stats
- */
+    destroy() {
+        this.abortCurrentRender();
+        this.rowCache.clear();
+        this.selectedRows.clear();
+
+        // Clear any event listeners
+        if (this.elements.tbody) {
+            this.elements.tbody.removeEventListener('click', this.handleTableClick);
+            this.elements.tbody.removeEventListener('change', this.handleCheckboxChange);
+        }
+
+        console.log('🧹 SoldierProfileManager cleaned up');
+    }
     getSelectionStats() {
         const selected = this.selectedRows.size;
         const visible = this.filteredSoldiers.length;
@@ -772,6 +802,7 @@ export default class SoldierProfileManager {
             percentage: visible > 0 ? ((selected / visible) * 100).toFixed(1) : 0
         };
     }
+
     retryLoadHistory(soldierId, type) {
         openHistoryModal(soldierId, type);
     }
@@ -821,6 +852,7 @@ export default class SoldierProfileManager {
         console.log('Current filters:', this.filters);
         console.log(`Total soldiers: ${this.soldiers.length}`);
         console.log(`Filtered soldiers: ${this.filteredSoldiers.length}`);
+        console.log(`Selected soldiers: ${this.selectedRows.size}`);
         console.log('=== END DEBUG ===');
     }
 }
