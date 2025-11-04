@@ -41,6 +41,8 @@ use App\Http\Controllers\SiteSettingController;
 use App\Http\Controllers\CmdController;
 use App\Http\Controllers\ExAreaController;
 use App\Http\Controllers\AbsentTypeController;
+use App\Http\Controllers\MedicalCategoryController;
+use App\Http\Controllers\PermanentSicknessController;
 
 /*
 |--------------------------------------------------------------------------
@@ -244,6 +246,8 @@ require __DIR__ . '/auth.php';
 Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {});
 
 Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function () {
+    Route::resource('medical-categories', MedicalCategoryController::class);
+    Route::resource('permanent-sickness', PermanentSicknessController::class);
 
     Route::get('/site-settings', [SiteSettingController::class, 'edit'])->name('settings.edit');
     Route::put('/site-settings', [SiteSettingController::class, 'update'])->name('settings.update');

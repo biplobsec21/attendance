@@ -14,7 +14,7 @@
                     <i class="fas fa-user-circle text-white text-lg"></i>
                     <h3 class="text-white font-semibold text-lg">Profile Settings</h3>
                 </div>
-                <ul class="px-6 py-4 space-y-2 text-sm grid grid-cols-1 md:grid-cols-2 gap-2 max-h-96 overflow-y-auto">
+                <ul class="px-6 py-4 space-y-2 text-sm grid grid-cols-1 md:grid-cols-2 gap-2 max-h-100 overflow-y-auto">
                     <li>
                         <a href="{{ route('ranks.index') }}"
                             class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
@@ -79,6 +79,18 @@
                         <a href="{{ route('ex-areas.index') }}"
                             class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
                             <i class="fas fa-check-circle text-orange-500"></i> Ex-area
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('medical-categories.index') }}"
+                            class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
+                            <i class="fas fa-check-circle text-orange-500"></i>Medical Category
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('permanent-sickness.index') }}"
+                            class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
+                            <i class="fas fa-check-circle text-orange-500"></i> Sickness
                         </a>
                     </li>
 

@@ -15,12 +15,26 @@ class PermanentSickness extends Model
     protected $fillable = [
         'name',
     ];
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
     /**
      * A cadre can have many soldiers through a pivot table.
      */
-    public function soldiers(): BelongsToMany
+    public function soldiers()
     {
-        return $this->belongsToMany(Soldier::class, 'soldier_permanent_sickness');
+        return $this->belongsToMany(Soldier::class, 'soldier_permanent_sickness', 'permanent_sickness_id', 'soldier_id')
+            ->withPivot(['remarks', 'start_date', 'end_date'])
+            ->withTimestamps();
+    }
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->name;
+    }
+    public function getSoldiersCountAttribute(): int
+    {
+        return $this->soldiers()->count();
     }
 }
