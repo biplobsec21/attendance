@@ -70,7 +70,7 @@ class Absent extends Model
         return $this->belongsTo(Soldier::class);
     }
 
-    public function leaveType()
+    public function absentType()
     {
         return $this->belongsTo(AbsentType::class);
     }
