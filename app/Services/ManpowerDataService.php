@@ -347,6 +347,7 @@ class ManpowerDataService
 
         // Merge leave types with additional statuses and absent types for combined absent details
         $absentDetails = $this->mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $leaveManpower);
+        $absentSoldierDetails = $this->getAbsentSoldierDetails($currentDate, $companies);
 
         return [
             'companies' => $companies,
@@ -363,9 +364,167 @@ class ManpowerDataService
             'withoutLeaveManpower' => $withoutLeaveManpower,
             'withoutLeaveOfficerTotals' => $withoutLeaveOfficerTotals,
             'absentDetails' => $absentDetails,
+            'absentSoldierDetails' => $absentSoldierDetails,
+
         ];
     }
+    /**
+     * Get detailed information about absent soldiers
+     *
+     * @param string $currentDate
+     * @param \Illuminate\Support\Collection $companies
+     * @return array
+     */
+    private function getAbsentSoldierDetails($currentDate, $companies)
+    {
+        $absentSoldiers = Soldier::select([
+            'soldiers.id',
+            'soldiers.army_no',
+            'soldiers.full_name',
+            'soldiers.rank_id',
+            'soldiers.company_id',
+            'ranks.name as rank_name',
+            'companies.name as company_name',
+            'soldier_leave_applications.leave_type_id',
+            'leave_types.name as leave_type_name',
+            'soldier_absent.absent_type_id',
+            'absent_types.name as absent_type_name',
+            'soldier_cadres.id as cadre_id',
+            'soldier_courses.id as course_id',
+            'soldier_ex_areas.id as ex_area_id',
+            'soldiers_att.id as att_id',
+            'soldiers_cmds.id as cmd_id'
+        ])
+            ->leftJoin('ranks', 'soldiers.rank_id', '=', 'ranks.id')
+            ->leftJoin('companies', 'soldiers.company_id', '=', 'companies.id')
+            // Leave applications
+            ->leftJoin('soldier_leave_applications', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_leave_applications.soldier_id')
+                    ->where('soldier_leave_applications.application_current_status', 'approved')
+                    ->where('soldier_leave_applications.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_leave_applications.end_date')
+                            ->orWhere('soldier_leave_applications.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('leave_types', 'soldier_leave_applications.leave_type_id', '=', 'leave_types.id')
+            // Absent records
+            ->leftJoin('soldier_absent', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_absent.soldier_id')
+                    ->where('soldier_absent.absent_current_status', 'approved')
+                    ->where('soldier_absent.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_absent.end_date')
+                            ->orWhere('soldier_absent.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('absent_types', 'soldier_absent.absent_type_id', '=', 'absent_types.id')
+            // Additional statuses
+            ->leftJoin('soldier_cadres', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_cadres.soldier_id')
+                    ->where('soldier_cadres.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_cadres.end_date')
+                            ->orWhere('soldier_cadres.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldier_courses', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_courses.soldier_id')
+                    ->where('soldier_courses.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_courses.end_date')
+                            ->orWhere('soldier_courses.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldier_ex_areas', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldier_ex_areas.soldier_id')
+                    ->where('soldier_ex_areas.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldier_ex_areas.end_date')
+                            ->orWhere('soldier_ex_areas.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldiers_att', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldiers_att.soldier_id')
+                    ->where('soldiers_att.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldiers_att.end_date')
+                            ->orWhere('soldiers_att.end_date', '>=', $currentDate);
+                    });
+            })
+            ->leftJoin('soldiers_cmds', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldiers_cmds.soldier_id')
+                    ->where('soldiers_cmds.start_date', '<=', $currentDate)
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldiers_cmds.end_date')
+                            ->orWhere('soldiers_cmds.end_date', '>=', $currentDate);
+                    });
+            })
+            // Exclude ERE records
+            ->leftJoin('soldiers_ere', function ($join) use ($currentDate) {
+                $join->on('soldiers.id', '=', 'soldiers_ere.soldier_id')
+                    ->where(function ($query) use ($currentDate) {
+                        $query->whereNull('soldiers_ere.end_date')
+                            ->orWhere('soldiers_ere.end_date', '>=', $currentDate);
+                    })
+                    ->where('soldiers_ere.start_date', '<=', $currentDate);
+            })
+            ->whereIn('soldiers.company_id', $companies->pluck('id'))
+            ->whereNull('soldiers_ere.id')
+            ->where(function ($query) {
+                $query->whereNotNull('soldier_leave_applications.id')
+                    ->orWhereNotNull('soldier_absent.id')
+                    ->orWhereNotNull('soldier_cadres.id')
+                    ->orWhereNotNull('soldier_courses.id')
+                    ->orWhereNotNull('soldier_ex_areas.id')
+                    ->orWhereNotNull('soldiers_att.id')
+                    ->orWhereNotNull('soldiers_cmds.id');
+            })
+            ->orderBy('companies.name')
+            ->orderBy('ranks.id')
+            ->orderBy('soldiers.army_no')
+            ->get();
 
+        // Process the data to determine absence reason
+        $absentSoldiers->each(function ($soldier) {
+            $soldier->absence_reason = $this->determineAbsenceReason($soldier);
+        });
+
+        return $absentSoldiers->groupBy('company_name');
+    }
+
+    /**
+     * Determine the absence reason for a soldier
+     *
+     * @param \App\Models\Soldier $soldier
+     * @return string
+     */
+    private function determineAbsenceReason($soldier)
+    {
+        if ($soldier->leave_type_name) {
+            return $soldier->leave_type_name . ' Leave';
+        }
+        if ($soldier->absent_type_name) {
+            return $soldier->absent_type_name . ' Absent';
+        }
+        if ($soldier->cadre_id) {
+            return 'Cadre';
+        }
+        if ($soldier->course_id) {
+            return 'Course';
+        }
+        if ($soldier->ex_area_id) {
+            return 'Exercise Area';
+        }
+        if ($soldier->att_id) {
+            return 'ATT';
+        }
+        if ($soldier->cmd_id) {
+            return 'Comd';
+        }
+
+        return 'Unknown';
+    }
     /**
      * Fetch additional soldier statuses (cadres, courses, ex_areas, att, cmds)
      *

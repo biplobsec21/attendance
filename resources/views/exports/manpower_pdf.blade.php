@@ -513,6 +513,65 @@
         <div class="signature-line">21C ______</div>
         <div class="signature-line">CO ______</div>
     </div>
+
+
+    <!-- Detailed Absent Soldiers Section -->
+    @php
+        $absentSoldierDetails = $absentSoldierDetails ?? collect();
+    @endphp
+
+    @if ($absentSoldierDetails->count())
+        <div style="page-break-before: always;"></div> <!-- Force new page if needed -->
+
+        <div style="text-align: center; font-weight: bold; margin-top: 20px;">
+            Details of Absent Soldiers
+        </div>
+
+        @foreach ($absentSoldierDetails as $companyName => $soldiers)
+            <table style="margin-bottom: 15px;">
+                <thead>
+                    <tr class="section-title-row">
+                        <td colspan="4" style="text-align: center; font-weight: bold;">
+                            {{ $companyName }} - Absent Soldiers ({{ $soldiers->count() }})
+                        </td>
+                    </tr>
+                    <tr>
+                        <th style="width: 15%; text-align: left; padding: 4px 8px;">Army No</th>
+                        <th style="width: 25%; text-align: left; padding: 4px 8px;">Name</th>
+                        <th style="width: 20%; text-align: left; padding: 4px 8px;">Rank</th>
+                        <th style="width: 40%; text-align: left; padding: 4px 8px;">Absence Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($soldiers as $soldier)
+                        <tr>
+                            <td style="text-align: left; padding: 3px 8px; font-size: 10px;">{{ $soldier->army_no }}
+                            </td>
+                            <td style="text-align: left; padding: 3px 8px; font-size: 10px;">{{ $soldier->full_name }}
+                            </td>
+                            <td style="text-align: left; padding: 3px 8px; font-size: 10px;">{{ $soldier->rank_name }}
+                            </td>
+                            <td style="text-align: left; padding: 3px 8px; font-size: 10px;">
+                                {{ $soldier->absence_reason }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endforeach
+    @else
+        <div style="text-align: center; font-weight: bold; margin-top: 20px;">
+            Details of Absent Soldiers
+        </div>
+        <table>
+            <tr>
+                <td style="text-align: center; padding: 10px; font-style: italic;">
+                    No absent soldiers found for {{ \Carbon\Carbon::parse($date)->format('F d, Y') }}
+                </td>
+            </tr>
+        </table>
+    @endif
+
+
 </body>
 
 </html>
