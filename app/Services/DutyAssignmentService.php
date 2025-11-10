@@ -383,6 +383,28 @@ class DutyAssignmentService
         $fairRotationFiltered = 0;
         $timeConflictFiltered = 0;
         $maxDutiesFiltered = 0;
+        $multiDayConflictFiltered = 0;
+
+        // Filter: Multi-day conflict check (NEW - from Version 2)
+        $soldiers = $soldiers->filter(function ($soldier) use ($existingAssignments, $duty, $date, &$multiDayConflictFiltered) {
+            $hasMultiDayConflict = $this->hasMultiDayTimeConflict(
+                $soldier->id,
+                $duty,
+                $date,
+                $existingAssignments
+            );
+            if ($hasMultiDayConflict) {
+                $multiDayConflictFiltered++;
+                Log::debug('SOLDIER FILTERED - Multi-day duty conflict', [
+                    'soldier_id' => $soldier->id,
+                    'duty_id' => $duty->id,
+                    'duty_name' => $duty->duty_name,
+                    'date' => $date,
+                    'reason' => 'Conflict with overnight/multi-day duty'
+                ]);
+            }
+            return !$hasMultiDayConflict;
+        });
 
         // Filter: Fair rotation check (no back-to-back same duty)
         $soldiers = $soldiers->filter(function ($soldier) use ($lastAssignments, $date, &$fairRotationFiltered) {
@@ -413,7 +435,7 @@ class DutyAssignmentService
             return true;
         });
 
-        // Filter: Time conflict check with minimum break enforcement
+        // Filter: Time conflict check with minimum break enforcement (IMPROVED - from both versions)
         $soldiers = $soldiers->filter(function ($soldier) use ($existingAssignments, $duty, $date, $pendingAssignments, &$timeConflictFiltered) {
             $hasConflict = $this->hasTimeConflictWithPendingAssignments($soldier->id, $duty, $date, $existingAssignments, $pendingAssignments);
             if ($hasConflict) {
@@ -463,61 +485,13 @@ class DutyAssignmentService
             'after_time_conflict' => $initialCount - $fairRotationFiltered - $timeConflictFiltered,
             'after_max_duties' => $initialCount - $fairRotationFiltered - $timeConflictFiltered - $maxDutiesFiltered,
             'final_eligible' => $finalSoldiers->count(),
+            'filtered_by_multi_day_conflict' => $multiDayConflictFiltered,
             'filtered_by_fair_rotation' => $fairRotationFiltered,
             'filtered_by_time_conflict' => $timeConflictFiltered,
             'filtered_by_max_duties' => $maxDutiesFiltered
         ]);
 
         return $finalSoldiers;
-    }
-
-    /**
-     * Check for time conflicts using cached assignments (IMPROVED VERSION)
-     */
-    protected function hasTimeConflictCached(int $soldierId, Duty $duty, string $startDate, Collection $assignmentsByDate): bool
-    {
-        $soldierAssignments = $assignmentsByDate->get($soldierId);
-
-        if (!$soldierAssignments || $soldierAssignments->isEmpty()) {
-            return false; // No existing assignments, no conflict
-        }
-
-        $durationDays = $duty->duration_days ?? 1;
-
-        // Check each day of the duty duration
-        for ($day = 0; $day < $durationDays; $day++) {
-            $checkDate = Carbon::parse($startDate)->addDays($day)->toDateString();
-
-            // Get assignments for this specific date
-            $assignmentsOnDate = $soldierAssignments->filter(function ($assignment) use ($checkDate) {
-                return $assignment->assigned_date === $checkDate;
-            });
-
-            if ($assignmentsOnDate->isEmpty()) {
-                continue; // No assignments on this date, no conflict
-            }
-
-            // Check against all existing assignments on this date
-            foreach ($assignmentsOnDate as $existing) {
-                // Skip if it's the same duty (allow multiple days of same duty)
-                if ($existing->duty_id === $duty->id) {
-                    continue;
-                }
-
-                if ($this->hasTimeOverlapOrInsufficientBreak($duty, $existing)) {
-                    Log::warning('TIME CONFLICT DETECTED - Soldier cannot have two duties at same time', [
-                        'soldier_id' => $soldierId,
-                        'date' => $checkDate,
-                        'new_duty' => $duty->duty_name . ' (' . $duty->start_time . ' - ' . $duty->end_time . ')',
-                        'existing_duty' => ($existing->duty->duty_name ?? 'Unknown') . ' (' . $existing->start_time . ' - ' . $existing->end_time . ')',
-                        'overlap_period' => 'Same time period assignment'
-                    ]);
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -571,7 +545,56 @@ class DutyAssignmentService
     }
 
     /**
-     * Check for time overlap or insufficient break between duties (NEW METHOD)
+     * Check for time conflicts using cached assignments (IMPROVED VERSION)
+     */
+    protected function hasTimeConflictCached(int $soldierId, Duty $duty, string $startDate, Collection $assignmentsByDate): bool
+    {
+        $soldierAssignments = $assignmentsByDate->get($soldierId);
+
+        if (!$soldierAssignments || $soldierAssignments->isEmpty()) {
+            return false; // No existing assignments, no conflict
+        }
+
+        $durationDays = $duty->duration_days ?? 1;
+
+        // Check each day of the duty duration
+        for ($day = 0; $day < $durationDays; $day++) {
+            $checkDate = Carbon::parse($startDate)->addDays($day)->toDateString();
+
+            // Get assignments for this specific date
+            $assignmentsOnDate = $soldierAssignments->filter(function ($assignment) use ($checkDate) {
+                return $assignment->assigned_date === $checkDate;
+            });
+
+            if ($assignmentsOnDate->isEmpty()) {
+                continue; // No assignments on this date, no conflict
+            }
+
+            // Check against all existing assignments on this date
+            foreach ($assignmentsOnDate as $existing) {
+                // Skip if it's the same duty (allow multiple days of same duty)
+                if ($existing->duty_id === $duty->id) {
+                    continue;
+                }
+
+                if ($this->hasTimeOverlapOrInsufficientBreak($duty, $existing)) {
+                    Log::warning('TIME CONFLICT DETECTED - Soldier cannot have two duties at same time', [
+                        'soldier_id' => $soldierId,
+                        'date' => $checkDate,
+                        'new_duty' => $duty->duty_name . ' (' . $duty->start_time . ' - ' . $duty->end_time . ')',
+                        'existing_duty' => ($existing->duty->duty_name ?? 'Unknown') . ' (' . $existing->start_time . ' - ' . $existing->end_time . ')',
+                        'overlap_period' => 'Same time period assignment'
+                    ]);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check for time overlap or insufficient break between duties (IMPROVED METHOD)
      */
     protected function hasTimeOverlapOrInsufficientBreak($newDuty, $existingDuty): bool
     {
@@ -620,6 +643,129 @@ class DutyAssignmentService
         }
 
         return false;
+    }
+
+    /**
+     * Enhanced conflict detection for multi-day duties (NEW METHOD from Version 2)
+     */
+    protected function hasMultiDayTimeConflict(int $soldierId, Duty $newDuty, string $startDate, Collection $existingAssignments): bool
+    {
+        $newDurationDays = $newDuty->duration_days ?? 1;
+
+        // Check each day of the new duty duration
+        for ($day = 0; $day < $newDurationDays; $day++) {
+            $checkDate = Carbon::parse($startDate)->addDays($day)->toDateString();
+
+            // Get ALL assignments for this soldier that could conflict with the new duty
+            $allRelevantAssignments = $this->getAllRelevantAssignments($soldierId, $checkDate, $existingAssignments);
+
+            foreach ($allRelevantAssignments as $existingAssignment) {
+                // Skip if it's the same duty
+                if ($existingAssignment['duty_id'] === $newDuty->id) {
+                    continue;
+                }
+
+                // Check for actual time overlap considering multi-day spans
+                if ($this->hasMultiDayTimeOverlap($newDuty, $existingAssignment, $startDate)) {
+                    Log::warning('MULTI-DAY TIME CONFLICT DETECTED', [
+                        'soldier_id' => $soldierId,
+                        'new_duty' => $newDuty->duty_name . ' (' . $newDuty->start_time . ' - ' . $newDuty->end_time . ')',
+                        'new_start_date' => $startDate,
+                        'new_duration_days' => $newDurationDays,
+                        'existing_duty' => $existingAssignment['duty_name'] . ' (' . $existingAssignment['start_time'] . ' - ' . $existingAssignment['end_time'] . ')',
+                        'existing_date' => $existingAssignment['assigned_date'],
+                        'conflict_type' => 'multi_day_overlap'
+                    ]);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get all relevant assignments including multi-day duties that could conflict (NEW METHOD from Version 2)
+     */
+    protected function getAllRelevantAssignments(int $soldierId, string $date, Collection $existingAssignments): Collection
+    {
+        $relevantAssignments = collect();
+
+        // Get assignments from the current date
+        $currentDateAssignments = $existingAssignments->get($soldierId, collect())
+            ->filter(function ($assignment) use ($date) {
+                return $assignment->assigned_date === $date;
+            })
+            ->map(function ($assignment) {
+                return [
+                    'duty_id' => $assignment->duty_id,
+                    'duty_name' => $assignment->duty->duty_name ?? 'Unknown',
+                    'start_time' => $assignment->start_time,
+                    'end_time' => $assignment->end_time,
+                    'duration_days' => $assignment->duration_days ?? 1,
+                    'assigned_date' => $assignment->assigned_date
+                ];
+            });
+
+        $relevantAssignments = $relevantAssignments->concat($currentDateAssignments);
+
+        // Also check assignments from previous day that might span into current day
+        $previousDate = Carbon::parse($date)->subDay()->toDateString();
+        $previousDayAssignments = $existingAssignments->get($soldierId, collect())
+            ->filter(function ($assignment) use ($previousDate) {
+                return $assignment->assigned_date === $previousDate;
+            })
+            ->filter(function ($assignment) {
+                // Only include if it's an overnight duty that spans into next day
+                $startTime = $this->parseTimeString($assignment->start_time);
+                $endTime = $this->parseTimeString($assignment->end_time);
+                return $endTime->lt($startTime); // Overnight duty
+            })
+            ->map(function ($assignment) {
+                return [
+                    'duty_id' => $assignment->duty_id,
+                    'duty_name' => $assignment->duty->duty_name ?? 'Unknown',
+                    'start_time' => $assignment->start_time,
+                    'end_time' => $assignment->end_time,
+                    'duration_days' => $assignment->duration_days ?? 1,
+                    'assigned_date' => $assignment->assigned_date,
+                    'is_overnight' => true
+                ];
+            });
+
+        return $relevantAssignments->concat($previousDayAssignments);
+    }
+
+    /**
+     * Check for time overlap considering multi-day duties (NEW METHOD from Version 2)
+     */
+    protected function hasMultiDayTimeOverlap($newDuty, $existingAssignment, string $newStartDate): bool
+    {
+        $newStart = $this->parseTimeString($newDuty->start_time);
+        $newEnd = $this->parseTimeString($newDuty->end_time);
+        $existingStart = $this->parseTimeString($existingAssignment['start_time']);
+        $existingEnd = $this->parseTimeString($existingAssignment['end_time']);
+
+        // Create proper datetime objects considering the actual dates
+        $newStartDateTime = Carbon::parse($newStartDate . ' ' . $newStart->format('H:i:s'));
+        $newEndDateTime = Carbon::parse($newStartDate . ' ' . $newEnd->format('H:i:s'));
+        $existingStartDateTime = Carbon::parse($existingAssignment['assigned_date'] . ' ' . $existingStart->format('H:i:s'));
+        $existingEndDateTime = Carbon::parse($existingAssignment['assigned_date'] . ' ' . $existingEnd->format('H:i:s'));
+
+        // Handle overnight duties for existing assignment
+        if (($existingAssignment['is_overnight'] ?? false) || $existingEnd->lt($existingStart)) {
+            $existingEndDateTime->addDay(); // It ends the next day
+        }
+
+        // Handle overnight duties for new duty
+        if ($newEnd->lt($newStart)) {
+            $newEndDateTime->addDay();
+        }
+
+        // Check for overlap
+        $hasOverlap = $newStartDateTime->lt($existingEndDateTime) && $existingStartDateTime->lt($newEndDateTime);
+
+        return $hasOverlap;
     }
 
     /**
@@ -755,8 +901,6 @@ class DutyAssignmentService
 
         Log::info('Cadre exclusions', [
             'count' => count($cadreIds),
-            // Consider removing soldier_ids from log for large datasets to avoid log bloat
-            // 'soldier_ids' => $cadreIds
         ]);
 
         // Soldiers in ACTIVE courses
@@ -771,7 +915,6 @@ class DutyAssignmentService
 
         Log::info('Course exclusions', [
             'count' => count($courseIds),
-            // 'soldier_ids' => $courseIds
         ]);
 
         // Soldiers with ACTIVE Ex Areas (using model scope with date filtering)
@@ -786,7 +929,6 @@ class DutyAssignmentService
 
         Log::info('Ex Area exclusions', [
             'count' => count($exAreaIds),
-            // 'soldier_ids' => $exAreaIds
         ]);
 
         // Soldiers in ACTIVE services
@@ -801,7 +943,6 @@ class DutyAssignmentService
 
         Log::info('Service exclusions', [
             'count' => count($serviceIds),
-            // 'soldier_ids' => $serviceIds
         ]);
 
         // Soldiers with fixed duty assignments (CRITICAL)
@@ -815,7 +956,6 @@ class DutyAssignmentService
 
         Log::info('Fixed duty exclusions', [
             'count' => count($fixedDutyIds),
-            // 'soldier_ids' => $fixedDutyIds
         ]);
 
         // Soldiers on LEAVE (approved and active for the specific date)
@@ -830,7 +970,6 @@ class DutyAssignmentService
 
         Log::info('Leave exclusions', [
             'count' => count($leaveIds),
-            // 'soldier_ids' => $leaveIds
         ]);
 
         // Soldiers with ACTIVE CMD (Command) - following same pattern
@@ -844,7 +983,6 @@ class DutyAssignmentService
 
         Log::info('CMD exclusions', [
             'count' => count($cmdIds),
-            // 'soldier_ids' => $cmdIds
         ]);
 
         // Soldiers with ACTIVE ATT (Annual Training) - following same pattern
@@ -858,7 +996,6 @@ class DutyAssignmentService
 
         Log::info('ATT exclusions', [
             'count' => count($attIds),
-            // 'soldier_ids' => $attIds
         ]);
 
         // Soldiers with ACTIVE ERE - following same pattern
@@ -872,7 +1009,6 @@ class DutyAssignmentService
 
         Log::info('ERE exclusions', [
             'count' => count($ereIds),
-            // 'soldier_ids' => $ereIds
         ]);
 
         // Soldiers with ACTIVE Absent records (using model scopes)
@@ -887,7 +1023,6 @@ class DutyAssignmentService
 
         Log::info('Absent exclusions', [
             'count' => count($absentIds),
-            // 'soldier_ids' => $absentIds
         ]);
 
         // Combine all exclusion lists
@@ -919,8 +1054,6 @@ class DutyAssignmentService
                 'ere' => count($ereIds),
                 'absent' => count($absentIds)
             ],
-            // Consider removing full soldier_ids array from final log
-            // 'excluded_soldier_ids' => $excluded
         ]);
 
         // Cache the result
@@ -2143,5 +2276,68 @@ class DutyAssignmentService
             'invalid_days' => $totalInvalid,
             'validation_details' => $validationResults
         ];
+    }
+
+    /**
+     * Test method to verify the fixed time conflict logic (from Version 2)
+     */
+    public function testTimeConflictLogic()
+    {
+        Log::info('Testing time conflict logic');
+
+        // Test cases that should NOT conflict
+        $testCases = [
+            [
+                'duty1' => (object) ['start_time' => '06:00', 'end_time' => '09:00'],
+                'duty2' => (object) ['start_time' => '18:00', 'end_time' => '20:00'],
+                'should_conflict' => false,
+                'description' => 'Morning + Evening duties'
+            ],
+            [
+                'duty1' => (object) ['start_time' => '09:00', 'end_time' => '12:00'],
+                'duty2' => (object) ['start_time' => '22:00', 'end_time' => '00:00'],
+                'should_conflict' => false,
+                'description' => 'Day + Night duties'
+            ],
+            [
+                'duty1' => (object) ['start_time' => '06:00', 'end_time' => '09:00'],
+                'duty2' => (object) ['start_time' => '08:00', 'end_time' => '10:00'],
+                'should_conflict' => true,
+                'description' => 'Overlapping morning duties'
+            ]
+        ];
+
+        foreach ($testCases as $testCase) {
+            $result = $this->hasActualTimeOverlap($testCase['duty1'], ['start_time' => $testCase['duty2']->start_time, 'end_time' => $testCase['duty2']->end_time]);
+            $status = $result === $testCase['should_conflict'] ? 'PASS' : 'FAIL';
+            Log::info("Time Conflict Test: {$status}", [
+                'description' => $testCase['description'],
+                'duty1' => $testCase['duty1']->start_time . ' - ' . $testCase['duty1']->end_time,
+                'duty2' => $testCase['duty2']->start_time . ' - ' . $testCase['duty2']->end_time,
+                'expected' => $testCase['should_conflict'] ? 'CONFLICT' : 'NO CONFLICT',
+                'actual' => $result ? 'CONFLICT' : 'NO CONFLICT',
+                'status' => $status
+            ]);
+        }
+    }
+
+    /**
+     * Check for ACTUAL time overlap (only when time ranges physically overlap) (from Version 2)
+     */
+    protected function hasActualTimeOverlap($duty1, $duty2): bool
+    {
+        $start1 = $this->parseTimeString($duty1->start_time);
+        $end1 = $this->parseTimeString($duty1->end_time);
+        $start2 = $this->parseTimeString($duty2['start_time']);
+        $end2 = $this->parseTimeString($duty2['end_time']);
+
+        // Handle overnight duties
+        if ($end1->lt($start1)) $end1->addDay();
+        if ($end2->lt($start2)) $end2->addDay();
+
+        // Only conflict if time ranges actually overlap
+        // Duty1 starts before Duty2 ends AND Duty2 starts before Duty1 ends
+        $hasOverlap = $start1->lt($end2) && $start2->lt($end1);
+        return $hasOverlap;
     }
 }
