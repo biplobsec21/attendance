@@ -114,6 +114,7 @@
     <div class="main-content">
         @yield('content')
     </div>
+    @yield('modals')
 
     @include('mpm/components/goToTop')
 
