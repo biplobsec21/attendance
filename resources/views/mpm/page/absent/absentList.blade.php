@@ -314,6 +314,7 @@
                 </div>
 
                 <!-- Dates -->
+                <!-- Dates -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">From Date *</label>
@@ -322,9 +323,11 @@
                             required>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">End Date *</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">End Date <span
+                                class="text-gray-500 text-sm">(Optional)</span></label>
                         <input type="date" id="endDate" name="end_date"
-                            class="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-400 focus:border-orange-400 focus:outline-none transition-all">
+                            class="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-400 focus:border-orange-400 focus:outline-none transition-all"
+                            placeholder="Leave empty for single day absence">
                     </div>
                 </div>
 
@@ -767,6 +770,7 @@
         }
 
         // =================== EDIT FUNCTIONALITY ===================
+        // =================== EDIT FUNCTIONALITY ===================
         function initializeEditButtons() {
             document.querySelectorAll('.editAbsentBtn').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -789,10 +793,10 @@
 
                     document.getElementById('absentTypeSelect').value = absentTypeId;
                     document.getElementById('fromDate').value = startDate;
-                    document.getElementById('endDate').value = endDate;
+                    document.getElementById('endDate').value = endDate; // This can be empty/null now
                     document.getElementById('reasonTextarea').value = reason;
 
-                    calculateDays();
+                    calculateDays(); // Recalculate days with new values
 
                     if (hardcopy && hardcopy !== 'null') {
                         document.getElementById('filePreview').src = `/storage/${hardcopy}`;
@@ -804,11 +808,11 @@
 
                     document.querySelector('#absentModal h2').innerText = "Edit Absent Application";
                     document.querySelector('#submitBtn').innerHTML = `
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-                        </svg>
-                        Update Application
-                    `;
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                Update Application
+            `;
                     absentForm.action = "{{ route('absent.update', ':id') }}".replace(':id', absentId);
 
                     if (!document.getElementById('_method')) {
