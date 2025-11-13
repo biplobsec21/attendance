@@ -30,19 +30,13 @@ class AbsentController extends Controller
         try {
             $query = Absent::with(['soldier', 'absentType', 'soldier.rank']);
 
-            // Date range filter
+            // Simple date range filter - only by start_date
             if ($request->filled('from_date')) {
-                $query->where(function ($q) use ($request) {
-                    $q->whereDate('start_date', '>=', $request->from_date)
-                        ->orWhereDate('created_at', '>=', $request->from_date);
-                });
+                $query->where('start_date', '>=', $request->from_date);
             }
 
             if ($request->filled('to_date')) {
-                $query->where(function ($q) use ($request) {
-                    $q->whereDate('end_date', '<=', $request->to_date)
-                        ->orWhereDate('created_at', '<=', $request->to_date);
-                });
+                $query->where('start_date', '<=', $request->to_date);
             }
 
             // Absent type filter
@@ -93,7 +87,7 @@ class AbsentController extends Controller
                 ], 500);
             }
 
-            return back()->with('error', 'Error filtering data. Please try again.');
+            return back()->with('error', 'Error filtering data. Please Try again.');
         }
     }
 

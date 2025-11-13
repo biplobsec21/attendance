@@ -27,6 +27,7 @@ class StoreUpdateLeaveApplication extends FormRequest
             'hard_copy' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:2048'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'application_current_status' => ['nullable', 'string', 'max:100'],
         ];
     }

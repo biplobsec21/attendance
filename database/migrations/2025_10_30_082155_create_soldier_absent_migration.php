@@ -20,7 +20,7 @@ return new class extends Migration
             $table->date('reject_status_date')->nullable();
             $table->string('hard_copy')->nullable();
             $table->date('start_date');
-            $table->date('end_date');
+            $table->date('end_date')->nullable();
             $table->string('absent_current_status', 100)->default('approved');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();

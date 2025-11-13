@@ -37,14 +37,22 @@
                     <td class="px-4 py-3">
                         @php
                             $start = \Carbon\Carbon::parse($data->start_date);
-                            $end = \Carbon\Carbon::parse($data->end_date);
-                            $totalDays = $start->diffInDays($end) + 1;
+                            $totalDays = 1; // Default to 1 day if no end date
+                            $dateRangeText = $start->format('d/m/Y');
+
+                            if ($data->end_date) {
+                                $end = \Carbon\Carbon::parse($data->end_date);
+                                $totalDays = $start->diffInDays($end) + 1;
+                                $dateRangeText = $start->format('d/m/Y') . ' → ' . $end->format('d/m/Y');
+                            } else {
+                                $dateRangeText = $start->format('d/m/Y') . ' (Single Day)';
+                            }
                         @endphp
                         <span class="px-3 py-1 rounded-full bg-orange-100 text-orange-700 font-semibold text-xs">
-                            {{ $totalDays }} Days
+                            {{ $totalDays }} {{ $totalDays == 1 ? 'Day' : 'Days' }}
                         </span>
                         <p class="text-gray-400 text-xs mt-1">
-                            ({{ $start->format('d/m/Y') }} → {{ $end->format('d/m/Y') }})
+                            {{ $dateRangeText }}
                         </p>
                     </td>
 
@@ -94,8 +102,8 @@
                             data-id="{{ $data->id }}" data-soldier="{{ $data->soldier_id }}"
                             data-absenttype="{{ $data->absent_type_id }}"
                             data-start="{{ $data->start_date->format('Y-m-d') }}"
-                            data-end="{{ $data->end_date->format('Y-m-d') }}" data-reason="{{ $data->reason }}"
-                            data-hardcopy="{{ $data->hard_copy }}">
+                            data-end="{{ $data->end_date ? $data->end_date->format('Y-m-d') : '' }}"
+                            data-reason="{{ $data->reason }}" data-hardcopy="{{ $data->hard_copy }}">
                             Edit
                         </button>
                         <button type="button"

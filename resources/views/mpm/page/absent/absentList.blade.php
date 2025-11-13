@@ -324,8 +324,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">End Date *</label>
                         <input type="date" id="endDate" name="end_date"
-                            class="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-400 focus:border-orange-400 focus:outline-none transition-all"
-                            required>
+                            class="w-full border-2 border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-400 focus:border-orange-400 focus:outline-none transition-all">
                     </div>
                 </div>
 
@@ -962,17 +961,17 @@
                 fromDateEl.focus();
                 return false;
             }
-            if (!endDateEl.value) {
-                e.preventDefault();
-                alert('Please select an End Date.');
-                endDateEl.focus();
-                return false;
-            }
-            if (!totalDaysEl.value || totalDaysEl.value <= 0) {
-                e.preventDefault();
-                alert('Total days must be greater than 0.');
-                return false;
-            }
+            // if (!endDateEl.value) {
+            //     e.preventDefault();
+            //     alert('Please select an End Date.');
+            //     endDateEl.focus();
+            //     return false;
+            // }
+            // if (!totalDaysEl.value || totalDaysEl.value <= 0) {
+            //     e.preventDefault();
+            //     alert('Total days must be greater than 0.');
+            //     return false;
+            // }
 
             submitBtn.disabled = true;
             const soldierCount = selectedCheckboxes.length;

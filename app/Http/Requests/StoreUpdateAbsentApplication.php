@@ -26,7 +26,7 @@ class StoreUpdateAbsentApplication extends FormRequest
             'soldier_ids.*' => 'exists:soldiers,id',
             'absent_type_id' => 'required|exists:absent_types,id',
             'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
             'reason' => 'nullable|string|max:500',
             'application_file' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ];
@@ -47,7 +47,7 @@ class StoreUpdateAbsentApplication extends FormRequest
             'absent_type_id.required' => 'Please select an absent type.',
             'absent_type_id.exists' => 'The selected absent type does not exist.',
             'start_date.required' => 'Start date is required.',
-            'end_date.required' => 'End date is required.',
+            // 'end_date.required' => 'End date is required.',
             'end_date.after_or_equal' => 'End date must be after or equal to start date.',
             'application_file.image' => 'The file must be an image.',
             'application_file.mimes' => 'The file must be a jpeg, png, jpg, or gif.',
