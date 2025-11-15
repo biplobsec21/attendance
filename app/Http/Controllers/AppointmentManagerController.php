@@ -45,47 +45,41 @@ class AppointmentManagerController extends Controller
     public function create()
     {
         $appointments = Appointment::active()->get();
-        $soldiers = Soldier::where('status', true)->with(['rank', 'company'])->get();
         $ranks = Rank::all();
         $companies = Company::all();
 
-        // Get soldiers with current appointments
-        $assignedSoldierIds = $assignedSoldierIds = SoldierServices::whereIn('status', ['active', 'scheduled'])
-            ->pluck('soldier_id')
-            ->toArray();
-        // Get soldiers with their active assignments using the new model methods
-        $soldiers = Soldier::with(['rank', 'company', 'activeServices'])->get();
+        // Get all soldiers with their relationships
+        $soldiers = Soldier::where('status', true)
+            ->with(['rank', 'company', 'activeServices', 'activeServices.appointment'])
+            ->get();
 
-        // Separate soldiers into available and assigned
-        $availableSoldiers = $soldiers->reject(function ($soldier) {
-            return $soldier->hasActiveAssignments();
-        });
+        // Since soldiers can now have multiple appointments,
+        // all active soldiers are considered available
+        $availableSoldiers = $soldiers;
 
+        // For assigned soldiers, we can show those with current appointments
+        // but they can still be assigned to new ones
         $assignedSoldiers = $soldiers->filter(function ($soldier) {
             return $soldier->hasActiveAssignments();
         });
+
         return view('mpm.page.appointment.create', compact(
             'appointments',
-            'soldiers',
             'ranks',
             'companies',
-            'assignedSoldierIds', // Pass to view
-            'availableSoldiers',    // Changed from 'soldiers'
-            'assignedSoldiers',     // New variable
+            'availableSoldiers',
+            'assignedSoldiers',
         ));
     }
 
     /**
      * Store a newly created appointment manager.
      */
+    /**
+     * Store a newly created appointment manager.
+     */
     public function store(Request $request)
     {
-        // $request->validate([
-        //     'appointment_id' => 'required|exists:appointments,id',
-        //     'soldier_ids'    => 'required|array|min:1',
-        //     'soldier_ids.*'  => 'exists:soldiers,id',
-        //     'note'           => 'nullable|string|max:500',
-        // ]);
         $request->validate([
             'appointment_id' => 'required|exists:appointments,id',
             'soldier_ids'    => 'required|array|min:1',
@@ -95,7 +89,7 @@ class AppointmentManagerController extends Controller
             'note'           => 'nullable|string|max:300',
         ]);
 
-        // Find the appointment name from the provided appointment_id
+        // Find the appointment
         $appointment = Appointment::find($request->appointment_id);
         if (!$appointment) {
             return redirect()
@@ -106,33 +100,57 @@ class AppointmentManagerController extends Controller
         DB::beginTransaction();
 
         try {
+            $successfulAssignments = 0;
+            $failedAssignments = [];
+
             foreach ($request->soldier_ids as $soldierId) {
-                // Check for overlapping appointments
-                $this->validateAppointmentDates($soldierId, $request->appointments_from_date, $request->appointments_to_date);
+                try {
+                    // REMOVED: Overlap checking - soldiers can now have multiple appointments
+                    // $this->validateAppointmentDates($soldierId, $request->appointments_from_date, $request->appointments_to_date);
 
-                // Adjust start date if needed
-                $adjustedStartDate = $this->getAdjustedStartDate($soldierId, $request->appointments_from_date);
+                    // Adjust start date if needed
+                    $adjustedStartDate = $this->getAdjustedStartDate($soldierId, $request->appointments_from_date);
 
-                // Determine status
-                $status = $this->determineStatus($adjustedStartDate, $request->appointments_to_date);
+                    // Determine status
+                    $status = $this->determineStatus($adjustedStartDate, $request->appointments_to_date);
 
-                SoldierServices::create([
-                    'soldier_id'             => $soldierId,
-                    'appointment_id'         => $request->appointment_id,
-                    'appointments_name'      => $appointment->name,
-                    'appointment_type'       => 'current',
-                    'appointments_from_date' => $adjustedStartDate,
-                    'appointments_to_date'   => $request->appointments_to_date,
-                    'status'                 => $status,
-                    'note'                   => $request->note,
-                ]);
+                    SoldierServices::create([
+                        'soldier_id'             => $soldierId,
+                        'appointment_id'         => $request->appointment_id,
+                        'appointments_name'      => $appointment->name,
+                        'appointment_type'       => 'current',
+                        'appointments_from_date' => $adjustedStartDate,
+                        'appointments_to_date'   => $request->appointments_to_date,
+                        'status'                 => $status,
+                        'note'                   => $request->note,
+                    ]);
+
+                    $successfulAssignments++;
+                } catch (\Exception $e) {
+                    // Get soldier info for error message
+                    $soldier = Soldier::find($soldierId);
+                    $failedAssignments[] = $soldier ? $soldier->army_no . ' - ' . $soldier->name : 'Unknown Soldier';
+                    Log::warning("Failed to assign appointment to soldier {$soldierId}: " . $e->getMessage());
+                }
             }
 
             DB::commit();
 
+            // Prepare response message
+            $message = "Appointment assigned successfully to {$successfulAssignments} soldier(s)!";
+
+            if (!empty($failedAssignments)) {
+                $failedList = implode(', ', $failedAssignments);
+                $message .= " Failed to assign to: " . $failedList;
+
+                return redirect()
+                    ->route('appointmanager.index')
+                    ->with('warning', $message);
+            }
+
             return redirect()
                 ->route('appointmanager.index')
-                ->with('success', 'Appointments assigned successfully!');
+                ->with('success', $message);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Failed to create appointments: ' . $e->getMessage());
@@ -153,6 +171,7 @@ class AppointmentManagerController extends Controller
 
         return view('mpm.page.appointment.show', compact('service'));
     }
+
 
     /**
      * Update the specified appointment.
@@ -175,13 +194,13 @@ class AppointmentManagerController extends Controller
                 ->with('error', 'Selected appointment not found.');
         }
 
-        // Check for overlapping appointments (excluding current one)
-        $this->validateAppointmentDates(
-            $service->soldier_id,
-            $request->appointments_from_date,
-            $request->appointments_to_date,
-            $service->id
-        );
+        // REMOVED: Overlap checking for updates as well
+        // $this->validateAppointmentDates(
+        //     $service->soldier_id,
+        //     $request->appointments_from_date,
+        //     $request->appointments_to_date,
+        //     $service->id
+        // );
 
         DB::beginTransaction();
 
@@ -287,10 +306,18 @@ class AppointmentManagerController extends Controller
     /**
      * Validate appointment dates to prevent overlaps
      */
-    private function validateAppointmentDates($soldierId, $fromDate, $toDate, $excludeId = null)
+    /**
+     * Validate appointment dates with configurable overlap checking
+     */
+    private function validateAppointmentDates($soldierId, $fromDate, $toDate, $excludeId = null, $checkOverlaps = false)
     {
         $fromDate = Carbon::parse($fromDate);
         $toDate = $toDate ? Carbon::parse($toDate) : null;
+
+        // If we're not checking overlaps, return early
+        if (!$checkOverlaps) {
+            return;
+        }
 
         $query = SoldierServices::where('soldier_id', $soldierId)
             ->where('id', '!=', $excludeId)

@@ -280,6 +280,19 @@ class Soldier extends Model
 
         return $hasActiveCourses || $hasActiveCadres || $hasActiveExAreas || $hasActiveServices;
     }
+    public function getActiveAssignmentsCount()
+    {
+        return $this->activeServices()->count();
+    }
+    // New method to check if soldier can take more appointments
+    public function canTakeMoreAppointments($maxAllowed = null)
+    {
+        if ($maxAllowed === null) {
+            return true; // No limit
+        }
+
+        return $this->getActiveAssignmentsCount() < $maxAllowed;
+    }
     // Helper method to check if soldier has active services
     public function hasActiveServices(): bool
     {
