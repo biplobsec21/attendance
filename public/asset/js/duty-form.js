@@ -6,6 +6,7 @@ class DutyForm {
         this.initializeElements();
         this.initializeEventListeners();
         this.initializeData();
+        this.initializeTimeInputs();
         this.renderInitialData();
         this.updateRankButtonStates();
     }
@@ -909,6 +910,14 @@ class DutyForm {
         }
 
         // Time validation
+        // Validate time formats
+        const startTimeValid = this.validateTimeFormat(this.startTimeEl);
+        const endTimeValid = this.validateTimeFormat(this.endTimeEl);
+
+        if (!startTimeValid || !endTimeValid) {
+            e.preventDefault();
+            return;
+        }
         if (this.startTimeEl && this.endTimeEl) {
             const startTime = this.startTimeEl.value;
             const endTime = this.endTimeEl.value;
@@ -935,6 +944,73 @@ class DutyForm {
                 ${submitBtn.textContent.includes('Update') ? 'Updating...' : 'Saving...'}
             `;
             submitBtn.disabled = true;
+        }
+    }
+    // Add this to your DutyForm class or as a separate function
+    initializeTimeInputs() {
+        const timeInputs = document.querySelectorAll('.time-input');
+
+        timeInputs.forEach(input => {
+            // Format input as user types
+            input.addEventListener('input', (e) => {
+                let value = e.target.value.replace(/\D/g, '');
+
+                if (value.length >= 2) {
+                    value = value.substring(0, 2) + ':' + value.substring(2, 4);
+                }
+
+                e.target.value = value.substring(0, 5);
+            });
+
+            // Validate on blur
+            input.addEventListener('blur', (e) => {
+                this.validateTimeFormat(e.target);
+            });
+
+            // Validate on form submission
+            input.addEventListener('change', (e) => {
+                this.validateTimeFormat(e.target);
+                this.calculateAndDisplayDuration();
+            });
+        });
+    }
+
+    validateTimeFormat(input) {
+        const timeRegex = /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
+        const value = input.value.trim();
+
+        if (value && !timeRegex.test(value)) {
+            input.classList.add('border-rose-500', 'focus:border-rose-500', 'focus:ring-rose-500/20');
+            input.classList.remove('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-500/20');
+
+            // Show error message
+            this.showTimeError(input, 'Please enter time in HH:MM format (00:00 to 23:59)');
+            return false;
+        } else {
+            input.classList.remove('border-rose-500', 'focus:border-rose-500', 'focus:ring-rose-500/20');
+            input.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-500/20');
+
+            // Remove error message
+            this.removeTimeError(input);
+            return true;
+        }
+    }
+
+    showTimeError(input, message) {
+        // Remove existing error
+        this.removeTimeError(input);
+
+        const errorEl = document.createElement('p');
+        errorEl.className = 'text-rose-500 text-xs mt-1 time-error';
+        errorEl.textContent = message;
+
+        input.parentNode.appendChild(errorEl);
+    }
+
+    removeTimeError(input) {
+        const existingError = input.parentNode.querySelector('.time-error');
+        if (existingError) {
+            existingError.remove();
         }
     }
 }

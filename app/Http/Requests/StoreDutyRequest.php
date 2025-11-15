@@ -92,7 +92,21 @@ class StoreDutyRequest extends FormRequest
     }
 
     /**
+     * Normalize time format to HH:MM (remove seconds if present)
+     * This ensures consistent comparison between '17:00' and '17:00:00'
+     */
+    private function normalizeTime(string $time): string
+    {
+        // If time includes seconds (HH:MM:SS), remove them
+        if (strlen($time) > 5 && substr_count($time, ':') === 2) {
+            return substr($time, 0, 5); // Keep only HH:MM
+        }
+        return $time;
+    }
+
+    /**
      * Validate time requirements including duration and conflicts
+     * UPDATED: Now supports 24-hour duties (same start and end time)
      */
     private function validateTimeRequirements(Validator $validator, array $data): void
     {
@@ -100,14 +114,33 @@ class StoreDutyRequest extends FormRequest
         $endTime = $data['end_time'];
         $durationDays = $data['duration_days'] ?? 1;
 
+        // Normalize times for comparison
+        $normalizedStart = $this->normalizeTime($startTime);
+        $normalizedEnd = $this->normalizeTime($endTime);
+
         // Calculate daily duration
         $dailyDuration = $this->calculateDailyDuration($startTime, $endTime);
 
-        // Validate minimum daily duration
+        // ✅ NEW: Allow 24-hour duties (same start and end time)
+        $is24HourDuty = ($normalizedStart === $normalizedEnd);
+
+        if ($is24HourDuty) {
+            // For 24-hour duties, duration should be 24
+            if ($dailyDuration !== 24.0) {
+                $validator->errors()->add(
+                    'end_time',
+                    'Internal error: 24-hour duty duration calculation failed.'
+                );
+            }
+            // Skip other validations for 24-hour duties
+            return;
+        }
+
+        // Validate minimum daily duration (for non-24-hour duties)
         if ($dailyDuration < 1) {
             $validator->errors()->add(
                 'end_time',
-                'Daily duty duration must be at least 1 hour.'
+                'Daily duty duration must be at least 1 hour. For 24-hour duties, use the same start and end time.'
             );
         }
 
@@ -125,22 +158,6 @@ class StoreDutyRequest extends FormRequest
             $validator->errors()->add(
                 'duration_days',
                 'Total duty duration cannot exceed 720 hours (30 days).'
-            );
-        }
-
-        // Prevent equal times
-        if ($startTime === $endTime) {
-            $validator->errors()->add(
-                'end_time',
-                'Start time and end time cannot be the same.'
-            );
-        }
-
-        // Validate duty doesn't start and end at midnight (edge case)
-        if ($startTime === '00:00' && $endTime === '00:00') {
-            $validator->errors()->add(
-                'end_time',
-                'Duty cannot start and end at midnight.'
             );
         }
     }
@@ -322,10 +339,20 @@ class StoreDutyRequest extends FormRequest
     }
 
     /**
-     * Calculate daily duration in hours considering overnight duties
+     * Calculate daily duration in hours considering overnight duties and 24-hour duties
+     * UPDATED: Now handles 24-hour duties correctly
      */
     private function calculateDailyDuration(string $startTime, string $endTime): float
     {
+        // Normalize time formats
+        $startTime = $this->normalizeTime($startTime);
+        $endTime = $this->normalizeTime($endTime);
+
+        // If start and end times are the same, it's a 24-hour duty
+        if ($startTime === $endTime) {
+            return 24.0;
+        }
+
         $start = Carbon::createFromTimeString($startTime);
         $end = Carbon::createFromTimeString($endTime);
 
@@ -334,7 +361,9 @@ class StoreDutyRequest extends FormRequest
             $end->addDay();
         }
 
-        return $end->diffInHours($start);
+        // Calculate the difference in hours with minutes as decimal
+        $durationInMinutes = $end->diffInMinutes($start);
+        return round($durationInMinutes / 60, 2);
     }
 
     public function messages(): array
@@ -404,9 +433,6 @@ class StoreDutyRequest extends FormRequest
         ];
     }
 
-    /**
-     * Prepare the data for validation (trim strings, etc.)
-     */
     /**
      * Prepare the data for validation (trim strings, etc.)
      */

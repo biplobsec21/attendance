@@ -411,18 +411,30 @@ class DutyService
 
     /**
      * Calculate duty duration in hours, considering overnight duties
+     * Special handling for 00:00 - 00:00 which represents a full 24-hour duty
      */
     public function calculateDutyDuration(string $startTime, string $endTime): float
     {
+        // Normalize time formats (remove seconds if present)
+        $startTime = $this->normalizeTime($startTime);
+        $endTime = $this->normalizeTime($endTime);
+
+        // If start and end times are the same, it's a 24-hour duty
+        if ($startTime === $endTime) {
+            return 24.0;
+        }
+
         $start = Carbon::createFromTimeString($startTime);
         $end = Carbon::createFromTimeString($endTime);
 
-        // If end time is earlier than start time, it spans to next day
+        // If end time is earlier than start time, it spans to next day (overnight duty)
         if ($end->lt($start)) {
             $end->addDay();
         }
 
-        return $end->diffInHours($start);
+        // Calculate the difference in hours with minutes as decimal
+        $durationInMinutes = $end->diffInMinutes($start);
+        return round($durationInMinutes / 60, 2);
     }
 
     /**
@@ -436,23 +448,37 @@ class DutyService
 
     /**
      * Check if duty is overnight (ends next day)
+     * Updated to handle 00:00 - 00:00 special case
      */
     public function isOvernightDuty(string $startTime, string $endTime): bool
     {
+        // Normalize time formats
+        $startTime = $this->normalizeTime($startTime);
+        $endTime = $this->normalizeTime($endTime);
+
+        // If times are equal, it's a 24-hour duty, not just overnight
+        if ($startTime === $endTime) {
+            return false;
+        }
+
         $start = Carbon::createFromTimeString($startTime);
         $end = Carbon::createFromTimeString($endTime);
 
+        // Overnight means end time is earlier than start time
         return $end->lt($start);
     }
 
     /**
      * Get duty schedule description
+     * Enhanced to show 24-hour duty clearly
      */
     public function getDutyScheduleDescription(Duty $duty): string
     {
         $description = $duty->start_time . ' - ' . $duty->end_time;
 
-        if ($this->isOvernightDuty($duty->start_time, $duty->end_time)) {
+        if ($this->isFullDayDuty($duty->start_time, $duty->end_time)) {
+            $description .= ' (24-hour duty)';
+        } elseif ($this->isOvernightDuty($duty->start_time, $duty->end_time)) {
             $description .= ' (overnight)';
         }
 
@@ -465,16 +491,18 @@ class DutyService
 
     /**
      * Get duty time display format
+     * Enhanced with better 24-hour duty display
      */
     public function getDutyTimeDisplay(string $startTime, string $endTime, int $durationDays = 1): string
     {
-        $isOvernight = $this->isOvernightDuty($startTime, $endTime);
         $duration = $this->calculateDutyDuration($startTime, $endTime);
         $totalHours = $duration * $durationDays;
 
         $display = $startTime . ' - ' . $endTime;
 
-        if ($isOvernight) {
+        if ($this->isFullDayDuty($startTime, $endTime)) {
+            $display .= ' (24-hour duty)';
+        } elseif ($this->isOvernightDuty($startTime, $endTime)) {
             $display .= ' (overnight)';
         }
 
@@ -486,7 +514,101 @@ class DutyService
 
         return $display;
     }
+    /**
+     * Validate duty times
+     * Add this new method to validate duty times during creation/update
+     */
+    public function validateDutyTimes(string $startTime, string $endTime): array
+    {
+        $errors = [];
 
+        try {
+            // Normalize time formats
+            $startTime = $this->normalizeTime($startTime);
+            $endTime = $this->normalizeTime($endTime);
+
+            $start = Carbon::createFromTimeString($startTime);
+            $end = Carbon::createFromTimeString($endTime);
+
+            // Calculate duration
+            $duration = $this->calculateDutyDuration($startTime, $endTime);
+
+            // Validate duration is reasonable (must be positive and <= 24 hours)
+            if ($duration <= 0 || $duration > 24) {
+                $errors[] = 'Duty duration must be between 0 and 24 hours';
+            }
+
+            // Additional validation for same-time duties
+            if ($startTime === $endTime && $duration !== 24.0) {
+                $errors[] = 'Same start and end time should represent a 24-hour duty';
+            }
+        } catch (\Exception $e) {
+            $errors[] = 'Invalid time format. Please use HH:MM or HH:MM:SS format';
+        }
+
+        return $errors;
+    }
+    /**
+     * Check if duty is a full-day duty (24 hours)
+     * New helper method
+     */
+    public function isFullDayDuty(string $startTime, string $endTime): bool
+    {
+        // Normalize time formats
+        $startTime = $this->normalizeTime($startTime);
+        $endTime = $this->normalizeTime($endTime);
+
+        return $startTime === $endTime;
+    }
+    public function getDutiesByType(): array
+    {
+        $duties = Duty::where('status', 'Active')->get();
+
+        return [
+            'full_day_duties' => $duties->filter(function ($duty) {
+                return $this->isFullDayDuty($duty->start_time, $duty->end_time);
+            })->values(),
+
+            'overnight_duties' => $duties->filter(function ($duty) {
+                return $this->isOvernightDuty($duty->start_time, $duty->end_time);
+            })->values(),
+
+            'day_duties' => $duties->filter(function ($duty) {
+                return !$this->isFullDayDuty($duty->start_time, $duty->end_time)
+                    && !$this->isOvernightDuty($duty->start_time, $duty->end_time);
+            })->values(),
+        ];
+    }
+    /**
+     * Get duty type description
+     * New helper method for displaying duty type
+     */
+    public function getDutyTypeDescription(Duty $duty): string
+    {
+        if ($this->isFullDayDuty($duty->start_time, $duty->end_time)) {
+            return '24-hour duty';
+        }
+
+        $duration = $this->calculateDutyDuration($duty->start_time, $duty->end_time);
+
+        if ($this->isOvernightDuty($duty->start_time, $duty->end_time)) {
+            return 'Overnight duty (' . $duration . ' hours)';
+        }
+
+        if ($duration >= 12) {
+            return 'Long duty (' . $duration . ' hours)';
+        }
+
+        if ($duration >= 8) {
+            return 'Full shift (' . $duration . ' hours)';
+        }
+
+        if ($duration >= 4) {
+            return 'Half shift (' . $duration . ' hours)';
+        }
+
+        return 'Short duty (' . $duration . ' hours)';
+    }
     /**
      * Get duties happening at a specific time (for roster assignment)
      */
@@ -497,8 +619,16 @@ class DutyService
         return Duty::where('status', 'Active')
             ->get()
             ->filter(function ($duty) use ($timeCarbon) {
-                $start = Carbon::createFromTimeString($duty->start_time);
-                $end = Carbon::createFromTimeString($duty->end_time);
+                $startTime = $this->normalizeTime($duty->start_time);
+                $endTime = $this->normalizeTime($duty->end_time);
+
+                $start = Carbon::createFromTimeString($startTime);
+                $end = Carbon::createFromTimeString($endTime);
+
+                // Handle 24-hour duties - always active at any time
+                if ($startTime === $endTime) {
+                    return true;
+                }
 
                 // Handle overnight duties
                 if ($end->lt($start)) {
@@ -510,6 +640,7 @@ class DutyService
                     return $timeCheck->between($start, $end);
                 }
 
+                // Regular duty (same day)
                 return $timeCarbon->between($start, $end);
             })
             ->values()
@@ -696,17 +827,47 @@ class DutyService
         string $end2,
         int $days2
     ): bool {
-        // Simplified overlap check - you might want to implement more sophisticated logic
-        // This checks if the daily time ranges overlap
-        $start1 = Carbon::createFromTimeString($start1);
-        $end1 = Carbon::createFromTimeString($end1);
-        $start2 = Carbon::createFromTimeString($start2);
-        $end2 = Carbon::createFromTimeString($end2);
+        // Normalize time formats
+        $start1 = $this->normalizeTime($start1);
+        $end1 = $this->normalizeTime($end1);
+        $start2 = $this->normalizeTime($start2);
+        $end2 = $this->normalizeTime($end2);
+
+        // If either duty is 24-hour, they always overlap
+        $is24HourDuty1 = ($start1 === $end1);
+        $is24HourDuty2 = ($start2 === $end2);
+
+        if ($is24HourDuty1 || $is24HourDuty2) {
+            // 24-hour duties always conflict with any other duty
+            return true;
+        }
+
+        $start1Carbon = Carbon::createFromTimeString($start1);
+        $end1Carbon = Carbon::createFromTimeString($end1);
+        $start2Carbon = Carbon::createFromTimeString($start2);
+        $end2Carbon = Carbon::createFromTimeString($end2);
 
         // Handle overnight duties
-        if ($end1->lt($start1)) $end1->addDay();
-        if ($end2->lt($start2)) $end2->addDay();
+        if ($end1Carbon->lt($start1Carbon)) {
+            $end1Carbon->addDay();
+        }
+        if ($end2Carbon->lt($start2Carbon)) {
+            $end2Carbon->addDay();
+        }
 
-        return $start1->lt($end2) && $start2->lt($end1);
+        // Check if time ranges overlap
+        return $start1Carbon->lt($end2Carbon) && $start2Carbon->lt($end1Carbon);
+    }
+    /**
+     * Normalize time format to HH:MM (remove seconds if present)
+     * This ensures consistent comparison between '17:00' and '17:00:00'
+     */
+    private function normalizeTime(string $time): string
+    {
+        // If time includes seconds (HH:MM:SS), remove them
+        if (strlen($time) > 5 && substr_count($time, ':') === 2) {
+            return substr($time, 0, 5); // Keep only HH:MM
+        }
+        return $time;
     }
 }

@@ -326,7 +326,8 @@ class DutyAssignmentService
         Log::info('Finding eligible soldiers', [
             'rank_id' => $rankId,
             'duty_id' => $duty->id,
-            'date' => $date
+            'date' => $date,
+            'is_24_hour_duty' => $this->is24HourDuty($duty)
         ]);
 
         // Get all soldiers of the required rank
@@ -384,8 +385,49 @@ class DutyAssignmentService
         $timeConflictFiltered = 0;
         $maxDutiesFiltered = 0;
         $multiDayConflictFiltered = 0;
+        $twentyFourHourFiltered = 0;
 
-        // Filter: Multi-day conflict check (NEW - from Version 2)
+        // NEW FILTER: 24-hour duty special handling
+        $is24HourDuty = $this->is24HourDuty($duty);
+
+        if ($is24HourDuty) {
+            $soldiers = $soldiers->filter(function ($soldier) use ($existingAssignments, $duty, $date, &$twentyFourHourFiltered) {
+                // For 24-hour duties, check if soldier already has ANY duty that day
+                $hasAnyDuty = $existingAssignments->get($soldier->id, collect())->isNotEmpty();
+
+                if ($hasAnyDuty) {
+                    $twentyFourHourFiltered++;
+                    Log::debug('SOLDIER FILTERED - 24-hour duty conflict', [
+                        'soldier_id' => $soldier->id,
+                        'duty_id' => $duty->id,
+                        'duty_name' => $duty->duty_name,
+                        'reason' => 'Cannot assign 24-hour duty to soldier with existing duties'
+                    ]);
+                    return false;
+                }
+                return true;
+            });
+        } else {
+            // For non-24-hour duties, check if soldier has a 24-hour duty that day
+            $soldiers = $soldiers->filter(function ($soldier) use ($existingAssignments, &$twentyFourHourFiltered) {
+                $soldierAssignments = $existingAssignments->get($soldier->id, collect());
+
+                foreach ($soldierAssignments as $assignment) {
+                    if ($this->is24HourDuty($assignment->duty)) {
+                        $twentyFourHourFiltered++;
+                        Log::debug('SOLDIER FILTERED - Has 24-hour duty', [
+                            'soldier_id' => $soldier->id,
+                            'existing_24h_duty' => $assignment->duty->duty_name,
+                            'reason' => 'Soldier already has 24-hour duty on this date'
+                        ]);
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
+
+        // Filter: Multi-day conflict check
         $soldiers = $soldiers->filter(function ($soldier) use ($existingAssignments, $duty, $date, &$multiDayConflictFiltered) {
             $hasMultiDayConflict = $this->hasMultiDayTimeConflict(
                 $soldier->id,
@@ -435,7 +477,7 @@ class DutyAssignmentService
             return true;
         });
 
-        // Filter: Time conflict check with minimum break enforcement (IMPROVED - from both versions)
+        // Filter: Time conflict check with minimum break enforcement
         $soldiers = $soldiers->filter(function ($soldier) use ($existingAssignments, $duty, $date, $pendingAssignments, &$timeConflictFiltered) {
             $hasConflict = $this->hasTimeConflictWithPendingAssignments($soldier->id, $duty, $date, $existingAssignments, $pendingAssignments);
             if ($hasConflict) {
@@ -480,11 +522,15 @@ class DutyAssignmentService
         Log::info('Eligible soldiers filtering completed', [
             'rank_id' => $rankId,
             'duty_id' => $duty->id,
+            'is_24_hour_duty' => $is24HourDuty,
             'initial_count' => $initialCount,
-            'after_fair_rotation' => $initialCount - $fairRotationFiltered,
-            'after_time_conflict' => $initialCount - $fairRotationFiltered - $timeConflictFiltered,
-            'after_max_duties' => $initialCount - $fairRotationFiltered - $timeConflictFiltered - $maxDutiesFiltered,
+            'after_24_hour_filter' => $initialCount - $twentyFourHourFiltered,
+            'after_multi_day_conflict' => $initialCount - $twentyFourHourFiltered - $multiDayConflictFiltered,
+            'after_fair_rotation' => $initialCount - $twentyFourHourFiltered - $multiDayConflictFiltered - $fairRotationFiltered,
+            'after_time_conflict' => $initialCount - $twentyFourHourFiltered - $multiDayConflictFiltered - $fairRotationFiltered - $timeConflictFiltered,
+            'after_max_duties' => $initialCount - $twentyFourHourFiltered - $multiDayConflictFiltered - $fairRotationFiltered - $timeConflictFiltered - $maxDutiesFiltered,
             'final_eligible' => $finalSoldiers->count(),
+            'filtered_by_24_hour' => $twentyFourHourFiltered,
             'filtered_by_multi_day_conflict' => $multiDayConflictFiltered,
             'filtered_by_fair_rotation' => $fairRotationFiltered,
             'filtered_by_time_conflict' => $timeConflictFiltered,
@@ -598,12 +644,31 @@ class DutyAssignmentService
      */
     protected function hasTimeOverlapOrInsufficientBreak($newDuty, $existingDuty): bool
     {
+        //  FIXED: Normalize time formats first
+        $newStartNormalized = $this->normalizeTimeForComparison($newDuty->start_time);
+        $newEndNormalized = $this->normalizeTimeForComparison($newDuty->end_time);
+        $existingStartNormalized = $this->normalizeTimeForComparison($existingDuty->start_time);
+        $existingEndNormalized = $this->normalizeTimeForComparison($existingDuty->end_time);
+
+        // Handle 24-hour duties - they conflict with everything
+        $isNew24Hour = ($newStartNormalized === $newEndNormalized);
+        $isExisting24Hour = ($existingStartNormalized === $existingEndNormalized);
+
+        if ($isNew24Hour || $isExisting24Hour) {
+            Log::debug('24-hour duty conflict detected', [
+                'new_duty' => $newDuty->start_time . ' - ' . $newDuty->end_time . ($isNew24Hour ? ' (24-hour)' : ''),
+                'existing_duty' => $existingDuty->start_time . ' - ' . $existingDuty->end_time . ($isExisting24Hour ? ' (24-hour)' : '')
+            ]);
+            return true;
+        }
+
+        // Parse times for regular duties
         $newStart = $this->parseTimeString($newDuty->start_time);
         $newEnd = $this->parseTimeString($newDuty->end_time);
         $existingStart = $this->parseTimeString($existingDuty->start_time);
         $existingEnd = $this->parseTimeString($existingDuty->end_time);
 
-        // Handle overnight duties
+        // Handle overnight duties for regular duties
         if ($newEnd->lt($newStart)) $newEnd->addDay();
         if ($existingEnd->lt($existingStart)) $existingEnd->addDay();
 
@@ -741,6 +806,25 @@ class DutyAssignmentService
      */
     protected function hasMultiDayTimeOverlap($newDuty, $existingAssignment, string $newStartDate): bool
     {
+        //  Normalize time formats first
+        $newStartNormalized = $this->normalizeTimeForComparison($newDuty->start_time);
+        $newEndNormalized = $this->normalizeTimeForComparison($newDuty->end_time);
+        $existingStartNormalized = $this->normalizeTimeForComparison($existingAssignment['start_time']);
+        $existingEndNormalized = $this->normalizeTimeForComparison($existingAssignment['end_time']);
+
+        // Handle 24-hour duties - they conflict with everything
+        $isNew24Hour = ($newStartNormalized === $newEndNormalized);
+        $isExisting24Hour = ($existingStartNormalized === $existingEndNormalized);
+
+        if ($isNew24Hour || $isExisting24Hour) {
+            Log::debug('Multi-day 24-hour duty conflict detected', [
+                'new_duty' => $newDuty->start_time . ' - ' . $newDuty->end_time . ($isNew24Hour ? ' (24-hour)' : ''),
+                'existing_duty' => $existingAssignment['start_time'] . ' - ' . $existingAssignment['end_time'] . ($isExisting24Hour ? ' (24-hour)' : '')
+            ]);
+            return true;
+        }
+
+        // Parse times for regular duties
         $newStart = $this->parseTimeString($newDuty->start_time);
         $newEnd = $this->parseTimeString($newDuty->end_time);
         $existingStart = $this->parseTimeString($existingAssignment['start_time']);
@@ -766,6 +850,29 @@ class DutyAssignmentService
         $hasOverlap = $newStartDateTime->lt($existingEndDateTime) && $existingStartDateTime->lt($newEndDateTime);
 
         return $hasOverlap;
+    }
+    /**
+     * Check if duty is a 24-hour duty (same start and end time)
+     */
+    protected function is24HourDuty($duty): bool
+    {
+        // Normalize time formats for comparison
+        $startTime = $this->normalizeTimeForComparison($duty->start_time);
+        $endTime = $this->normalizeTimeForComparison($duty->end_time);
+
+        return $startTime === $endTime;
+    }
+
+    /**
+     * Normalize time format for comparison (remove seconds if present)
+     */
+    protected function normalizeTimeForComparison(string $time): string
+    {
+        // If time includes seconds (HH:MM:SS), remove them
+        if (strlen($time) > 5 && substr_count($time, ':') === 2) {
+            return substr($time, 0, 5); // Keep only HH:MM
+        }
+        return $time;
     }
 
     /**

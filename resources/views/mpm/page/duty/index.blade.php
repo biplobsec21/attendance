@@ -227,7 +227,8 @@
                                                     if ($end->lt($start)) {
                                                         $end->addDay();
                                                     }
-                                                    $duration = $end->diffInHours($start);
+                                                    $duration =
+                                                        $end->diffInHours($start) == 0 ? 24 : $end->diffInHours($start);
                                                 @endphp
                                                 <div class="text-xs text-gray-500">{{ $duration }}h daily</div>
                                             </td>

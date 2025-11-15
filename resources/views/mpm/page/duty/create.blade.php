@@ -110,24 +110,13 @@
                                             Daily Start Time
                                         </label>
                                         <div class="relative">
-                                            <select id="start-time" name="start_time"
-                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 appearance-none @error('start_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
+                                            <input type="text" id="start-time" name="start_time"
+                                                value="{{ old('start_time', '08:00') }}"
+                                                pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
+                                                placeholder="HH:MM (24-hour format)" maxlength="5"
+                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input @error('start_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
                                                 required>
-                                                <option value="">Select Start Time</option>
-                                                @for ($h = 0; $h < 24; $h++)
-                                                    @for ($m = 0; $m < 60; $m += 30)
-                                                        @php
-                                                            $time = sprintf('%02d:%02d', $h, $m);
-                                                            $selected =
-                                                                old('start_time', '08:00') == $time ? 'selected' : '';
-                                                        @endphp
-                                                        <option value="{{ $time }}" {{ $selected }}>
-                                                            {{ $time }}</option>
-                                                    @endfor
-                                                @endfor
-                                            </select>
-                                            <div
-                                                class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                            <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -138,6 +127,7 @@
                                         @error('start_time')
                                             <p class="text-rose-500 text-sm mt-1">{{ $message }}</p>
                                         @enderror
+                                        <p class="text-xs text-gray-500 mt-1">Format: 00:00 to 23:59</p>
                                     </div>
 
                                     {{-- End Time --}}
@@ -147,24 +137,13 @@
                                             Daily End Time
                                         </label>
                                         <div class="relative">
-                                            <select id="end-time" name="end_time"
-                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 appearance-none @error('end_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
+                                            <input type="text" id="end-time" name="end_time"
+                                                value="{{ old('end_time', '17:00') }}"
+                                                pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
+                                                placeholder="HH:MM (24-hour format)" maxlength="5"
+                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input @error('end_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
                                                 required>
-                                                <option value="">Select End Time</option>
-                                                @for ($h = 0; $h < 24; $h++)
-                                                    @for ($m = 0; $m < 60; $m += 30)
-                                                        @php
-                                                            $time = sprintf('%02d:%02d', $h, $m);
-                                                            $selected =
-                                                                old('end_time', '17:00') == $time ? 'selected' : '';
-                                                        @endphp
-                                                        <option value="{{ $time }}" {{ $selected }}>
-                                                            {{ $time }}</option>
-                                                    @endfor
-                                                @endfor
-                                            </select>
-                                            <div
-                                                class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                            <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -175,6 +154,7 @@
                                         @error('end_time')
                                             <p class="text-rose-500 text-sm mt-1">{{ $message }}</p>
                                         @enderror
+                                        <p class="text-xs text-gray-500 mt-1">Format: 00:00 to 23:59</p>
                                     </div>
 
                                     {{-- Duration Days --}}
