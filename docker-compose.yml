@@ -1,53 +1,34 @@
-version: "3.8"
+version: "3.9"
 
 services:
-    app:
-        container_name: attendance_app-1
-        image: bitnami/laravel:latest
-        ports:
-            - "8000:8000"
-        volumes:
-            - ./:/app:cached
-        environment:
-            - BITNAMI_DEBUG=true
-            - CHOWN_HOME_DIR=false
-            - CHOWN_HOME_DIR_CHMOD=false
-            - APP_ENV=local
-            - APP_DEBUG=true
-            - APP_KEY=base64:AnbQ5XdRYvVKjNKlsaSQ5dcCLhCl/wYUzY1in+LWalo=
-            - DB_CONNECTION=mysql
-            - DB_HOST=attendance_mariadb-1
-            - DB_PORT=3306
-            - DB_USERNAME=bn_laravel
-            - DB_PASSWORD=laravel123
-            - DB_DATABASE=c_attendance
-        depends_on:
-            - mariadb
+  mariadb:
+    image: mariadb:10.6
+    container_name: attendance_mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: c_attendance
+      MARIADB_USER: bn_laravel
+      MARIADB_PASSWORD: laravel123
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    ports:
+      - "3307:3306"   # Laravel Herd connects through this port
 
-    mariadb:
-        container_name: attendance_mariadb-1
-        image: bitnami/mariadb:latest
-        environment:
-            - ALLOW_EMPTY_PASSWORD=yes
-            - MARIADB_USER=bn_laravel
-            - MARIADB_PASSWORD=laravel123
-            - MARIADB_DATABASE=c_attendance
-        volumes:
-            - attendance_mariadb_data:/bitnami/mariadb
-
-    phpmyadmin:
-        container_name: attendance_phpmyadmin-1
-        image: phpmyadmin/phpmyadmin:latest
-        restart: always
-        ports:
-            - "8080:80"
-        environment:
-            - PMA_HOST=attendance_mariadb-1
-            - PMA_PORT=3306
-            - PMA_USER=bn_laravel
-            - PMA_PASSWORD=laravel123
-        depends_on:
-            - mariadb
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: attendance_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"     # Access at http://localhost:8080
+    environment:
+      PMA_HOST: mariadb
+      PMA_USER: root
+      PMA_PASSWORD: root
+    volumes:
+      - ./php.ini:/usr/local/etc/php/conf.d/uploads.ini
+    depends_on:
+      - mariadb
 
 volumes:
-    attendance_mariadb_data:
+  mariadb_data:
