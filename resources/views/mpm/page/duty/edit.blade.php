@@ -3,7 +3,7 @@
 @section('title', 'Edit Duty Record')
 
 @section('content')
-
+    <!--- Test push --->
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8 px-4">
         <div class="container mx-auto max-w-4xl">
             <x-breadcrumb :breadcrumbs="generateBreadcrumbs_auto()" />
