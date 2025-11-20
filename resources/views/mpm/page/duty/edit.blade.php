@@ -107,6 +107,7 @@
                                             Daily Start Time
                                         </label>
                                         <div class="relative">
+                                            <!-- Edit updated -->
                                             <input type="text" id="start-time" name="start_time"
                                                 value="{{ old('start_time', $duty->start_time->format('H:i')) }}"
                                                 class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input @error('start_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
