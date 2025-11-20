@@ -6,12 +6,38 @@
 
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8 px-4">
         <div class="container mx-auto max-w-4xl">
-            {{-- <x-breadcrumb :breadcrumbs="[
-                ['name' => 'Dashboard', 'url' => route('dashboard')],
-                ['name' => 'Duty Management', 'url' => route('duty.index')],
-                ['name' => 'Edit Duty', 'url' => route('duty.edit', $duty)],
-            ]" /> --}}
             <x-breadcrumb :breadcrumbs="generateBreadcrumbs_auto()" />
+
+            <!-- Enhanced error display -->
+            @if ($errors->any())
+                <div class="mb-4">
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
+                                    fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">
+                                    There were errors with your submission:
+                                </h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        @foreach ($errors->all() as $error)
+                                            <li>{{ $error }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <!-- Header Section -->
             <div class="mb-6">
                 <div class="flex items-center gap-3 p-3 bg-white/50 rounded-xl border border-gray-200">
@@ -28,7 +54,6 @@
                     </div>
                 </div>
             </div>
-
 
             <!-- Main Form Card -->
             <div class="bg-white/80 backdrop-blur-sm shadow-xl rounded-3xl border border-white/50 overflow-hidden">
@@ -76,33 +101,17 @@
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                                     {{-- Start Time --}}
-                                    <div>
+                                    <div class="time-input-container">
                                         <label for="start-time"
                                             class="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
                                             Daily Start Time
                                         </label>
                                         <div class="relative">
-                                            <select id="start-time" name="start_time"
-                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 appearance-none @error('start_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
-                                                required>
-                                                <option value="">Select Start Time</option>
-                                                @for ($h = 0; $h < 24; $h++)
-                                                    @for ($m = 0; $m < 60; $m += 30)
-                                                        @php
-                                                            $time = sprintf('%02d:%02d', $h, $m);
-                                                            $selected =
-                                                                old('start_time', $duty->start_time->format('H:i')) ==
-                                                                $time
-                                                                    ? 'selected'
-                                                                    : '';
-                                                        @endphp
-                                                        <option value="{{ $time }}" {{ $selected }}>
-                                                            {{ $time }}</option>
-                                                    @endfor
-                                                @endfor
-                                            </select>
-                                            <div
-                                                class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                            <input type="text" id="start-time" name="start_time"
+                                                value="{{ old('start_time', $duty->start_time->format('H:i')) }}"
+                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input @error('start_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
+                                                placeholder="Select start time" required>
+                                            <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -116,32 +125,17 @@
                                     </div>
 
                                     {{-- End Time --}}
-                                    <div>
+                                    <div class="time-input-container">
                                         <label for="end-time"
                                             class="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
                                             Daily End Time
                                         </label>
                                         <div class="relative">
-                                            <select id="end-time" name="end_time"
-                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 appearance-none @error('end_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
-                                                required>
-                                                <option value="">Select End Time</option>
-                                                @for ($h = 0; $h < 24; $h++)
-                                                    @for ($m = 0; $m < 60; $m += 30)
-                                                        @php
-                                                            $time = sprintf('%02d:%02d', $h, $m);
-                                                            $selected =
-                                                                old('end_time', $duty->end_time->format('H:i')) == $time
-                                                                    ? 'selected'
-                                                                    : '';
-                                                        @endphp
-                                                        <option value="{{ $time }}" {{ $selected }}>
-                                                            {{ $time }}</option>
-                                                    @endfor
-                                                @endfor
-                                            </select>
-                                            <div
-                                                class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                            <input type="text" id="end-time" name="end_time"
+                                                value="{{ old('end_time', $duty->end_time->format('H:i')) }}"
+                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input @error('end_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
+                                                placeholder="Select end time" required>
+                                            <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -219,7 +213,8 @@
                                         <div>
                                             <span class="text-blue-600 font-medium">Daily Duration:</span>
                                             <span id="daily-duration"
-                                                class="ml-2">{{ $totalHours / $duty->duration_days }} hours</span>
+                                                class="ml-2">{{ number_format($totalHours / $duty->duration_days, 1) }}
+                                                hours</span>
                                         </div>
                                         <div>
                                             <span class="text-blue-600 font-medium">Total Duration:</span>
@@ -537,7 +532,54 @@
     @include('mpm.components.soldier-selection-modal', ['availableSoldiers' => $availableSoldiers ?? []])
 
 @endsection
+@push('styles')
+    <style>
+        /* Flatpickr Custom Styles */
+        .flatpickr-input {
+            cursor: pointer;
+            background-color: white;
+        }
 
+        .flatpickr-input:read-only {
+            background-color: #f9fafb;
+        }
+
+        .custom-flatpickr .flatpickr-time {
+            @apply bg-white rounded-lg shadow-lg border border-gray-200;
+        }
+
+        .custom-flatpickr .flatpickr-time .numInputWrapper {
+            @apply border border-gray-300 rounded;
+        }
+
+        .custom-flatpickr .flatpickr-time .numInputWrapper:hover {
+            @apply border-blue-500;
+        }
+
+        .custom-flatpickr .flatpickr-time .flatpickr-am-pm:hover,
+        .custom-flatpickr .flatpickr-time .flatpickr-am-pm:focus {
+            @apply bg-blue-500 text-white;
+        }
+
+        .flatpickr-day.selected {
+            @apply bg-blue-500 border-blue-500;
+        }
+
+        .flatpickr-day:hover {
+            @apply bg-blue-100 border-blue-100;
+        }
+
+        /* Quick time button styles */
+        .quick-time-btn {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .quick-time-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+@endpush
 @push('scripts')
     <script>
         console.log('Blade - Initial Fixed Soldiers:', {!! json_encode($fixedSoldiers ?? []) !!});

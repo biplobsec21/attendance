@@ -13,7 +13,9 @@
 
     <link rel="stylesheet" href="{{ asset('asset/css/goToTop.css') }}">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.css" />
-
+    {{-- In your app.blade.php or layout file --}}
+    {{-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script> --}}
     {{-- @vite(['resources/css/app.css', 'resources/js/app.js']) --}}
     <style>
         body,

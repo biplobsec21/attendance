@@ -6,7 +6,7 @@ class DutyForm {
         this.initializeElements();
         this.initializeEventListeners();
         this.initializeData();
-        this.initializeTimeInputs();
+        this.initializeTimePickers();
         this.renderInitialData();
         this.updateRankButtonStates();
     }
@@ -39,10 +39,370 @@ class DutyForm {
         this.multiDayIndicator = document.getElementById('multi-day-indicator');
         this.dailyDuration = document.getElementById('daily-duration');
         this.totalDuration = document.getElementById('total-duration');
+        // Time picker instances
+        this.startTimePicker = null;
+        this.endTimePicker = null;
+        console.log('Elements initialized');
+    }
+    initializeElements() {
+        // Form elements
+        this.dutyForm = document.getElementById('duty-form');
+        this.startTimeEl = document.getElementById('start-time');
+        this.endTimeEl = document.getElementById('end-time');
+        this.durationDaysEl = document.getElementById('duration-days');
+        this.totalManpowerInput = document.getElementById('total-manpower');
+        this.totalManpowerDisplay = document.getElementById('total-manpower-display');
+
+        // Rank selection elements
+        this.rankSearch = document.getElementById('rank-search');
+        this.rankButtons = document.querySelectorAll('.rank-button');
+        this.selectedItemsContainer = document.getElementById('selected-items-container');
+        this.addOrGroupBtn = document.getElementById('add-or-group');
+
+        // Fixed soldier elements
+        this.addFixedSoldierBtn = document.getElementById('add-fixed-soldier');
+        this.fixedSoldiersContainer = document.getElementById('fixed-soldiers-container');
+        this.soldierSelectionModal = document.getElementById('soldier-selection-modal');
+        this.soldierSearch = document.getElementById('soldier-search');
+        this.soldierOptions = document.getElementById('soldier-options');
+
+        // Duration display elements
+        this.durationDisplay = document.getElementById('duration-display');
+        this.scheduleDisplay = document.getElementById('schedule-display');
+        this.multiDayIndicator = document.getElementById('multi-day-indicator');
+        this.dailyDuration = document.getElementById('daily-duration');
+        this.totalDuration = document.getElementById('total-duration');
+
+        // Time picker instances
+        this.startTimePicker = null;
+        this.endTimePicker = null;
 
         console.log('Elements initialized');
     }
 
+    initializeTimePickers() {
+        console.log('Initializing Flatpickr time pickers...');
+
+        // Check if Flatpickr is available
+        if (typeof flatpickr === 'undefined') {
+            console.error('Flatpickr is not loaded. Please include Flatpickr CSS and JS files.');
+            this.fallbackTimeInputs();
+            return;
+        }
+
+        // Initialize start time picker
+        if (this.startTimeEl) {
+            this.startTimePicker = flatpickr(this.startTimeEl, {
+                enableTime: true,
+                noCalendar: true,
+                dateFormat: "H:i",
+                time_24hr: true,
+                minuteIncrement: 30,
+                defaultHour: 8,
+                defaultMinute: 0,
+                allowInput: true,
+                clickOpens: true,
+                onReady: (selectedDates, dateStr, instance) => {
+                    this.styleTimePicker(instance);
+                },
+                onChange: (selectedDates, dateStr, instance) => {
+                    console.log('Start time changed:', dateStr);
+                    this.validateTimeFormat(this.startTimeEl);
+                    this.validateTimeRange();
+                    this.calculateAndDisplayDuration();
+                },
+                onClose: (selectedDates, dateStr, instance) => {
+                    this.validateTimeFormat(this.startTimeEl);
+                }
+            });
+
+            // Add custom class for styling
+            this.startTimeEl.classList.add('flatpickr-input');
+        }
+
+        // Initialize end time picker
+        if (this.endTimeEl) {
+            this.endTimePicker = flatpickr(this.endTimeEl, {
+                enableTime: true,
+                noCalendar: true,
+                dateFormat: "H:i",
+                time_24hr: true,
+                minuteIncrement: 30,
+                defaultHour: 17,
+                defaultMinute: 0,
+                allowInput: true,
+                clickOpens: true,
+                onReady: (selectedDates, dateStr, instance) => {
+                    this.styleTimePicker(instance);
+                },
+                onChange: (selectedDates, dateStr, instance) => {
+                    console.log('End time changed:', dateStr);
+                    this.validateTimeFormat(this.endTimeEl);
+                    this.validateTimeRange();
+                    this.calculateAndDisplayDuration();
+                },
+                onClose: (selectedDates, dateStr, instance) => {
+                    this.validateTimeFormat(this.endTimeEl);
+                }
+            });
+
+            // Add custom class for styling
+            this.endTimeEl.classList.add('flatpickr-input');
+        }
+
+        console.log('Flatpickr time pickers initialized');
+    }
+    // Style the Flatpickr instance to match your theme
+    styleTimePicker(instance) {
+        // Wait for the calendar to be created
+        setTimeout(() => {
+            const calendar = instance.calendarContainer;
+            if (calendar) {
+                calendar.classList.add('custom-flatpickr');
+
+                // Style the time container
+                const timeContainer = calendar.querySelector('.flatpickr-time');
+                if (timeContainer) {
+                    timeContainer.classList.add('bg-white', 'rounded-lg', 'shadow-lg');
+                }
+
+                // Style the buttons
+                const buttons = calendar.querySelectorAll('.flatpickr-time .numInputWrapper');
+                buttons.forEach(btn => {
+                    btn.classList.add('custom-time-input');
+                });
+            }
+        }, 100);
+    }
+
+    // Fallback to basic time inputs if Flatpickr fails
+    fallbackTimeInputs() {
+        console.log('Using fallback time inputs');
+
+        const timeInputs = document.querySelectorAll('.time-input');
+        timeInputs.forEach(input => {
+            input.type = 'text';
+            input.placeholder = 'HH:MM (24-hour)';
+
+            // Add basic formatting
+            input.addEventListener('input', (e) => {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length >= 2) {
+                    value = value.substring(0, 2) + ':' + value.substring(2, 4);
+                }
+                e.target.value = value.substring(0, 5);
+            });
+
+            input.addEventListener('blur', (e) => {
+                this.validateTimeFormat(e.target);
+                this.calculateAndDisplayDuration();
+            });
+        });
+    }
+
+    validateTimeFormat(input) {
+        const timeRegex = /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/;
+        const value = input.value.trim();
+
+        if (value && !timeRegex.test(value)) {
+            input.classList.add('border-rose-500', 'focus:border-rose-500', 'focus:ring-rose-500/20');
+            input.classList.remove('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-500/20');
+
+            this.showTimeError(input, 'Please enter time in HH:MM format (00:00 to 23:59)');
+            return false;
+        } else {
+            input.classList.remove('border-rose-500', 'focus:border-rose-500', 'focus:ring-rose-500/20');
+            input.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-500/20');
+
+            this.removeTimeError(input);
+            return true;
+        }
+    }
+
+    validateTimeRange() {
+        const startTime = this.startTimeEl ? this.startTimeEl.value : '';
+        const endTime = this.endTimeEl ? this.endTimeEl.value : '';
+
+        if (!startTime || !endTime) return;
+
+        const start = new Date(`2000-01-01T${startTime}`);
+        const end = new Date(`2000-01-01T${endTime}`);
+
+        // Remove previous warnings
+        this.removeTimeRangeWarning();
+
+        // Check for 24-hour duty (same start and end time)
+        if (startTime === endTime) {
+            this.showTimeRangeWarning('24-hour duty selected');
+            return;
+        }
+
+        // Check if end time is before start time (overnight duty)
+        if (end < start) {
+            this.showTimeRangeWarning('Overnight duty selected');
+            return;
+        }
+
+        // Check if duration is too short (less than 1 hour)
+        const duration = this.calculateDailyDuration(startTime, endTime);
+        if (duration < 1) {
+            this.showTimeRangeWarning('Duty duration is less than 1 hour');
+            return;
+        }
+    }
+
+    showTimeRangeWarning(message) {
+        this.removeTimeRangeWarning();
+
+        const warningEl = document.createElement('div');
+        warningEl.id = 'time-range-warning';
+        warningEl.className = 'mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm';
+        warningEl.innerHTML = `
+            <div class="flex items-center">
+                <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                </svg>
+                <span>${message}</span>
+            </div>
+        `;
+
+        // Insert after the duration days select
+        const durationDaysContainer = this.durationDaysEl ? this.durationDaysEl.closest('div') : null;
+        if (durationDaysContainer) {
+            durationDaysContainer.parentNode.insertBefore(warningEl, durationDaysContainer.nextSibling);
+        }
+    }
+
+    removeTimeRangeWarning() {
+        const existingWarning = document.getElementById('time-range-warning');
+        if (existingWarning) {
+            existingWarning.remove();
+        }
+    }
+
+    showTimeError(input, message) {
+        this.removeTimeError(input);
+
+        const errorEl = document.createElement('p');
+        errorEl.className = 'text-rose-500 text-xs mt-1 time-error';
+        errorEl.textContent = message;
+
+        input.parentNode.appendChild(errorEl);
+    }
+
+    removeTimeError(input) {
+        const existingError = input.parentNode.querySelector('.time-error');
+        if (existingError) {
+            existingError.remove();
+        }
+    }
+
+    // Add quick time selection buttons
+    addQuickTimeButtons() {
+        const timeContainers = document.querySelectorAll('.time-input-container');
+
+        timeContainers.forEach(container => {
+            const input = container.querySelector('.time-input');
+            const isStartTime = input.id === 'start-time';
+
+            const quickSelect = document.createElement('div');
+            quickSelect.className = 'flex flex-wrap gap-1 mt-2';
+            quickSelect.innerHTML = `
+                <span class="text-xs text-gray-500 mr-2">Quick select:</span>
+                ${isStartTime ?
+                    '<button type="button" class="quick-time-btn px-2 py-1 text-xs bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded transition-colors" data-time="06:00">06:00</button>' +
+                    '<button type="button" class="quick-time-btn px-2 py-1 text-xs bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded transition-colors" data-time="08:00">08:00</button>' +
+                    '<button type="button" class="quick-time-btn px-2 py-1 text-xs bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded transition-colors" data-time="09:00">09:00</button>'
+                    :
+                    '<button type="button" class="quick-time-btn px-2 py-1 text-xs bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded transition-colors" data-time="16:00">16:00</button>' +
+                    '<button type="button" class="quick-time-btn px-2 py-1 text-xs bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded transition-colors" data-time="17:00">17:00</button>' +
+                    '<button type="button" class="quick-time-btn px-2 py-1 text-xs bg-gray-100 hover:bg-blue-100 hover:text-blue-700 rounded transition-colors" data-time="18:00">18:00</button>'
+                }
+            `;
+
+            container.appendChild(quickSelect);
+
+            // Add event listeners to quick select buttons
+            quickSelect.querySelectorAll('.quick-time-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const time = btn.getAttribute('data-time');
+                    input.value = time;
+
+                    // Update Flatpickr if active
+                    if (isStartTime && this.startTimePicker) {
+                        this.startTimePicker.setDate(time, true);
+                    } else if (!isStartTime && this.endTimePicker) {
+                        this.endTimePicker.setDate(time, true);
+                    }
+
+                    this.validateTimeFormat(input);
+                    this.validateTimeRange();
+                    this.calculateAndDisplayDuration();
+                });
+            });
+        });
+    }
+
+    // Update your existing calculateAndDisplayDuration method to handle Flatpickr
+    calculateAndDisplayDuration() {
+        const startTime = this.startTimeEl ? this.startTimeEl.value : '';
+        const endTime = this.endTimeEl ? this.endTimeEl.value : '';
+        const durationDays = this.durationDaysEl ? parseInt(this.durationDaysEl.value) || 1 : 1;
+
+        if (!startTime || !endTime) {
+            if (this.durationDisplay) this.durationDisplay.classList.add('hidden');
+            return;
+        }
+
+        // Calculate daily duration
+        const dailyDurationHours = this.calculateDailyDuration(startTime, endTime);
+        const totalDurationHours = dailyDurationHours * durationDays;
+
+        // Update display
+        let scheduleText = `${startTime} - ${endTime}`;
+        let isOvernight = this.isOvernightDuty(startTime, endTime);
+
+        if (isOvernight) {
+            scheduleText += ' (overnight)';
+        }
+        if (durationDays > 1) {
+            scheduleText += ` for ${durationDays} days`;
+        }
+
+        if (this.scheduleDisplay) this.scheduleDisplay.textContent = scheduleText;
+        if (this.dailyDuration) this.dailyDuration.textContent = `${dailyDurationHours.toFixed(1)} hours`;
+        if (this.totalDuration) this.totalDuration.textContent = `${totalDurationHours.toFixed(1)} hours`;
+
+        // Show/hide multi-day indicator
+        if (this.multiDayIndicator) {
+            if (durationDays > 1) {
+                this.multiDayIndicator.classList.remove('hidden');
+                this.durationDisplay.classList.add('border-green-200', 'bg-green-50');
+                this.durationDisplay.classList.remove('border-blue-200', 'bg-blue-50', 'border-purple-200', 'bg-purple-50');
+            } else if (isOvernight) {
+                this.multiDayIndicator.classList.add('hidden');
+                this.durationDisplay.classList.add('border-purple-200', 'bg-purple-50');
+                this.durationDisplay.classList.remove('border-blue-200', 'bg-blue-50', 'border-green-200', 'bg-green-50');
+            } else {
+                this.multiDayIndicator.classList.add('hidden');
+                this.durationDisplay.classList.add('border-blue-200', 'bg-blue-50');
+                this.durationDisplay.classList.remove('border-purple-200', 'bg-purple-50', 'border-green-200', 'bg-green-50');
+            }
+        }
+
+        if (this.durationDisplay) this.durationDisplay.classList.remove('hidden');
+
+        // Validation warnings
+        if (this.durationDisplay) {
+            if (dailyDurationHours < 1 && startTime !== endTime) {
+                this.durationDisplay.classList.add('border-rose-200', 'bg-rose-50');
+            } else if (totalDurationHours > 720) {
+                this.durationDisplay.classList.add('border-amber-200', 'bg-amber-50');
+            } else {
+                this.durationDisplay.classList.remove('border-rose-200', 'bg-rose-50', 'border-amber-200', 'bg-amber-50');
+            }
+        }
+    }
     initializeData() {
         // Data structures
         this.selectionData = {
@@ -64,10 +424,21 @@ class DutyForm {
 
     initializeEventListeners() {
         // Time and duration listeners
-        if (this.startTimeEl) this.startTimeEl.addEventListener('change', () => this.calculateAndDisplayDuration());
-        if (this.endTimeEl) this.endTimeEl.addEventListener('change', () => this.calculateAndDisplayDuration());
-        if (this.durationDaysEl) this.durationDaysEl.addEventListener('change', () => this.calculateAndDisplayDuration());
-
+        if (this.startTimeEl) {
+            this.startTimeEl.addEventListener('change', () => {
+                this.validateTimeFormat(this.startTimeEl);
+                this.calculateAndDisplayDuration();
+            });
+        }
+        if (this.endTimeEl) {
+            this.endTimeEl.addEventListener('change', () => {
+                this.validateTimeFormat(this.endTimeEl);
+                this.calculateAndDisplayDuration();
+            });
+        }
+        if (this.durationDaysEl) {
+            this.durationDaysEl.addEventListener('change', () => this.calculateAndDisplayDuration());
+        }
         // Rank search and selection
         if (this.rankSearch) this.rankSearch.addEventListener('input', (e) => this.filterRanks(e.target.value));
         if (this.addOrGroupBtn) this.addOrGroupBtn.addEventListener('click', () => this.addOrGroup());
@@ -870,7 +1241,30 @@ class DutyForm {
     // Form Submission
     handleFormSubmission(e) {
         // Clear previous errors
-        document.querySelectorAll('.rank-error, .time-error').forEach(el => el.remove());
+        // Clear previous errors
+        document.querySelectorAll('.rank-error, .time-error, .time-range-error').forEach(el => el.remove());
+
+        // Validate time formats
+        const startTimeValid = this.startTimeEl ? this.validateTimeFormat(this.startTimeEl) : true;
+        const endTimeValid = this.endTimeEl ? this.validateTimeFormat(this.endTimeEl) : true;
+
+        if (!startTimeValid || !endTimeValid) {
+            e.preventDefault();
+            return;
+        }
+
+        // Validate time range
+        const startTime = this.startTimeEl ? this.startTimeEl.value : '';
+        const endTime = this.endTimeEl ? this.endTimeEl.value : '';
+
+        if (startTime && endTime) {
+            const dailyDuration = this.calculateDailyDuration(startTime, endTime);
+            if (dailyDuration < 1 && startTime !== endTime) {
+                e.preventDefault();
+                this.showTimeError(this.endTimeEl, 'Duty duration must be at least 1 hour');
+                return;
+            }
+        }
 
         const hasIndividualRanks = Object.keys(this.selectionData.individualRanks).length > 0;
         const hasValidGroups = this.selectionData.orGroups.some(group => group.ranks.length > 0);
@@ -909,29 +1303,7 @@ class DutyForm {
             return;
         }
 
-        // Time validation
-        // Validate time formats
-        const startTimeValid = this.validateTimeFormat(this.startTimeEl);
-        const endTimeValid = this.validateTimeFormat(this.endTimeEl);
 
-        if (!startTimeValid || !endTimeValid) {
-            e.preventDefault();
-            return;
-        }
-        if (this.startTimeEl && this.endTimeEl) {
-            const startTime = this.startTimeEl.value;
-            const endTime = this.endTimeEl.value;
-
-            if (startTime && endTime && endTime <= startTime && !this.isOvernightDuty(startTime, endTime)) {
-                e.preventDefault();
-
-                const errorEl = document.createElement('p');
-                errorEl.className = 'text-rose-500 text-sm mt-1 time-error';
-                errorEl.textContent = 'End time must be after start time for same-day duties';
-                this.endTimeEl.parentElement.appendChild(errorEl);
-                return;
-            }
-        }
 
         // Show loading state
         const submitBtn = this.dutyForm ? this.dutyForm.querySelector('button[type="submit"]') : null;
@@ -1020,6 +1392,60 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM Content Loaded - Initializing DutyForm');
     window.dutyForm = new DutyForm();
 });
+
+// Global functions for inline event handlers
+function selectSoldier(soldierId) {
+    if (window.dutyForm) {
+        window.dutyForm.selectSoldier(soldierId);
+    }
+}
+
+function closeSoldierModal() {
+    if (window.dutyForm) {
+        window.dutyForm.closeSoldierModal();
+    }
+}
+// Initialize the duty form when DOM is loaded
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('DOM Content Loaded - Initializing DutyForm with Flatpickr');
+
+    // Check if Flatpickr is loaded, if not load it dynamically
+    if (typeof flatpickr === 'undefined') {
+        console.warn('Flatpickr not found, loading dynamically...');
+        loadFlatpickr().then(() => {
+            window.dutyForm = new DutyForm();
+        }).catch(() => {
+            console.error('Failed to load Flatpickr, using fallback');
+            window.dutyForm = new DutyForm();
+        });
+    } else {
+        window.dutyForm = new DutyForm();
+    }
+});
+
+// Dynamic loading of Flatpickr (optional)
+function loadFlatpickr() {
+    return new Promise((resolve, reject) => {
+        // Check if already loaded
+        if (typeof flatpickr !== 'undefined') {
+            resolve();
+            return;
+        }
+
+        // Load CSS
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
+        document.head.appendChild(link);
+
+        // Load JS
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
 
 // Global functions for inline event handlers
 function selectSoldier(soldierId) {

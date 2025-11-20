@@ -104,7 +104,7 @@
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                                     {{-- Start Time --}}
-                                    <div>
+                                    <div class="time-input-container">
                                         <label for="start-time"
                                             class="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
                                             Daily Start Time
@@ -112,10 +112,8 @@
                                         <div class="relative">
                                             <input type="text" id="start-time" name="start_time"
                                                 value="{{ old('start_time', '08:00') }}"
-                                                pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
-                                                placeholder="HH:MM (24-hour format)" maxlength="5"
-                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input @error('start_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
-                                                required>
+                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input flatpickr-input @error('start_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
+                                                placeholder="Select start time" readonly required>
                                             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
@@ -127,11 +125,10 @@
                                         @error('start_time')
                                             <p class="text-rose-500 text-sm mt-1">{{ $message }}</p>
                                         @enderror
-                                        <p class="text-xs text-gray-500 mt-1">Format: 00:00 to 23:59</p>
                                     </div>
 
                                     {{-- End Time --}}
-                                    <div>
+                                    <div class="time-input-container">
                                         <label for="end-time"
                                             class="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">
                                             Daily End Time
@@ -139,10 +136,8 @@
                                         <div class="relative">
                                             <input type="text" id="end-time" name="end_time"
                                                 value="{{ old('end_time', '17:00') }}"
-                                                pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
-                                                placeholder="HH:MM (24-hour format)" maxlength="5"
-                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input @error('end_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
-                                                required>
+                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input flatpickr-input @error('end_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
+                                                placeholder="Select end time" readonly required>
                                             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
@@ -154,7 +149,6 @@
                                         @error('end_time')
                                             <p class="text-rose-500 text-sm mt-1">{{ $message }}</p>
                                         @enderror
-                                        <p class="text-xs text-gray-500 mt-1">Format: 00:00 to 23:59</p>
                                     </div>
 
                                     {{-- Duration Days --}}
@@ -513,6 +507,56 @@
 @endsection
 
 @push('scripts')
+    <style>
+        /* Custom Flatpickr Styles */
+        .flatpickr-input {
+            cursor: pointer;
+            background-color: white;
+        }
+
+        .flatpickr-input:read-only {
+            background-color: #f9fafb;
+        }
+
+        .flatpickr-calendar {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e5e7eb;
+        }
+
+        .flatpickr-time {
+            background-color: white;
+            border-top: 1px solid #e5e7eb;
+            border-radius: 0 0 0.75rem 0.75rem;
+        }
+
+        .flatpickr-time .numInputWrapper {
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+        }
+
+        .flatpickr-time .numInputWrapper:hover {
+            border-color: #3b82f6;
+        }
+
+        .flatpickr-time .flatpickr-am-pm:hover,
+        .flatpickr-time .flatpickr-am-pm:focus {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        .flatpickr-day.selected {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+        }
+
+        .flatpickr-day:hover {
+            background-color: #dbeafe;
+            border-color: #dbeafe;
+        }
+    </style>
+
     <script>
         // Initialize available soldiers data for create view
         window.availableSoldiers = @json($availableSoldiers ?? []);

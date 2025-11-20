@@ -74,7 +74,7 @@ class UpdateDutyRequest extends FormRequest
                 $this->validateTimeRequirements($validator, $data);
             }
 
-            // Validate fixed soldiers availability (excluding current duty)
+            // Validate fixed soldiers availability (exclude current duty)
             if (!empty($data['fixed_soldiers'])) {
                 $this->validateFixedSoldiers($validator, $data['fixed_soldiers'], $dutyId);
             }
@@ -89,18 +89,27 @@ class UpdateDutyRequest extends FormRequest
                 $this->validateRankGroups($validator, $data['rank_groups']);
             }
 
-            // Validate total manpower limit
+            // Validate total manpower limit (optional business rule)
             $this->validateTotalManpower($validator, $data);
-
-            // Additional validation for active duties
-            if ($dutyId && $data['status'] === 'Active') {
-                $this->validateActiveDutyConstraints($validator, $dutyId, $data);
-            }
         });
     }
 
     /**
+     * Normalize time format to HH:MM (remove seconds if present)
+     * This ensures consistent comparison between '17:00' and '17:00:00'
+     */
+    private function normalizeTime(string $time): string
+    {
+        // If time includes seconds (HH:MM:SS), remove them
+        if (strlen($time) > 5 && substr_count($time, ':') === 2) {
+            return substr($time, 0, 5); // Keep only HH:MM
+        }
+        return $time;
+    }
+
+    /**
      * Validate time requirements including duration and conflicts
+     * UPDATED: Now supports 24-hour duties (same start and end time)
      */
     private function validateTimeRequirements(Validator $validator, array $data): void
     {
@@ -108,14 +117,33 @@ class UpdateDutyRequest extends FormRequest
         $endTime = $data['end_time'];
         $durationDays = $data['duration_days'] ?? 1;
 
+        // Normalize times for comparison
+        $normalizedStart = $this->normalizeTime($startTime);
+        $normalizedEnd = $this->normalizeTime($endTime);
+
         // Calculate daily duration
         $dailyDuration = $this->calculateDailyDuration($startTime, $endTime);
 
-        // Validate minimum daily duration
+        // ✅ NEW: Allow 24-hour duties (same start and end time)
+        $is24HourDuty = ($normalizedStart === $normalizedEnd);
+
+        if ($is24HourDuty) {
+            // For 24-hour duties, duration should be 24
+            if ($dailyDuration !== 24.0) {
+                $validator->errors()->add(
+                    'end_time',
+                    'Internal error: 24-hour duty duration calculation failed.'
+                );
+            }
+            // Skip other validations for 24-hour duties
+            return;
+        }
+
+        // Validate minimum daily duration (for non-24-hour duties)
         if ($dailyDuration < 1) {
             $validator->errors()->add(
                 'end_time',
-                'Daily duty duration must be at least 1 hour.'
+                'Daily duty duration must be at least 1 hour. For 24-hour duties, use the same start and end time.'
             );
         }
 
@@ -135,18 +163,10 @@ class UpdateDutyRequest extends FormRequest
                 'Total duty duration cannot exceed 720 hours (30 days).'
             );
         }
-
-        // Prevent equal times
-        if ($startTime === $endTime) {
-            $validator->errors()->add(
-                'end_time',
-                'Start time and end time cannot be the same.'
-            );
-        }
     }
 
     /**
-     * Validate fixed soldiers availability and conflicts (excluding current duty)
+     * Validate fixed soldiers availability and conflicts (updated for edit)
      */
     private function validateFixedSoldiers(Validator $validator, array $fixedSoldiers, ?int $dutyId = null): void
     {
@@ -157,7 +177,7 @@ class UpdateDutyRequest extends FormRequest
         foreach ($fixedSoldiers as $index => $soldierData) {
             $soldierId = $soldierData['soldier_id'];
 
-            // Check for duplicate soldier assignments within this request
+            // Check for duplicate soldier assignments within the same request
             if (in_array($soldierId, $usedSoldierIds)) {
                 $validator->errors()->add(
                     "fixed_soldiers.{$index}.soldier_id",
@@ -177,7 +197,7 @@ class UpdateDutyRequest extends FormRequest
                 continue;
             }
 
-            // Check soldier availability (excluding current duty for updates)
+            // Check soldier availability (exclude current duty for updates)
             if (!$dutyService->isSoldierAvailableForDuty($soldier, $dutyId)) {
                 $validator->errors()->add(
                     "fixed_soldiers.{$index}.soldier_id",
@@ -185,7 +205,7 @@ class UpdateDutyRequest extends FormRequest
                 );
             }
 
-            // Check for time conflicts if times are provided (excluding current duty)
+            // Check for time conflicts if times are provided (exclude current duty)
             if ($this->has('start_time') && $this->has('end_time')) {
                 $hasConflict = $dutyService->hasTimeConflictForSoldier(
                     $soldierId,
@@ -323,49 +343,31 @@ class UpdateDutyRequest extends FormRequest
     }
 
     /**
-     * Additional validation for active duties
-     */
-    private function validateActiveDutyConstraints(Validator $validator, int $dutyId, array $data): void
-    {
-        $dutyService = app(\App\Services\DutyService::class);
-
-        // Check if duty has at least one available assignment when activating
-        $hasRosterAssignments = !empty($data['rank_manpower']) || !empty($data['rank_groups']);
-        $hasFixedAssignments = !empty($data['fixed_soldiers']);
-
-        if (!$hasRosterAssignments && !$hasFixedAssignments) {
-            $validator->errors()->add(
-                'status',
-                'Cannot activate duty without any assignments. Please add roster assignments or fixed soldiers.'
-            );
-        }
-
-        // Check if fixed soldiers are still available (for existing duties)
-        if (!empty($data['fixed_soldiers'])) {
-            $currentFixedAssignments = $dutyService->getDutyFixedAssignments($dutyId);
-            $currentSoldierIds = $currentFixedAssignments->pluck('soldier_id')->toArray();
-            $newSoldierIds = collect($data['fixed_soldiers'])->pluck('soldier_id')->toArray();
-
-            $removedSoldiers = array_diff($currentSoldierIds, $newSoldierIds);
-
-            // You could add additional business logic here for active duties
-            // For example, prevent removing soldiers from active duties without replacement
-        }
-    }
-
-    /**
-     * Calculate daily duration in hours considering overnight duties
+     * Calculate daily duration in hours considering overnight duties and 24-hour duties
+     * UPDATED: Now handles 24-hour duties correctly
      */
     private function calculateDailyDuration(string $startTime, string $endTime): float
     {
+        // Normalize time formats
+        $startTime = $this->normalizeTime($startTime);
+        $endTime = $this->normalizeTime($endTime);
+
+        // If start and end times are the same, it's a 24-hour duty
+        if ($startTime === $endTime) {
+            return 24.0;
+        }
+
         $start = Carbon::createFromTimeString($startTime);
         $end = Carbon::createFromTimeString($endTime);
 
+        // If end time is earlier than start time, it spans to next day
         if ($end->lt($start)) {
             $end->addDay();
         }
 
-        return $end->diffInHours($start);
+        // Calculate the difference in hours with minutes as decimal
+        $durationInMinutes = $end->diffInMinutes($start);
+        return round($durationInMinutes / 60, 2);
     }
 
     public function messages(): array
@@ -436,7 +438,7 @@ class UpdateDutyRequest extends FormRequest
     }
 
     /**
-     * Prepare the data for validation
+     * Prepare the data for validation (trim strings, etc.)
      */
     protected function prepareForValidation()
     {
@@ -457,6 +459,25 @@ class UpdateDutyRequest extends FormRequest
 
         if ($this->has('remark')) {
             $this->merge(['remark' => trim($this->remark)]);
+        }
+
+        // Handle JSON inputs for complex data structures
+        if ($this->has('rank_manpower') && is_string($this->rank_manpower)) {
+            $this->merge([
+                'rank_manpower' => json_decode($this->rank_manpower, true) ?? []
+            ]);
+        }
+
+        if ($this->has('rank_groups') && is_string($this->rank_groups)) {
+            $this->merge([
+                'rank_groups' => json_decode($this->rank_groups, true) ?? []
+            ]);
+        }
+
+        if ($this->has('fixed_soldiers') && is_string($this->fixed_soldiers)) {
+            $this->merge([
+                'fixed_soldiers' => json_decode($this->fixed_soldiers, true) ?? []
+            ]);
         }
     }
 }

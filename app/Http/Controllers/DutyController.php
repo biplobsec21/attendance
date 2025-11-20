@@ -206,16 +206,50 @@ class DutyController extends Controller
     /**
      * Update the specified resource in storage.
      */
+    /**
+     * Update the specified resource in storage.
+     */
     public function update(UpdateDutyRequest $request, Duty $duty): RedirectResponse
     {
-        // dd($request->validated());
         try {
-            $this->dutyService->updateDutyWithAssignments($duty, $request->validated());
+            DB::beginTransaction();
+
+            $validated = $request->validated();
+
+            // Process complex data
+            $rankManpowerData = $validated['rank_manpower'] ?? [];
+            $rankGroupsData = $validated['rank_groups'] ?? [];
+            $fixedSoldiersData = $validated['fixed_soldiers'] ?? [];
+
+            // Prepare data for service
+            $dutyData = [
+                'duty_name' => $validated['duty_name'],
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'],
+                'duration_days' => $validated['duration_days'],
+                'status' => $validated['status'],
+                'remark' => $validated['remark'] ?? null,
+                'manpower' => $validated['manpower'] ?? 0,
+                'rank_manpower' => $rankManpowerData,
+                'rank_groups' => $rankGroupsData,
+                'fixed_soldiers' => $fixedSoldiersData,
+                'excused_next_session_pt' => $validated['excused_next_session_pt'] ?? false,
+                'excused_next_session_games' => $validated['excused_next_session_games'] ?? false,
+                'excused_next_session_roll_call' => $validated['excused_next_session_roll_call'] ?? false,
+                'excused_next_session_parade' => $validated['excused_next_session_parade'] ?? false,
+            ];
+
+            $this->dutyService->updateDutyWithAssignments($duty, $dutyData);
+
+            DB::commit();
 
             return redirect()
                 ->route('duty.index')
                 ->with('success', 'Duty record updated successfully.');
         } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error updating duty:', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
             return back()
                 ->withInput()
                 ->with('error', 'Failed to update duty: ' . $e->getMessage());

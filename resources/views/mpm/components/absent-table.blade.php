@@ -124,8 +124,8 @@
     </table>
 </div>
 
-@if ($absentDatas->hasPages())
+{{-- @if ($absentDatas->hasPages())
     <div class="flex justify-center items-center mt-6 space-x-2 flex-wrap">
         {{ $absentDatas->links() }}
     </div>
-@endif
+@endif --}}

@@ -128,8 +128,8 @@
     </table>
 </div>
 
-@if ($leaveDatas->hasPages())
+{{-- @if ($leaveDatas->hasPages())
     <div class="flex justify-center items-center mt-6 space-x-2 flex-wrap">
         {{ $leaveDatas->links() }}
     </div>
-@endif
+@endif --}}
