@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema;
-
+use Illuminate\Database\Eloquent\Relations\BelongsTo; // Add this import
 class SoldierExArea extends Model
 {
     use HasFactory;
@@ -49,7 +49,10 @@ class SoldierExArea extends Model
     {
         return $this->belongsTo(ExArea::class);
     }
-
+    public function recommendation(): BelongsTo
+    {
+        return $this->belongsTo(InstructionRecomendation::class, 'recommendation_id');
+    }
     public function updateStatus()
     {
         // Only update status if the column exists

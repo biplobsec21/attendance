@@ -39,7 +39,10 @@ class SoldierCourse extends Model
     {
         return $this->belongsTo(Soldier::class);
     }
-
+    public function recommendation(): BelongsTo
+    {
+        return $this->belongsTo(InstructionRecomendation::class, 'recommendation_id');
+    }
     /**
      * Get the course that owns the soldier course relationship.
      */

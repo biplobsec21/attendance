@@ -146,6 +146,7 @@ Route::middleware('auth', 'check.leaves')->group(function () {
     Route::delete('/coursecadremanager/{type}/{id}', [CourseCadreManagerController::class, 'destroy'])->name('coursecadremanager.destroy');
     Route::put('/coursecadremanager/courses/bulk-complete', [CourseCadreManagerController::class, 'bulkCompleteCourses'])->name('coursecadremanager.courses.bulk-complete');
     Route::put('/coursecadremanager/cadres/bulk-complete', [CourseCadreManagerController::class, 'bulkCompleteCadres'])->name('coursecadremanager.cadres.bulk-complete');
+    Route::put('/coursecadremanager/ex-areas/bulk-complete', [CourseCadreManagerController::class, 'bulkCompleteExAreas'])->name('coursecadremanager.ex-areas.bulk-complete');
 
     Route::get('/coursecadremanager/{type}/{id}/edit-data', [CourseCadreManagerController::class, 'getEditData'])->name('coursecadremanager.edit-data');
     Route::put('/coursecadremanager/{type}/{id}', [CourseCadreManagerController::class, 'update'])->name('coursecadremanager.update');

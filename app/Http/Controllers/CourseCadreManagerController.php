@@ -8,6 +8,7 @@ use App\Models\Cadre;
 use App\Models\ExArea;
 use App\Models\Rank;
 use App\Models\Company;
+use App\Models\InstructionRecomendation;
 use App\Models\SoldierCadre;
 use App\Models\SoldierCourse;
 use App\Models\SoldierExArea;
@@ -34,36 +35,70 @@ class CourseCadreManagerController extends Controller
                 $exArea->updateStatus();
             });
 
-            $currentCourses = SoldierCourse::with(['soldier.rank', 'soldier.company', 'course'])
+            // Eager load recommendations with assignments
+            $currentCourses = SoldierCourse::with([
+                'soldier.rank',
+                'soldier.company',
+                'course',
+                'recommendation' // Add this
+            ])
                 ->whereIn('status', ['active', 'scheduled'])
                 ->latest()
                 ->get();
 
-            $previousCourses = SoldierCourse::with(['soldier.rank', 'soldier.company', 'course'])
+            $previousCourses = SoldierCourse::with([
+                'soldier.rank',
+                'soldier.company',
+                'course',
+                'recommendation' //
+            ])
                 ->where('status', 'completed')
                 ->latest()
                 ->get();
 
-            $currentCadres = SoldierCadre::with(['soldier.rank', 'soldier.company', 'cadre'])
+            $currentCadres = SoldierCadre::with([
+                'soldier.rank',
+                'soldier.company',
+                'cadre',
+                'recommendation' //
+            ])
                 ->whereIn('status', ['active', 'scheduled'])
                 ->latest()
                 ->get();
 
-            $previousCadres = SoldierCadre::with(['soldier.rank', 'soldier.company', 'cadre'])
+            $previousCadres = SoldierCadre::with([
+                'soldier.rank',
+                'soldier.company',
+                'cadre',
+                'recommendation' //
+            ])
                 ->where('status', 'completed')
                 ->latest()
                 ->get();
 
-            // Ex-Areas data
-            $currentExAreas = SoldierExArea::with(['soldier.rank', 'soldier.company', 'exArea'])
+            // Ex-Areas data with recommendations
+            $currentExAreas = SoldierExArea::with([
+                'soldier.rank',
+                'soldier.company',
+                'exArea',
+                'recommendation' //
+            ])
                 ->whereIn('status', ['active', 'scheduled'])
                 ->latest()
                 ->get();
 
-            $previousExAreas = SoldierExArea::with(['soldier.rank', 'soldier.company', 'exArea'])
+            $previousExAreas = SoldierExArea::with([
+                'soldier.rank',
+                'soldier.company',
+                'exArea',
+                'recommendation' //
+            ])
                 ->where('status', 'completed')
                 ->latest()
                 ->get();
+
+            // Get active instruction recommendations
+            $instructionRecomendations = InstructionRecomendation::active()->get();
 
             return view('mpm.page.cadre_course.index', compact(
                 'currentCourses',
@@ -71,7 +106,8 @@ class CourseCadreManagerController extends Controller
                 'currentCadres',
                 'previousCadres',
                 'currentExAreas',
-                'previousExAreas'
+                'previousExAreas',
+                'instructionRecomendations'
             ));
         } catch (\Exception $e) {
             Log::error('Error in CourseCadreManagerController@index: ' . $e->getMessage());
@@ -263,8 +299,13 @@ class CourseCadreManagerController extends Controller
                 $assignment->end_date = now();
             }
 
+            // Update remarks and recommendation
             if ($request->has('completion_note')) {
                 $assignment->remarks = $request->completion_note;
+            }
+
+            if ($request->has('recommendation_id')) {
+                $assignment->recommendation_id = $request->recommendation_id;
             }
 
             // Update status to completed
@@ -298,12 +339,14 @@ class CourseCadreManagerController extends Controller
             $validator = Validator::make(
                 [
                     'ex_area_ids' => $exAreaIds,
-                    'remarks' => $request->completion_note,
+                    'completion_note' => $request->completion_note,
+                    'recommendation_id' => $request->recommendation_id,
                 ],
                 [
                     'ex_area_ids' => 'required|array',
                     'ex_area_ids.*' => 'exists:soldier_ex_areas,id',
-                    'remarks' => 'nullable|string|max:500',
+                    'completion_note' => 'nullable|string|max:500',
+                    'recommendation_id' => 'nullable|exists:instruction_recomendations,id',
                 ]
             );
 
@@ -331,6 +374,10 @@ class CourseCadreManagerController extends Controller
                     $exArea->remarks = $request->completion_note;
                 }
 
+                if ($request->has('recommendation_id')) {
+                    $exArea->recommendation_id = $request->recommendation_id;
+                }
+
                 // Update status to completed
                 $exArea->status = 'completed';
                 $exArea->save();
@@ -348,7 +395,209 @@ class CourseCadreManagerController extends Controller
                 ->withInput();
         }
     }
+    // Add similar completion methods for courses and cadres
+    public function completeCourse($id, Request $request)
+    {
+        try {
+            $assignment = SoldierCourse::findOrFail($id);
 
+            // Set end_date to today if not already set
+            if (!$assignment->end_date || $assignment->end_date->isFuture()) {
+                $assignment->end_date = now();
+            }
+
+            // Update remarks and recommendation
+            if ($request->has('completion_note')) {
+                $assignment->remarks = $request->completion_note;
+            }
+
+            if ($request->has('recommendation_id')) {
+                $assignment->recommendation_id = $request->recommendation_id;
+            }
+
+            // Update status to completed
+            $assignment->status = 'completed';
+            $assignment->save();
+
+            Log::info("Course {$id} marked as completed for soldier {$assignment->soldier_id}");
+
+            return redirect()->route('coursecadremanager.index')->with('success', 'Course marked as completed.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::warning("Course not found with ID: {$id}");
+            return redirect()->route('coursecadremanager.index')->with('error', 'Course not found.');
+        } catch (\Exception $e) {
+            Log::error('Error in CourseCadreManagerController@completeCourse: ' . $e->getMessage());
+            return redirect()->route('coursecadremanager.index')->with('error', 'Failed to complete course. Please try again.');
+        }
+    }
+
+    public function completeCadre($id, Request $request)
+    {
+        try {
+            $assignment = SoldierCadre::findOrFail($id);
+
+            // Set end_date to today if not already set
+            if (!$assignment->end_date || $assignment->end_date->isFuture()) {
+                $assignment->end_date = now();
+            }
+
+            // Update remarks and recommendation
+            if ($request->has('completion_note')) {
+                $assignment->remarks = $request->completion_note;
+            }
+
+            if ($request->has('recommendation_id')) {
+                $assignment->recommendation_id = $request->recommendation_id;
+            }
+
+            // Update status to completed
+            $assignment->status = 'completed';
+            $assignment->save();
+
+            Log::info("Cadre {$id} marked as completed for soldier {$assignment->soldier_id}");
+
+            return redirect()->route('coursecadremanager.index')->with('success', 'Cadre marked as completed.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::warning("Cadre not found with ID: {$id}");
+            return redirect()->route('coursecadremanager.index')->with('error', 'Cadre not found.');
+        } catch (\Exception $e) {
+            Log::error('Error in CourseCadreManagerController@completeCadre: ' . $e->getMessage());
+            return redirect()->route('coursecadremanager.index')->with('error', 'Failed to complete cadre. Please try again.');
+        }
+    }
+
+    // Add bulk completion methods for courses and cadres
+    public function bulkCompleteCourses(Request $request)
+    {
+        try {
+            $courseIds = $request->course_ids;
+
+            // Decode JSON if string
+            if (is_string($courseIds)) {
+                $courseIds = json_decode($courseIds, true) ?? [];
+            }
+
+            $validator = Validator::make(
+                [
+                    'course_ids' => $courseIds,
+                    'completion_note' => $request->completion_note,
+                    'recommendation_id' => $request->recommendation_id,
+                ],
+                [
+                    'course_ids' => 'required|array',
+                    'course_ids.*' => 'exists:soldier_courses,id',
+                    'completion_note' => 'nullable|string|max:500',
+                    'recommendation_id' => 'nullable|exists:instruction_recomendations,id',
+                ]
+            );
+
+            if ($validator->fails()) {
+                Log::warning('Validation error in CourseCadreManagerController@bulkCompleteCourses: ' . json_encode($validator->errors()));
+                return redirect()
+                    ->back()
+                    ->withErrors($validator)
+                    ->withInput();
+            }
+
+            $data = $validator->validated();
+            $courseIds = $data['course_ids'];
+
+            $courses = SoldierCourse::whereIn('id', $courseIds)->get();
+            foreach ($courses as $course) {
+                if (!$course->end_date || $course->end_date->isFuture()) {
+                    $course->end_date = now();
+                }
+
+                if ($request->has('completion_note')) {
+                    $course->remarks = $request->completion_note;
+                }
+
+                if ($request->has('recommendation_id')) {
+                    $course->recommendation_id = $request->recommendation_id;
+                }
+
+                $course->status = 'completed';
+                $course->save();
+            }
+
+            $count = count($courseIds);
+            Log::info("Bulk completed {$count} courses: " . json_encode($courseIds));
+
+            return redirect()->route('coursecadremanager.index')
+                ->with('success', "{$count} course" . ($count > 1 ? 's' : '') . " marked as completed.");
+        } catch (\Exception $e) {
+            Log::error('Error in CourseCadreManagerController@bulkCompleteCourses: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Failed to complete courses. Please try again.')
+                ->withInput();
+        }
+    }
+
+    public function bulkCompleteCadres(Request $request)
+    {
+        try {
+            $cadreIds = $request->cadre_ids;
+
+            // Decode JSON if string
+            if (is_string($cadreIds)) {
+                $cadreIds = json_decode($cadreIds, true) ?? [];
+            }
+
+            $validator = Validator::make(
+                [
+                    'cadre_ids' => $cadreIds,
+                    'completion_note' => $request->completion_note,
+                    'recommendation_id' => $request->recommendation_id,
+                ],
+                [
+                    'cadre_ids' => 'required|array',
+                    'cadre_ids.*' => 'exists:soldier_cadres,id',
+                    'completion_note' => 'nullable|string|max:500',
+                    'recommendation_id' => 'nullable|exists:instruction_recomendations,id',
+                ]
+            );
+
+            if ($validator->fails()) {
+                Log::warning('Validation error in CourseCadreManagerController@bulkCompleteCadres: ' . json_encode($validator->errors()));
+                return redirect()
+                    ->back()
+                    ->withErrors($validator)
+                    ->withInput();
+            }
+
+            $data = $validator->validated();
+            $cadreIds = $data['cadre_ids'];
+
+            $cadres = SoldierCadre::whereIn('id', $cadreIds)->get();
+            foreach ($cadres as $cadre) {
+                if (!$cadre->end_date || $cadre->end_date->isFuture()) {
+                    $cadre->end_date = now();
+                }
+
+                if ($request->has('completion_note')) {
+                    $cadre->remarks = $request->completion_note;
+                }
+
+                if ($request->has('recommendation_id')) {
+                    $cadre->recommendation_id = $request->recommendation_id;
+                }
+
+                $cadre->status = 'completed';
+                $cadre->save();
+            }
+
+            $count = count($cadreIds);
+            Log::info("Bulk completed {$count} cadres: " . json_encode($cadreIds));
+
+            return redirect()->route('coursecadremanager.index')
+                ->with('success', "{$count} cadre" . ($count > 1 ? 's' : '') . " marked as completed.");
+        } catch (\Exception $e) {
+            Log::error('Error in CourseCadreManagerController@bulkCompleteCadres: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Failed to complete cadres. Please try again.')
+                ->withInput();
+        }
+    }
     // Update the destroy method to handle ex-areas
     public function destroy($type, $id)
     {

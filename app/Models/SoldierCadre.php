@@ -39,7 +39,10 @@ class SoldierCadre extends Model
     {
         return $this->belongsTo(Soldier::class);
     }
-
+    public function recommendation(): BelongsTo
+    {
+        return $this->belongsTo(InstructionRecomendation::class, 'recommendation_id');
+    }
     /**
      * Get the cadre that owns the soldier cadre relationship.
      */
