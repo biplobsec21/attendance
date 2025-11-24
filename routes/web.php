@@ -43,6 +43,7 @@ use App\Http\Controllers\ExAreaController;
 use App\Http\Controllers\AbsentTypeController;
 use App\Http\Controllers\MedicalCategoryController;
 use App\Http\Controllers\PermanentSicknessController;
+use App\Http\Controllers\InstructionRecomendationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -279,6 +280,9 @@ Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function ()
     Route::patch('atts/{att}/toggle-status', [AttsController::class, 'toggleStatus'])
         ->name('atts.toggle-status');
     Route::resource('eres', EresController::class);
+
+    Route::resource('instruction-recomendations', InstructionRecomendationController::class);
+    Route::patch('instruction-recomendations/{instruction_recomendation}/toggle-status', [InstructionRecomendationController::class, 'toggleStatus'])->name('instruction-recomendations.toggle-status');
 
     Route::resource('cmds', CmdController::class);
     Route::patch('cmds/{cmd}/toggle-status', [CmdController::class, 'toggleStatus'])->name('cmds.toggle-status');

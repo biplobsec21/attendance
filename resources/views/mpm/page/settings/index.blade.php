@@ -93,6 +93,12 @@
                             <i class="fas fa-check-circle text-orange-500"></i> Sickness
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('instruction-recomendations.index') }}"
+                            class="flex items-center gap-2 px-4 py-2 text-black hover:bg-orange-100 hover:text-orange-600 rounded-lg transition">
+                            <i class="fas fa-check-circle text-orange-500"></i>Instr
+                        </a>
+                    </li>
 
                     {{-- <li>
                         <a href="{{ route('filters.index') }}"

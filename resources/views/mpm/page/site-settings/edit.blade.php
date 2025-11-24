@@ -59,29 +59,10 @@
                                     PT Time
                                 </label>
                                 <div class="relative">
-                                    <select id="pt_time" name="pt_time"
-                                        class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 appearance-none @error('pt_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
-                                        required>
-                                        <option value="">Select PT Time</option>
-                                        @for ($h = 0; $h < 24; $h++)
-                                            @for ($m = 0; $m < 60; $m += 30)
-                                                @php
-                                                    $time = sprintf('%02d:%02d', $h, $m);
-                                                    $selected =
-                                                        old(
-                                                            'pt_time',
-                                                            $settings->pt_time
-                                                                ? $settings->pt_time->format('H:i')
-                                                                : '06:00',
-                                                        ) == $time
-                                                            ? 'selected'
-                                                            : '';
-                                                @endphp
-                                                <option value="{{ $time }}" {{ $selected }}>
-                                                    {{ $time }}</option>
-                                            @endfor
-                                        @endfor
-                                    </select>
+                                    <input type="text" id="pt_time" name="pt_time"
+                                        value="{{ old('pt_time', $settings->pt_time ? $settings->pt_time->format('H:i') : '06:00') }}"
+                                        class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 @error('pt_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror flatpickr-time-input"
+                                        placeholder="Select PT Time" readonly required>
                                     <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
@@ -102,29 +83,10 @@
                                     Games Time
                                 </label>
                                 <div class="relative">
-                                    <select id="games_time" name="games_time"
-                                        class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 appearance-none @error('games_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
-                                        required>
-                                        <option value="">Select Games Time</option>
-                                        @for ($h = 0; $h < 24; $h++)
-                                            @for ($m = 0; $m < 60; $m += 30)
-                                                @php
-                                                    $time = sprintf('%02d:%02d', $h, $m);
-                                                    $selected =
-                                                        old(
-                                                            'games_time',
-                                                            $settings->games_time
-                                                                ? $settings->games_time->format('H:i')
-                                                                : '16:00',
-                                                        ) == $time
-                                                            ? 'selected'
-                                                            : '';
-                                                @endphp
-                                                <option value="{{ $time }}" {{ $selected }}>
-                                                    {{ $time }}</option>
-                                            @endfor
-                                        @endfor
-                                    </select>
+                                    <input type="text" id="games_time" name="games_time"
+                                        value="{{ old('games_time', $settings->games_time ? $settings->games_time->format('H:i') : '16:00') }}"
+                                        class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 @error('games_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror flatpickr-time-input"
+                                        placeholder="Select Games Time" readonly required>
                                     <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
@@ -145,29 +107,10 @@
                                     Parade Time
                                 </label>
                                 <div class="relative">
-                                    <select id="parade_time" name="parade_time"
-                                        class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 appearance-none @error('parade_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
-                                        required>
-                                        <option value="">Select Parade Time</option>
-                                        @for ($h = 0; $h < 24; $h++)
-                                            @for ($m = 0; $m < 60; $m += 30)
-                                                @php
-                                                    $time = sprintf('%02d:%02d', $h, $m);
-                                                    $selected =
-                                                        old(
-                                                            'parade_time',
-                                                            $settings->parade_time
-                                                                ? $settings->parade_time->format('H:i')
-                                                                : '08:00',
-                                                        ) == $time
-                                                            ? 'selected'
-                                                            : '';
-                                                @endphp
-                                                <option value="{{ $time }}" {{ $selected }}>
-                                                    {{ $time }}</option>
-                                            @endfor
-                                        @endfor
-                                    </select>
+                                    <input type="text" id="parade_time" name="parade_time"
+                                        value="{{ old('parade_time', $settings->parade_time ? $settings->parade_time->format('H:i') : '08:00') }}"
+                                        class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 @error('parade_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror flatpickr-time-input"
+                                        placeholder="Select Parade Time" readonly required>
                                     <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
@@ -188,29 +131,10 @@
                                     Roll Call Time
                                 </label>
                                 <div class="relative">
-                                    <select id="roll_call_time" name="roll_call_time"
-                                        class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 appearance-none @error('roll_call_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
-                                        required>
-                                        <option value="">Select Roll Call Time</option>
-                                        @for ($h = 0; $h < 24; $h++)
-                                            @for ($m = 0; $m < 60; $m += 30)
-                                                @php
-                                                    $time = sprintf('%02d:%02d', $h, $m);
-                                                    $selected =
-                                                        old(
-                                                            'roll_call_time',
-                                                            $settings->roll_call_time
-                                                                ? $settings->roll_call_time->format('H:i')
-                                                                : '07:30',
-                                                        ) == $time
-                                                            ? 'selected'
-                                                            : '';
-                                                @endphp
-                                                <option value="{{ $time }}" {{ $selected }}>
-                                                    {{ $time }}</option>
-                                            @endfor
-                                        @endfor
-                                    </select>
+                                    <input type="text" id="roll_call_time" name="roll_call_time"
+                                        value="{{ old('roll_call_time', $settings->roll_call_time ? $settings->roll_call_time->format('H:i') : '07:30') }}"
+                                        class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 @error('roll_call_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror flatpickr-time-input"
+                                        placeholder="Select Roll Call Time" readonly required>
                                     <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
@@ -279,11 +203,29 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Add any custom JavaScript for time selection if needed
-            const timeSelects = document.querySelectorAll('select[name$="_time"]');
+            // Initialize flatpickr for time inputs
+            const timeInputs = document.querySelectorAll('.flatpickr-time-input');
 
-            timeSelects.forEach(select => {
-                select.addEventListener('change', function() {
+            timeInputs.forEach(input => {
+                flatpickr(input, {
+                    enableTime: true,
+                    noCalendar: true,
+                    dateFormat: "H:i",
+                    time_24hr: true,
+                    minuteIncrement: 30,
+                    defaultHour: 6,
+                    defaultMinute: 0,
+                    // Optional: Add custom styling to the calendar
+                    onReady: function(selectedDates, dateStr, instance) {
+                        instance.calendarContainer.classList.add('dark:bg-gray-800',
+                            'dark:text-white');
+                    }
+                });
+            });
+
+            // Add event listeners for time changes
+            timeInputs.forEach(input => {
+                input.addEventListener('change', function() {
                     console.log(`${this.name} changed to: ${this.value}`);
                 });
             });
