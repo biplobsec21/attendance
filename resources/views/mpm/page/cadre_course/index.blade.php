@@ -57,7 +57,7 @@
                 </div>
 
                 <!-- Search and Filter -->
-                <div class="flex flex-col sm:flex-row gap-2">
+                <div class=" hidden flex flex-col sm:flex-row gap-2">
                     <div class="relative">
                         <input type="text" id="searchInput"
                             placeholder="Search by soldier name, rank, company, or course..."
