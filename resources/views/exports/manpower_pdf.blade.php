@@ -69,26 +69,38 @@
         }
 
         /* Vertical header container */
+        /* Vertical header container */
         .vertical-header2 {
             position: relative;
-            height: 60px;
+            height: 100px;
             width: 100%;
             margin: 0;
-            padding: 2px 0;
+            padding: 1px 0;
         }
 
-        /* Vertical text using transform - Bottom to Top */
+        /* Vertical text with multi-line support */
         .vertical-text2 {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%) rotate(-90deg);
             transform-origin: center center;
-            white-space: nowrap;
-            font-size: 10px;
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            font-size: 8px;
+            /* Slightly smaller font for better fit */
             font-weight: bold;
-            width: 80px;
+            width: 55px;
+            /* Slightly reduced width */
+            max-width: 55px;
             text-align: center;
+            line-height: 1.1;
+            padding: 1px;
+            /* Force text to break if too long */
+            word-break: break-word;
+            hyphens: auto;
+            /* Enable hyphenation if supported */
         }
 
         .header-row td {
