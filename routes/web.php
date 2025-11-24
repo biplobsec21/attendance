@@ -74,6 +74,8 @@ Route::middleware('auth', 'check.leaves')->group(function () {
         Route::post('/leave/filter', [LeaveController::class, 'filter'])->name('leave.filter');
         Route::get('approval/', [LeaveController::class, 'approvalList'])->name('leave.approveList');
         Route::post('approval/{id}', [LeaveController::class, 'approvalAction'])->name('leave.approveAction');
+        Route::post('/leave/bulk-status-update', [LeaveController::class, 'bulkStatusUpdate'])->name('leave.bulkStatusUpdate');
+        Route::delete('/leave/bulk-delete', [LeaveController::class, 'bulkDelete'])->name('leave.bulkDelete');
     });
 
     // Absent Routes

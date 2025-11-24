@@ -2,6 +2,10 @@
     <table class="min-w-full bg-white divide-y divide-gray-200 rounded-xl">
         <thead class="bg-black text-white text-sm font-semibold uppercase rounded-t-xl">
             <tr>
+                <th class="px-4 py-3 text-left w-12">
+                    <input type="checkbox" id="selectAll"
+                        class="rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                </th>
                 <th class="px-4 py-3 text-left">#</th>
                 <th class="px-4 py-3 text-left">Profile Info</th>
                 <th class="px-4 py-3 text-left">Apply Date / Type</th>
@@ -16,6 +20,12 @@
             @forelse ($leaveDatas as $index => $data)
                 <tr
                     class="hover:bg-orange-50 transition-colors duration-200 {{ $data->application_current_status == 'rejected' ? 'bg-red-50' : ($data->application_current_status == 'approved' ? 'bg-green-50' : 'bg-yellow-50') }}">
+                    <!-- Bulk Selection Checkbox -->
+                    <td class="px-4 py-3 text-center">
+                        <input type="checkbox" name="leave_ids[]" value="{{ $data->id }}"
+                            class="leave-checkbox rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                    </td>
+
                     <!-- Serial -->
                     <td class="px-4 py-3 font-medium text-gray-800">
                         {{ ($leaveDatas->currentPage() - 1) * $leaveDatas->perPage() + $index + 1 }}
@@ -119,7 +129,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                    <td colspan="9" class="px-4 py-8 text-center text-gray-500">
                         No leave applications found matching your filters.
                     </td>
                 </tr>
@@ -127,9 +137,3 @@
         </tbody>
     </table>
 </div>
-
-{{-- @if ($leaveDatas->hasPages())
-    <div class="flex justify-center items-center mt-6 space-x-2 flex-wrap">
-        {{ $leaveDatas->links() }}
-    </div>
-@endif --}}
