@@ -19,8 +19,7 @@ class AbsentController extends Controller
         $profiles = Soldier::get();
 
         $query = Absent::query();
-        $absentDatas = $query->paginate(10)->withQueryString();
-
+        $absentDatas = $query->orderBy('created_at', 'desc')->paginate(30)->withQueryString();
         return view('mpm.page.absent.absentList', compact('profiles', 'absentType', 'absentDatas'));
     }
 
