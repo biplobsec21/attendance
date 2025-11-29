@@ -790,7 +790,7 @@ class GameAttendanceService
      */
     public function getFormat2Data($date)
     {
-        Log::info("📋 GENERATING FORMAT2 DATA (SIMPLIFIED GROUPING) for {$this->reportType} report on date: {$date}");
+        Log::info("📋 GENERATING FORMAT2 DATA (DUTY NAME BREAKDOWN) for {$this->reportType} report on date: {$date}");
 
         $carbonDate = Carbon::parse($date);
         $companies = Company::orderBy('id')->get();
@@ -805,17 +805,8 @@ class GameAttendanceService
 
         Log::debug("👥 Total soldiers to process (excluding ERE): {$allSoldiers->count()}");
 
-        // Group by simple duty types
-        $dutyGroups = [
-            'Roaster Duties' => [],
-            'Fixed Duties' => [],
-            'Leave' => [],
-            'Appointments' => [],
-            'Courses' => [],
-            'Cadres' => [],
-            'ERE' => [],
-        ];
-
+        // Track duty names and their counts per company
+        $dutyBreakdown = [];
         $totalExcused = 0;
         $grandTotal = array_fill_keys($companyNames, 0);
 
@@ -825,50 +816,108 @@ class GameAttendanceService
             if ($excusalReason) {
                 $totalExcused++;
                 $category = $excusalReason['reason'];
+                $details = $excusalReason['details'];
+                $companyName = $soldier->company->name;
 
-                // Map to simple group names
-                $groupName = match ($category) {
-                    'Roaster Duty' => 'Roaster Duties',
-                    'Fixed Duty' => 'Fixed Duties',
-                    'Leave' => 'Leave',
-                    'Appointment' => 'Appointments',
-                    'Course' => 'Courses',
-                    'Cadre' => 'Cadres',
-                    'ERE' => 'ERE',
-                    default => 'Other'
-                };
+                // For Roaster Duty and Fixed Duty, use the specific duty name
+                if ($category === 'Roaster Duty' || $category === 'Fixed Duty') {
+                    // Extract duty name from details (remove time and date info)
+                    $dutyName = $this->extractDutyNameFromDetails($details);
+                    $dutyType = $category === 'Roaster Duty' ? 'Roaster' : 'Fixed';
 
-                if (!isset($dutyGroups[$groupName][$soldier->company->name])) {
-                    $dutyGroups[$groupName][$soldier->company->name] = 0;
+                    $key = "{$dutyType}::{$dutyName}";
+                } else {
+                    // For other categories, group them as before
+                    $key = $category;
                 }
 
-                $dutyGroups[$groupName][$soldier->company->name]++;
-                $grandTotal[$soldier->company->name]++;
+                // Initialize if not exists
+                if (!isset($dutyBreakdown[$key])) {
+                    $dutyBreakdown[$key] = [
+                        'category' => $category,
+                        'duty_name' => $category === 'Roaster Duty' || $category === 'Fixed Duty' ? $dutyName : '',
+                        'companies' => array_fill_keys($companyNames, 0),
+                        'total' => 0,
+                    ];
+                }
+
+                // Increment counts
+                $dutyBreakdown[$key]['companies'][$companyName]++;
+                $dutyBreakdown[$key]['total']++;
+                $grandTotal[$companyName]++;
             }
         }
 
         // Build the data rows
         $data = [];
 
-        foreach ($dutyGroups as $groupName => $companyCounts) {
-            if (array_sum($companyCounts) > 0) {
-                $row = [
-                    'category' => $groupName,
-                    'type' => '', // Empty for simplified version
-                ];
+        // Separate Roaster and Fixed duties
+        $roasterDuties = [];
+        $fixedDuties = [];
+        $otherCategories = [];
 
-                foreach ($companies as $company) {
-                    $row[$company->name] = $companyCounts[$company->name] ?? 0;
-                }
-
-                $row['Total'] = array_sum($companyCounts);
-                $data[] = $row;
-
-                Log::debug("   📊 {$groupName}: " . $row['Total'] . " soldiers");
+        foreach ($dutyBreakdown as $key => $dutyInfo) {
+            if (strpos($key, 'Roaster::') === 0) {
+                $roasterDuties[$key] = $dutyInfo;
+            } elseif (strpos($key, 'Fixed::') === 0) {
+                $fixedDuties[$key] = $dutyInfo;
+            } else {
+                $otherCategories[$key] = $dutyInfo;
             }
         }
 
-        // Add totals row
+        // Add Roaster Duties (individual duties only)
+        foreach ($roasterDuties as $dutyInfo) {
+            $row = [
+                'category' => 'Roaster Duties',
+                'type' => $dutyInfo['duty_name'],
+            ];
+
+            foreach ($companies as $company) {
+                $row[$company->name] = $dutyInfo['companies'][$company->name];
+            }
+
+            $row['Total'] = $dutyInfo['total'];
+            $data[] = $row;
+
+            Log::debug("   📊 Roaster Duty - {$dutyInfo['duty_name']}: {$dutyInfo['total']} soldiers");
+        }
+
+        // Add Fixed Duties (individual duties only)
+        foreach ($fixedDuties as $dutyInfo) {
+            $row = [
+                'category' => 'Fixed Duties',
+                'type' => $dutyInfo['duty_name'],
+            ];
+
+            foreach ($companies as $company) {
+                $row[$company->name] = $dutyInfo['companies'][$company->name];
+            }
+
+            $row['Total'] = $dutyInfo['total'];
+            $data[] = $row;
+
+            Log::debug("   📊 Fixed Duty - {$dutyInfo['duty_name']}: {$dutyInfo['total']} soldiers");
+        }
+
+        // Add other categories (Leave, Appointments, etc.)
+        foreach ($otherCategories as $dutyInfo) {
+            $row = [
+                'category' => $dutyInfo['category'],
+                'type' => '',
+            ];
+
+            foreach ($companies as $company) {
+                $row[$company->name] = $dutyInfo['companies'][$company->name];
+            }
+
+            $row['Total'] = $dutyInfo['total'];
+            $data[] = $row;
+
+            Log::debug("   📊 {$dutyInfo['category']}: {$dutyInfo['total']} soldiers");
+        }
+
+        // Add grand totals row
         $totalRow = [
             'category' => 'Total',
             'type' => '',
@@ -881,9 +930,30 @@ class GameAttendanceService
         $totalRow['Total'] = $totalExcused;
         $data[] = $totalRow;
 
-        Log::info("📋 FORMAT2 COMPLETED (SIMPLIFIED) - Total excused: {$totalExcused}");
+        Log::info("📋 FORMAT2 COMPLETED (DUTY NAME BREAKDOWN) - Total excused: {$totalExcused}");
 
         return $data;
+    }
+
+    /**
+     * Extract clean duty name from details string
+     * Removes time information, dates, and checkbox indicators
+     */
+    private function extractDutyNameFromDetails($details)
+    {
+        // Remove time information in format (HH:MM - HH:MM) or (HH:MM - HH:MM+1)
+        $dutyName = preg_replace('/\s*\(\d{2}:\d{2}\s*-\s*\d{2}:\d{2}[\+\d]*\)/', '', $details);
+
+        // Remove date information in format (DD MMM)
+        $dutyName = preg_replace('/\s*\(\d{1,2}\s+[A-Za-z]{3}\)/', '', $dutyName);
+
+        // Remove checkbox indicator [✓]
+        $dutyName = preg_replace('/\s*\[✓\]/', '', $dutyName);
+
+        // Trim whitespace
+        $dutyName = trim($dutyName);
+
+        return $dutyName ?: 'Unknown Duty';
     }
 
     /**

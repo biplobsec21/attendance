@@ -46,7 +46,7 @@
         /* Vertical header container */
         .vertical-header {
             position: relative;
-            height: 80px;
+            height: 60px;
             width: 100%;
             margin: 0;
             padding: 8px 0;
@@ -355,6 +355,7 @@
     </table>
 
     <!-- Format 2: Exclusion by Duty / Appointment Type -->
+    <!-- Format 2: Exclusion by Duty / Appointment Type -->
     <table class="format2-table spacing-medium">
         <tr class="">
             <td colspan="{{ count($companies) + 2 }}" style="text-align: center;font-weight:bold"> Onduty Details</td>
@@ -375,15 +376,18 @@
             @foreach ($format2Data as $row)
                 @php
                     $isNewCategory = $row['category'] !== $currentCategory && $row['category'] !== 'Total';
+                    $isTotal = $row['category'] === 'Total';
                     $currentCategory = $row['category'];
                 @endphp
 
-                <tr class="{{ $row['category'] === 'Total' ? 'total-row' : ($isNewCategory ? 'category-row' : '') }}">
+                <tr class="{{ $isTotal ? 'total-row' : '' }}">
                     <td>
-                        @if ($row['category'] !== 'Total')
-                            {{ $row['category'] }} - {{ $row['type'] }}
-                        @else
+                        @if ($isTotal)
+                            <strong>{{ $row['category'] }}</strong>
+                        @elseif ($row['type'])
                             {{ $row['type'] }}
+                        @else
+                            {{ $row['category'] }}
                         @endif
                     </td>
                     @foreach ($companies as $company)
