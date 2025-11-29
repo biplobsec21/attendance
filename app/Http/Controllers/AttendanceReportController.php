@@ -53,9 +53,9 @@ class AttendanceReportController extends Controller
         $inputDate = Carbon::parse($date);
         $today = Carbon::today();
 
-        if ($inputDate->gt($today)) {
-            return redirect()->back()->with('error', 'Future dates cannot be selected');
-        }
+        // if ($inputDate->gt($today)) {
+        //     return redirect()->back()->with('error', 'Future dates cannot be selected');
+        // }
 
         // Map 'excel' to 'xlsx' for processing
         if ($exportType === 'excel') {

@@ -86,8 +86,12 @@
                                     <label for="manpower-date" class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-calendar-alt mr-2 text-gray-400"></i>Select Report Date
                                     </label>
-                                    <input type="date" id="manpower-date" name="manpower_date" max="{{ date('Y-m-d') }}"
+                                    <input type="date" id="manpower-date" name="manpower_date"
                                         class="w-full lg:w-64 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+
+                                    {{-- <input type="date" id="manpower-date" name="manpower_date" max="{{ date('Y-m-d') }}"
+                                        class="w-full lg:w-64 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                                --}}
                                 </div>
                                 <div class="flex flex-wrap gap-3">
                                     <button id="download-manpower-report-excel"
@@ -136,8 +140,12 @@
                                     <label for="parade-date" class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-calendar-alt mr-2 text-gray-400"></i>Select Report Date
                                     </label>
-                                    <input type="date" id="parade-date" name="date" max="{{ date('Y-m-d') }}"
+                                    <input type="date" id="parade-date" name="date"
                                         class="w-full lg:w-64 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+
+                                    {{-- <input type="date" id="parade-date" name="date" max="{{ date('Y-m-d') }}"
+                                        class="w-full lg:w-64 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+                                 --}}
                                 </div>
                                 <div class="flex flex-wrap gap-3">
                                     <button id="download-parade-report-excel"
@@ -186,8 +194,13 @@
                                     <label for="game-date" class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-calendar-alt mr-2 text-gray-400"></i>Select Report Date
                                     </label>
-                                    <input type="date" id="game-date" name="game_date" max="{{ date('Y-m-d') }}"
+                                    <input type="date" id="game-date" name="game_date"
                                         class="w-full lg:w-64 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+
+                                    {{-- <input type="date" id="game-date" name="game_date" max="{{ date('Y-m-d') }}"
+                                        class="w-full lg:w-64 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"> --}}
+
+
                                 </div>
                                 <div class="flex flex-wrap gap-3">
                                     <button id="download-game-report-excel"
@@ -236,8 +249,11 @@
                                     <label for="pt-date" class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-calendar-alt mr-2 text-gray-400"></i>Select Report Date
                                     </label>
-                                    <input type="date" id="pt-date" name="pt_date" max="{{ date('Y-m-d') }}"
+                                    <input type="date" id="pt-date" name="pt_date"
                                         class="w-full lg:w-64 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all">
+                                    {{-- <input type="date" id="pt-date" name="pt_date" max="{{ date('Y-m-d') }}"
+                                        class="w-full lg:w-64 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"> --}}
+
                                 </div>
                                 <div class="flex flex-wrap gap-3">
                                     <button id="download-pt-report-excel"
@@ -286,9 +302,13 @@
                                     <label for="roll-call-date" class="block text-sm font-semibold text-gray-700 mb-2">
                                         <i class="fas fa-calendar-alt mr-2 text-gray-400"></i>Select Report Date
                                     </label>
-                                    <input type="date" id="roll-call-date" name="roll_call_date"
+                                    <input type="date" id="roll-call-date" name="roll_call_date" {{-- max="{{ date('Y-m-d') }}" --}}
+                                        class="w-full lg:w-64 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all">
+                                    {{-- <input type="date" id="roll-call-date" name="roll_call_date"
                                         max="{{ date('Y-m-d') }}"
                                         class="w-full lg:w-64 border-2 border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all">
+                                --}}
+
                                 </div>
                                 <div class="flex flex-wrap gap-3">
                                     <button id="download-roll-call-report-excel"
@@ -586,10 +606,10 @@
                 selectedDate.setHours(0, 0, 0, 0);
                 today.setHours(0, 0, 0, 0);
 
-                if (selectedDate > today) {
-                    showNotification('Future dates cannot be selected', 'error');
-                    return;
-                }
+                // if (selectedDate > today) {
+                //     showNotification('Future dates cannot be selected', 'error');
+                //     return;
+                // }
 
                 // Show success notification
                 showNotification('Generating report...', 'info');
@@ -630,10 +650,10 @@
                 selectedDate.setHours(0, 0, 0, 0);
                 today.setHours(0, 0, 0, 0);
 
-                if (selectedDate > today) {
-                    showNotification('Future dates cannot be selected', 'error');
-                    return;
-                }
+                // if (selectedDate > today) {
+                //     showNotification('Future dates cannot be selected', 'error');
+                //     return;
+                // }
 
                 // Show success notification
                 showNotification('Generating report...', 'info');

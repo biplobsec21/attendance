@@ -106,9 +106,9 @@ class ExportController extends Controller
         $inputDate = Carbon::parse($date);
         $today = Carbon::today();
 
-        if ($inputDate->gt($today)) {
-            return redirect()->back()->with('error', 'Future dates cannot be selected');
-        }
+        // if ($inputDate->gt($today)) {
+        //     return redirect()->back()->with('error', 'Future dates cannot be selected');
+        // }
 
         if ($type === 'pdf') {
             $fileName = 'manpower_distribution_' . now()->format('Ymd_His') . '.pdf';
