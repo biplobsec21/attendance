@@ -3,7 +3,6 @@
 @section('title', 'Edit Duty Record')
 
 @section('content')
-    <!--- Test push --->
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-8 px-4">
         <div class="container mx-auto max-w-4xl">
             <x-breadcrumb :breadcrumbs="generateBreadcrumbs_auto()" />
@@ -107,11 +106,10 @@
                                             Daily Start Time
                                         </label>
                                         <div class="relative">
-                                            <!-- Edit updated -->
                                             <input type="text" id="start-time" name="start_time"
                                                 value="{{ old('start_time', $duty->start_time->format('H:i')) }}"
-                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input @error('start_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
-                                                placeholder="Select start time" required>
+                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input flatpickr-input @error('start_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
+                                                placeholder="Select start time" readonly required>
                                             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
@@ -134,8 +132,8 @@
                                         <div class="relative">
                                             <input type="text" id="end-time" name="end_time"
                                                 value="{{ old('end_time', $duty->end_time->format('H:i')) }}"
-                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input @error('end_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
-                                                placeholder="Select end time" required>
+                                                class="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 transition-all duration-300 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 time-input flatpickr-input @error('end_time') border-rose-500 focus:border-rose-500 focus:ring-rose-500/20 @enderror"
+                                                placeholder="Select end time" readonly required>
                                             <div class="absolute inset-y-0 right-0 flex items-center pr-3">
                                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor"
                                                     viewBox="0 0 24 24">
@@ -262,22 +260,8 @@
                                         @foreach ($ranks as $rank)
                                             <button type="button"
                                                 class="rank-button px-3 py-2 bg-white border-2 border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                data-rank-id="{{ $rank->id }}" data-rank-name="{{ $rank->name }}"
-                                                @if (isset($individualRanks[$rank->id]) ||
-                                                        collect($rankGroups)->contains(function ($group) use ($rank) {
-                                                            return in_array($rank->id, $group['ranks']);
-                                                        })) disabled @endif>
+                                                data-rank-id="{{ $rank->id }}" data-rank-name="{{ $rank->name }}">
                                                 {{ $rank->name }}
-                                                @if (isset($individualRanks[$rank->id]) ||
-                                                        collect($rankGroups)->contains(function ($group) use ($rank) {
-                                                            return in_array($rank->id, $group['ranks']);
-                                                        }))
-                                                    <svg class="w-4 h-4 inline ml-1 text-green-500" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2" d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                @endif
                                             </button>
                                         @endforeach
                                     </div>
@@ -299,21 +283,18 @@
                                     </div>
 
                                     <div id="selected-items-container" class="space-y-3 min-h-[100px]">
-                                        @if (empty($individualRanks) && empty($rankGroups))
-                                            <div id="empty-state"
-                                                class="text-center py-8 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
-                                                <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
-                                                    </path>
-                                                </svg>
-                                                <p class="text-sm">No ranks selected yet</p>
-                                                <p class="text-xs mt-1">Click on ranks above to add them</p>
-                                            </div>
-                                        @else
-                                            <!-- Individual ranks will be rendered here by JavaScript -->
-                                        @endif
+                                        <!-- Selected items will appear here -->
+                                        <div id="empty-state"
+                                            class="text-center py-8 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
+                                            <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                                                </path>
+                                            </svg>
+                                            <p class="text-sm">No ranks selected yet</p>
+                                            <p class="text-xs mt-1">Click on ranks above to add them</p>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -357,11 +338,7 @@
 
                                 <!-- Fixed Soldiers Container -->
                                 <div id="fixed-soldiers-container" class="space-y-3">
-                                    @if (empty($fixedSoldiers))
-                                        <!-- Empty state will be shown by JavaScript -->
-                                    @else
-                                        <!-- Fixed soldiers will be rendered here by JavaScript -->
-                                    @endif
+                                    <!-- Fixed soldiers will be added here dynamically -->
                                 </div>
                             </div>
 
@@ -531,11 +508,11 @@
 
     <!-- Soldier Selection Modal -->
     @include('mpm.components.soldier-selection-modal', ['availableSoldiers' => $availableSoldiers ?? []])
-
 @endsection
+
 @push('styles')
     <style>
-        /* Flatpickr Custom Styles */
+        /* Custom Flatpickr Styles */
         .flatpickr-input {
             cursor: pointer;
             background-color: white;
@@ -545,51 +522,743 @@
             background-color: #f9fafb;
         }
 
-        .custom-flatpickr .flatpickr-time {
-            @apply bg-white rounded-lg shadow-lg border border-gray-200;
+        .flatpickr-calendar {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e5e7eb;
         }
 
-        .custom-flatpickr .flatpickr-time .numInputWrapper {
-            @apply border border-gray-300 rounded;
+        .flatpickr-time {
+            background-color: white;
+            border-top: 1px solid #e5e7eb;
+            border-radius: 0 0 0.75rem 0.75rem;
         }
 
-        .custom-flatpickr .flatpickr-time .numInputWrapper:hover {
-            @apply border-blue-500;
+        .flatpickr-time .numInputWrapper {
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
         }
 
-        .custom-flatpickr .flatpickr-time .flatpickr-am-pm:hover,
-        .custom-flatpickr .flatpickr-time .flatpickr-am-pm:focus {
-            @apply bg-blue-500 text-white;
+        .flatpickr-time .numInputWrapper:hover {
+            border-color: #3b82f6;
+        }
+
+        .flatpickr-time .flatpickr-am-pm:hover,
+        .flatpickr-time .flatpickr-am-pm:focus {
+            background-color: #3b82f6;
+            color: white;
         }
 
         .flatpickr-day.selected {
-            @apply bg-blue-500 border-blue-500;
+            background-color: #3b82f6;
+            border-color: #3b82f6;
         }
 
         .flatpickr-day:hover {
-            @apply bg-blue-100 border-blue-100;
+            background-color: #dbeafe;
+            border-color: #dbeafe;
         }
 
-        /* Quick time button styles */
-        .quick-time-btn {
-            transition: all 0.2s ease-in-out;
+        /* Soldier card hover effect */
+        .soldier-card {
+            animation: fadeIn 0.2s ease-in;
         }
 
-        .quick-time-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Hover effect for soldier cards */
+        .soldier-card:hover {
+            transform: translateX(4px);
+        }
+
+        /* Tooltip arrow styling */
+        .group\/tooltip:hover .group-hover\/tooltip\:block {
+            animation: tooltipFadeIn 0.2s ease-out;
+        }
+
+        @keyframes tooltipFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #10b981;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #059669;
+        }
+
+        .custom-scrollbar-tooltip::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scrollbar-tooltip::-webkit-scrollbar-track {
+            background: #374151;
+            border-radius: 2px;
+        }
+
+        .custom-scrollbar-tooltip::-webkit-scrollbar-thumb {
+            background: #6b7280;
+            border-radius: 2px;
+        }
+
+        .custom-scrollbar-tooltip::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
         }
     </style>
 @endpush
+
 @push('scripts')
     <script>
-        console.log('Blade - Initial Fixed Soldiers:', {!! json_encode($fixedSoldiers ?? []) !!});
-        console.log('Blade - Available Soldiers:', {!! json_encode($availableSoldiers ?? []) !!});
-
+        // Initialize available soldiers data for edit view
+        window.availableSoldiers = @json($availableSoldiers ?? []);
         window.initialIndividualRanks = {!! json_encode($individualRanks ?? []) !!};
         window.initialRankGroups = {!! json_encode($rankGroups ?? []) !!};
         window.initialFixedSoldiers = {!! json_encode($fixedSoldiers ?? []) !!};
-        window.availableSoldiers = {!! json_encode($availableSoldiers ?? []) !!};
+        window.loadSoldiersRoute = "{{ route('duty.load-soldiers') }}";
+        window.excludeDutyId = {{ $duty->id }};
+
+        console.log('Edit View - Initial Fixed Soldiers:', window.initialFixedSoldiers);
+        console.log('Edit View - Available Soldiers Count:', {{ count($availableSoldiers ?? []) }});
+        console.log('Edit View - Initial Individual Ranks:', window.initialIndividualRanks);
+        console.log('Edit View - Initial Rank Groups:', window.initialRankGroups);
     </script>
     <script src="{{ asset('asset/js/duty-form.js') }}"></script>
+    <script>
+        // Enhanced SoldierLoader with improved UI and pagination
+        class SoldierLoader {
+            constructor() {
+                this.currentPage = 1;
+                this.totalPages = 1;
+                this.perPage = 10;
+                this.currentFilters = {
+                    search: '',
+                    rank_id: ''
+                };
+                this.isLoading = false;
+                this.initialized = false;
+                this.currentSoldiers = [];
+
+                this.init();
+            }
+
+            init() {
+                this.bindEvents();
+            }
+
+            bindEvents() {
+                // Search input with debounce
+                const soldierSearch = document.getElementById('soldier-search');
+                const clearSearch = document.getElementById('clear-search');
+
+                if (soldierSearch) {
+                    soldierSearch.addEventListener('input', this.debounce(() => {
+                        this.currentFilters.search = soldierSearch.value;
+
+                        // Show/hide clear button
+                        if (clearSearch) {
+                            clearSearch.classList.toggle('hidden', !soldierSearch.value);
+                        }
+
+                        this.resetAndLoad();
+                    }, 500));
+                }
+
+                // Clear search button
+                if (clearSearch) {
+                    clearSearch.addEventListener('click', () => {
+                        if (soldierSearch) {
+                            soldierSearch.value = '';
+                            this.currentFilters.search = '';
+                            clearSearch.classList.add('hidden');
+                            this.resetAndLoad();
+                        }
+                    });
+                }
+
+                // Rank filter
+                document.getElementById('soldier-rank-filter')?.addEventListener('change', (e) => {
+                    this.currentFilters.rank_id = e.target.value;
+                    this.resetAndLoad();
+                });
+
+                // Reset filters button
+                document.getElementById('reset-filters')?.addEventListener('click', () => {
+                    this.resetFilters();
+                });
+            }
+
+            resetFilters() {
+                // Reset all filter values
+                this.currentFilters = {
+                    search: '',
+                    rank_id: ''
+                };
+
+                // Reset UI elements
+                const soldierSearch = document.getElementById('soldier-search');
+                const rankFilter = document.getElementById('soldier-rank-filter');
+                const clearSearch = document.getElementById('clear-search');
+
+                if (soldierSearch) soldierSearch.value = '';
+                if (rankFilter) rankFilter.value = '';
+                if (clearSearch) clearSearch.classList.add('hidden');
+
+                // Reload with reset filters
+                this.resetAndLoad();
+            }
+
+            // Method to trigger loading when modal opens
+            autoLoadOnModalOpen() {
+                if (!this.initialized) {
+                    this.loadSoldiers();
+                }
+            }
+
+            debounce(func, wait) {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func(...args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            }
+
+            resetAndLoad() {
+                this.currentPage = 1;
+                this.loadSoldiers();
+            }
+
+            async loadSoldiers() {
+                if (this.isLoading) return;
+
+                this.isLoading = true;
+                this.showLoading(true);
+
+                try {
+                    const response = await fetch(window.loadSoldiersRoute, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            ...this.currentFilters,
+                            exclude_duty_id: window.excludeDutyId,
+                            page: this.currentPage,
+                            per_page: this.perPage
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.currentSoldiers = data.soldiers;
+                        this.renderSoldiers(data.soldiers);
+                        this.updatePagination(data.pagination);
+                        this.updateCounts(data.total, data.soldiers.length);
+                        this.initialized = true;
+                    } else {
+                        this.showError(data.message || 'Failed to load soldiers');
+                    }
+                } catch (error) {
+                    console.error('Error loading soldiers:', error);
+                    this.showError('Failed to load soldiers. Please try again.');
+                } finally {
+                    this.isLoading = false;
+                    this.showLoading(false);
+                }
+            }
+
+            renderSoldiers(soldiers) {
+                const container = document.getElementById('soldier-options-container');
+                if (!container) return;
+
+                if (soldiers.length === 0) {
+                    container.innerHTML = this.getEmptyState();
+                    return;
+                }
+
+                // Just render the soldiers directly without extra wrapper
+                const soldierHTML = soldiers.map(soldier => this.createSoldierHTML(soldier)).join('');
+                container.innerHTML = soldierHTML;
+
+                // Bind click events
+                soldiers.forEach(soldier => {
+                    const element = document.getElementById(`soldier-${soldier.id}`);
+                    if (element) {
+                        element.addEventListener('click', () => this.selectSoldier(soldier));
+                    }
+                });
+            }
+
+            createSoldierHTML(soldier) {
+                const hasAssignments = soldier.current_assignments && soldier.current_assignments.length > 0;
+                const statusInfo = this.getStatusInfo(soldier);
+                const availabilityClass = soldier.is_on_leave ? 'opacity-60' : '';
+
+                return `
+            <div id="soldier-${soldier.id}"
+                class="soldier-card ${availabilityClass} group flex items-center gap-3 px-4 py-2.5 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 cursor-pointer transition-all duration-200 bg-white">
+
+                <!-- Avatar -->
+                <div class="relative flex-shrink-0">
+                    <div class="w-10 h-10 bg-gradient-to-br ${statusInfo.avatarBg} rounded-full flex items-center justify-center ring-2 ${statusInfo.ringColor} transition-all">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    ${soldier.is_on_leave ? `
+                                                <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white"></div>
+                                                ` : ''}
+                </div>
+
+                <!-- Soldier Info -->
+                <div class="flex-1 min-w-0 flex items-center gap-3">
+                    <div class="min-w-0 flex-shrink">
+                        <h4 class="font-semibold text-gray-900 text-sm truncate">${soldier.full_name}</h4>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-gray-600 flex-shrink-0">
+                        <span class="font-mono font-medium bg-gray-100 px-2 py-0.5 rounded">${soldier.army_no}</span>
+                        <span class="font-medium text-gray-500">${soldier.rank}</span>
+                        <span class="text-gray-400">•</span>
+                        <span class="text-gray-500">${soldier.company}</span>
+                    </div>
+                </div>
+
+                <!-- Assignment Info with Tooltip -->
+                ${hasAssignments ? this.getAssignmentBadgeWithTooltip(soldier) : ''}
+
+                <!-- Status Badge -->
+                <div class="flex-shrink-0">
+                    ${statusInfo.badge}
+                </div>
+
+                <!-- Select Arrow -->
+                <div class="flex-shrink-0 text-gray-400 group-hover:text-green-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </div>
+        `;
+            }
+
+            getStatusInfo(soldier) {
+                if (soldier.is_on_leave) {
+                    return {
+                        avatarBg: 'from-red-500 to-red-600',
+                        ringColor: 'ring-red-200',
+                        badge: `
+                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold bg-red-100 text-red-800 border border-red-200">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clip-rule="evenodd"/>
+                        </svg>
+                        ON LEAVE
+                    </span>
+                `
+                    };
+                } else if (soldier.current_assignments && soldier.current_assignments.length > 0) {
+                    return {
+                        avatarBg: 'from-amber-500 to-amber-600',
+                        ringColor: 'ring-amber-200',
+                        badge: `
+                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        ${soldier.current_assignments.length} ASSIGNED
+                    </span>
+                `
+                    };
+                } else {
+                    return {
+                        avatarBg: 'from-green-500 to-green-600',
+                        ringColor: 'ring-green-200',
+                        badge: `
+                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-bold bg-green-100 text-green-800 border border-green-200">
+                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        AVAILABLE
+                    </span>
+                `
+                    };
+                }
+            }
+
+            getAssignmentBadgeWithTooltip(soldier) {
+                const assignments = soldier.current_assignments || [];
+                const count = assignments.length;
+
+                const assignmentItems = assignments.map(assignment => `
+            <div class="flex items-start gap-2 mb-2 last:mb-0">
+                <div class="w-2 h-2 ${this.getAssignmentColor(assignment.type)} rounded-full mt-1.5 flex-shrink-0"></div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-white text-xs font-medium leading-tight">${assignment.name || 'Unknown Duty'}</div>
+                    <div class="text-gray-300 text-xs leading-tight flex items-center gap-1 mt-0.5">
+                        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        ${this.getAssignmentTime(assignment)}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+                return `
+            <div class="relative group/tooltip flex-shrink-0">
+                <div class="flex items-center gap-1.5 px-2 py-1 bg-amber-50 border border-amber-200 rounded-md cursor-help">
+                    <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="text-xs font-semibold text-amber-700">${count} Duty</span>
+                </div>
+
+                <!-- Tooltip -->
+                <div class="absolute bottom-full right-0 mb-2 hidden group-hover/tooltip:block z-50 w-72">
+                    <div class="bg-gray-900 text-white text-xs rounded-lg py-3 px-3 shadow-2xl border border-gray-700">
+                        <div class="font-bold mb-2 text-sm text-white pb-2 border-b border-gray-700">Current Assignments (${count})</div>
+                        <div class="space-y-0 max-h-48 overflow-y-auto custom-scrollbar-tooltip">
+                            ${assignmentItems}
+                        </div>
+                    </div>
+                    <div class="absolute top-full right-4 border-8 border-transparent border-t-gray-900"></div>
+                </div>
+            </div>
+        `;
+            }
+
+            getAssignmentColor(type) {
+                const colors = {
+                    'fixed_duty': 'bg-green-400',
+                    'course': 'bg-blue-400',
+                    'cadre': 'bg-purple-400',
+                    'service': 'bg-yellow-400'
+                };
+                return colors[type] || 'bg-gray-400';
+            }
+
+            getAssignmentTime(assignment) {
+                // If schedule field exists, use it directly
+                if (assignment.schedule) {
+                    return assignment.schedule;
+                }
+
+                // Fallback for other assignment types
+                switch (assignment.type) {
+                    case 'fixed_duty':
+                        if (!assignment.start_time || !assignment.end_time) return 'Time not set';
+                        const start = assignment.start_time.substring(0, 5);
+                        const end = assignment.end_time.substring(0, 5);
+                        const duration = assignment.duration_days > 1 ? ` (${assignment.duration_days}d)` : '';
+                        return `${start} - ${end}${duration}`;
+
+                    case 'course':
+                    case 'cadre':
+                    case 'service':
+                        const startDate = assignment.start_date ? new Date(assignment.start_date).toLocaleDateString(
+                            'en-GB', {
+                                day: '2-digit',
+                                month: 'short'
+                            }) : 'N/A';
+                        const endDate = assignment.end_date ? new Date(assignment.end_date).toLocaleDateString(
+                            'en-GB', {
+                                day: '2-digit',
+                                month: 'short'
+                            }) : 'Ongoing';
+                        return `${startDate} - ${endDate}`;
+
+                    default:
+                        return 'Ongoing';
+                }
+            }
+
+            updatePagination(pagination) {
+                this.currentPage = pagination?.current_page || 1;
+                this.totalPages = pagination?.total_pages || 1;
+
+                const paginationContainer = document.getElementById('soldier-pagination');
+                if (!paginationContainer) return;
+
+                if (this.totalPages <= 1) {
+                    paginationContainer.classList.add('hidden');
+                    return;
+                }
+
+                paginationContainer.classList.remove('hidden');
+                paginationContainer.innerHTML = this.createPaginationHTML();
+
+                // Bind pagination events
+                this.bindPaginationEvents();
+            }
+
+            createPaginationHTML() {
+                const maxVisible = 7; // Show max 7 page numbers
+                let pages = [];
+
+                if (this.totalPages <= maxVisible) {
+                    // Show all pages if total pages are less than maxVisible
+                    pages = Array.from({
+                        length: this.totalPages
+                    }, (_, i) => i + 1);
+                } else {
+                    // Smart page selection showing first, last, and current range
+                    pages.push(1);
+
+                    // Calculate start and end of middle section
+                    const middleStart = Math.max(2, this.currentPage - 2);
+                    const middleEnd = Math.min(this.totalPages - 1, this.currentPage + 2);
+
+                    // Add ellipsis and middle pages
+                    if (middleStart > 2) {
+                        pages.push('...');
+                    }
+                    for (let i = middleStart; i <= middleEnd; i++) {
+                        pages.push(i);
+                    }
+                    if (middleEnd < this.totalPages - 1) {
+                        pages.push('...');
+                    }
+
+                    pages.push(this.totalPages);
+                }
+
+                const pageButtons = pages.map(page => {
+                    if (page === '...') {
+                        return `<span class="px-3 py-2 text-gray-400">...</span>`;
+                    }
+
+                    const isActive = page === this.currentPage;
+                    return `
+                <button type="button"
+                    class="page-btn px-4 py-2 rounded-lg font-medium transition-all ${
+                        isActive
+                            ? 'bg-green-600 text-white shadow-lg shadow-green-200'
+                            : 'bg-white text-gray-700 hover:bg-green-50 hover:text-green-700 border border-gray-200'
+                    }"
+                    data-page="${page}"
+                    ${isActive ? 'disabled' : ''}>
+                    ${page}
+                </button>
+            `;
+                }).join('');
+
+                return `
+            <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-50 to-green-50 rounded-xl border border-gray-200">
+                <button type="button"
+                    id="first-page-btn"
+                    class="nav-btn px-4 py-2 rounded-lg font-medium bg-white text-gray-700 hover:bg-green-50 hover:text-green-700 border border-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    ${this.currentPage === 1 ? 'disabled' : ''}>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                    </svg>
+                </button>
+
+                <button type="button"
+                    id="prev-page-btn"
+                    class="nav-btn px-4 py-2 rounded-lg font-medium bg-white text-gray-700 hover:bg-green-50 hover:text-green-700 border border-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    ${this.currentPage === 1 ? 'disabled' : ''}>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+
+                <div class="flex items-center gap-1">
+                    ${pageButtons}
+                </div>
+
+                <button type="button"
+                    id="next-page-btn"
+                    class="nav-btn px-4 py-2 rounded-lg font-medium bg-white text-gray-700 hover:bg-green-50 hover:text-green-700 border border-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    ${this.currentPage === this.totalPages ? 'disabled' : ''}>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+
+                <button type="button"
+                    id="last-page-btn"
+                    class="nav-btn px-4 py-2 rounded-lg font-medium bg-white text-gray-700 hover:bg-green-50 hover:text-green-700 border border-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    ${this.currentPage === this.totalPages ? 'disabled' : ''}>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
+        `;
+            }
+
+            bindPaginationEvents() {
+                // Use event delegation on pagination container for better performance
+                const paginationContainer = document.getElementById('soldier-pagination');
+                if (!paginationContainer) return;
+
+                paginationContainer.addEventListener('click', (e) => {
+                    const pageBtn = e.target.closest('.page-btn');
+                    if (pageBtn) {
+                        const page = parseInt(pageBtn.dataset.page);
+                        if (page && page > 0 && page <= this.totalPages) {
+                            this.currentPage = page;
+                            this.loadSoldiers();
+                        }
+                        return;
+                    }
+
+                    const firstBtn = e.target.closest('#first-page-btn');
+                    if (firstBtn && this.currentPage > 1) {
+                        this.currentPage = 1;
+                        this.loadSoldiers();
+                        return;
+                    }
+
+                    const prevBtn = e.target.closest('#prev-page-btn');
+                    if (prevBtn && this.currentPage > 1) {
+                        this.currentPage--;
+                        this.loadSoldiers();
+                        return;
+                    }
+
+                    const nextBtn = e.target.closest('#next-page-btn');
+                    if (nextBtn && this.currentPage < this.totalPages) {
+                        this.currentPage++;
+                        this.loadSoldiers();
+                        return;
+                    }
+
+                    const lastBtn = e.target.closest('#last-page-btn');
+                    if (lastBtn && this.currentPage < this.totalPages) {
+                        this.currentPage = this.totalPages;
+                        this.loadSoldiers();
+                        return;
+                    }
+                });
+            }
+
+            updateCounts(total, shown) {
+                const totalEl = document.getElementById('soldier-count');
+                const filteredEl = document.getElementById('filtered-soldier-count');
+
+                if (totalEl) totalEl.textContent = total;
+                if (filteredEl) filteredEl.textContent = shown;
+            }
+
+            showLoading(show) {
+                const loadingEl = document.getElementById('soldier-loading');
+                const container = document.getElementById('soldier-options-container');
+
+                if (loadingEl) loadingEl.classList.toggle('hidden', !show);
+                if (container && show) {
+                    container.innerHTML = `
+                <div class="flex items-center justify-center py-16">
+                    <div class="text-center">
+                        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-green-200 border-t-green-600 mb-4"></div>
+                        <p class="text-gray-600 font-medium">Loading soldiers...</p>
+                    </div>
+                </div>
+            `;
+                }
+            }
+
+            showError(message) {
+                const container = document.getElementById('soldier-options-container');
+                if (container) {
+                    container.innerHTML = `
+                <div class="text-center py-12 text-rose-600">
+                    <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <h4 class="text-lg font-medium mb-2">Error Loading Soldiers</h4>
+                    <p class="text-sm max-w-md mx-auto mb-4">${message}</p>
+                    <button onclick="window.soldierLoader.loadSoldiers()" type="button"
+                        class="px-6 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors duration-200">
+                        Retry
+                    </button>
+                </div>
+            `;
+                }
+            }
+
+            getEmptyState() {
+                return `
+            <div class="text-center py-16 text-gray-400">
+                <svg class="w-20 h-20 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+                <h4 class="text-lg font-medium text-gray-500 mb-2">No Soldiers Found</h4>
+                <p class="text-sm text-gray-400 max-w-md mx-auto mb-4">
+                    No soldiers match your current filters. Try changing your search criteria.
+                </p>
+                <button onclick="window.soldierLoader.resetAndLoad()" type="button"
+                    class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200 font-medium">
+                    Reset Filters
+                </button>
+            </div>
+        `;
+            }
+
+            selectSoldier(soldier) {
+                if (window.dutyForm) {
+                    window.dutyForm.selectSoldier(soldier);
+                }
+            }
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            window.soldierLoader = new SoldierLoader();
+
+            // Update DutyForm's openSoldierSelectionModal method
+            if (window.dutyForm) {
+                const originalOpenModal = window.dutyForm.openSoldierSelectionModal;
+
+                window.dutyForm.openSoldierSelectionModal = function() {
+                    if (originalOpenModal) {
+                        originalOpenModal.call(this);
+                    }
+
+                    // Auto-load soldiers when modal opens
+                    if (window.soldierLoader) {
+                        window.soldierLoader.autoLoadOnModalOpen();
+                    }
+                };
+            }
+        });
+    </script>
 @endpush

@@ -253,12 +253,34 @@ class DutyService
                 continue;
             }
 
+            $soldierId = $soldierData['soldier_id'];
+
             // Verify soldier exists and is available
-            $soldier = Soldier::find($soldierData['soldier_id']);
-            if (!$soldier || !$this->isSoldierAvailableForDuty($soldier, $duty->id)) {
-                Log::warning('Soldier not available for fixed duty assignment', [
-                    'soldier_id' => $soldierData['soldier_id'],
+            $soldier = Soldier::find($soldierId);
+            if (!$soldier) {
+                Log::warning('Soldier not found for fixed duty assignment', [
+                    'soldier_id' => $soldierId,
                     'duty_id' => $duty->id
+                ]);
+                continue;
+            }
+
+            // During update, don't exclude the current duty since we've already deleted old assignments
+            // Check availability without excluding any duty (assignments were already deleted)
+            if (!$soldier->status) {
+                Log::warning('Soldier inactive for fixed duty assignment', [
+                    'soldier_id' => $soldierId,
+                    'duty_id' => $duty->id,
+                    'reason' => 'inactive'
+                ]);
+                continue;
+            }
+
+            if ($soldier->is_on_leave) {
+                Log::warning('Soldier on leave for fixed duty assignment', [
+                    'soldier_id' => $soldierId,
+                    'duty_id' => $duty->id,
+                    'reason' => 'on_leave'
                 ]);
                 continue;
             }
@@ -266,7 +288,7 @@ class DutyService
             $assignments[] = [
                 'duty_id' => $duty->id,
                 'rank_id' => $soldier->rank_id, // Use soldier's actual rank
-                'soldier_id' => $soldierData['soldier_id'],
+                'soldier_id' => $soldierId,
                 'assignment_type' => 'fixed',
                 'duty_type' => 'fixed',
                 'manpower' => 1, // Fixed assignments always count as 1
@@ -279,6 +301,12 @@ class DutyService
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
+
+            Log::info('Fixed soldier assignment created', [
+                'soldier_id' => $soldierId,
+                'duty_id' => $duty->id,
+                'priority' => $soldierData['priority'] ?? 1
+            ]);
         }
 
         return $assignments;
@@ -368,6 +396,98 @@ class DutyService
         return $soldiers;
     }
 
+    /**
+     * Get soldiers for fixed duty assignment with pagination and filtering
+     * Shows ALL soldiers with their current assignment status
+     */
+    public function NewgetAvailableSoldiersForDuty(
+        ?string $rankId = null,
+        ?string $search = null,
+        ?int $excludeDutyId = null,
+        int $page = 1,
+        int $perPage = 20
+    ): array {
+        $query = Soldier::with(['rank', 'company', 'currentLeaveApplications'])
+            ->where('status', true);
+
+        // Apply rank filter
+        if ($rankId) {
+            $query->where('rank_id', $rankId);
+        }
+
+        // Apply search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('full_name', 'like', '%' . $search . '%')
+                    ->orWhere('army_no', 'like', '%' . $search . '%')
+                    ->orWhereHas('rank', function ($rq) use ($search) {
+                        $rq->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('company', function ($cq) use ($search) {
+                        $cq->where('name', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        // Count total before pagination
+        $total = $query->count();
+
+        // Apply pagination and get all soldiers
+        $soldiers = $query->skip(($page - 1) * $perPage)
+            ->take($perPage)
+            ->get()
+            ->map(function ($soldier) use ($excludeDutyId) {
+                // Get active assignments, excluding the current duty if we're editing
+                $assignments = $soldier->getActiveAssignments();
+
+                // Filter out the current duty if we're editing (to avoid showing duplicate)
+                if ($excludeDutyId) {
+                    $assignments = array_filter($assignments, function ($assignment) use ($excludeDutyId) {
+                        // Only check duty_id if this assignment has one (fixed_duty type)
+                        return !isset($assignment['duty_id']) || $assignment['duty_id'] != $excludeDutyId;
+                    });
+                }
+
+                // Calculate availability status for UI display
+                $isAvailable = $this->isSoldierAvailableForDuty($soldier, $excludeDutyId);
+
+                return [
+                    'id' => $soldier->id,
+                    'army_no' => $soldier->army_no,
+                    'full_name' => $soldier->full_name,
+                    'rank' => $soldier->rank->name,
+                    'rank_id' => $soldier->rank_id,
+                    'company' => $soldier->company->name ?? 'N/A',
+                    'current_assignments' => array_values($assignments), // Re-index array
+                    'is_on_leave' => $soldier->is_on_leave,
+                    'current_leave_details' => $soldier->current_leave_details,
+                    'is_available' => $isAvailable, // For UI display reference
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        // Log for debugging
+        \Log::info('Soldiers query result:', [
+            'total_found' => $total,
+            'filtered_count' => count($soldiers),
+            'rank_filter' => $rankId,
+            'search' => $search,
+            'exclude_duty' => $excludeDutyId,
+            'page' => $page,
+            'per_page' => $perPage
+        ]);
+
+        return [
+            'data' => $soldiers,
+            'total' => $total,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total_pages' => ceil($total / $perPage)
+            ]
+        ];
+    }
     /**
      * Get soldier's fixed duties
      */

@@ -375,26 +375,35 @@ class ManpowerDataService
      * @param \Illuminate\Support\Collection $companies
      * @return array
      */
+    /**
+     * Get detailed information about absent soldiers
+     *
+     * @param string $currentDate
+     * @param \Illuminate\Support\Collection $companies
+     * @return array
+     */
     private function getAbsentSoldierDetails($currentDate, $companies)
     {
-        $absentSoldiers = Soldier::select([
-            'soldiers.id',
-            'soldiers.army_no',
-            'soldiers.full_name',
-            'soldiers.rank_id',
-            'soldiers.company_id',
-            'ranks.name as rank_name',
-            'companies.name as company_name',
-            'soldier_leave_applications.leave_type_id',
-            'leave_types.name as leave_type_name',
-            'soldier_absent.absent_type_id',
-            'absent_types.name as absent_type_name',
-            'soldier_cadres.id as cadre_id',
-            'soldier_courses.id as course_id',
-            'soldier_ex_areas.id as ex_area_id',
-            'soldiers_att.id as att_id',
-            'soldiers_cmds.id as cmd_id'
-        ])
+        // Create a base query with all necessary joins
+        $baseQuery = Soldier::query()
+            ->select([
+                'soldiers.id',
+                'soldiers.army_no',
+                'soldiers.full_name',
+                'soldiers.rank_id',
+                'soldiers.company_id',
+                'ranks.name as rank_name',
+                'companies.name as company_name',
+                \DB::raw('MAX(soldier_leave_applications.leave_type_id) as leave_type_id'),
+                \DB::raw('MAX(leave_types.name) as leave_type_name'),
+                \DB::raw('MAX(soldier_absent.absent_type_id) as absent_type_id'),
+                \DB::raw('MAX(absent_types.name) as absent_type_name'),
+                \DB::raw('MAX(soldier_cadres.id) as cadre_id'),
+                \DB::raw('MAX(soldier_courses.id) as course_id'),
+                \DB::raw('MAX(soldier_ex_areas.id) as ex_area_id'),
+                \DB::raw('MAX(soldiers_att.id) as att_id'),
+                \DB::raw('MAX(soldiers_cmds.id) as cmd_id')
+            ])
             ->leftJoin('ranks', 'soldiers.rank_id', '=', 'ranks.id')
             ->leftJoin('companies', 'soldiers.company_id', '=', 'companies.id')
             // Leave applications
@@ -480,10 +489,20 @@ class ManpowerDataService
                     ->orWhereNotNull('soldiers_att.id')
                     ->orWhereNotNull('soldiers_cmds.id');
             })
+            ->groupBy(
+                'soldiers.id',
+                'soldiers.army_no',
+                'soldiers.full_name',
+                'soldiers.rank_id',
+                'soldiers.company_id',
+                'ranks.name',
+                'companies.name'
+            )
             ->orderBy('companies.name')
             ->orderBy('ranks.id')
-            ->orderBy('soldiers.army_no')
-            ->get();
+            ->orderBy('soldiers.army_no');
+
+        $absentSoldiers = $baseQuery->get();
 
         // Process the data to determine absence reason
         $absentSoldiers->each(function ($soldier) {

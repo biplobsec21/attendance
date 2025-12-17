@@ -57,11 +57,12 @@ class DutyController extends Controller
             $siteSettings = SiteSetting::getSettings()->first();
             // dd($siteSettings->pt_time->format('H:i'));
             // Get all available soldiers without any filters for create view
-            $availableSoldiers = $this->dutyService->getAvailableSoldiersForDuty();
+            // $availableSoldiers = $this->dutyService->getAvailableSoldiersForDuty();
+            $availableSoldiers = [];
 
             // Debug in controller
-            \Log::info('Available soldiers in create:', ['count' => count($availableSoldiers)]);
-
+            // \Log::info('Available soldiers in create:', ['count' => count($availableSoldiers)]);
+            // dd($availableSoldiers);
             return view('mpm.page.duty.create', compact('ranks', 'availableSoldiers', 'siteSettings'));
         } catch (\Exception $e) {
             dd($e->getMessage());
@@ -69,6 +70,32 @@ class DutyController extends Controller
             return redirect()->route('duty.index')
                 ->with('error', 'Failed to load create form: ' . $e->getMessage());
         }
+    }
+    /**
+     * Load available soldiers on demand (AJAX endpoint)
+     */
+    public function loadAvailableSoldiers(Request $request)
+    {
+        $rankId = $request->input('rank_id') ?: null;
+        $search = $request->input('search') ?: null;
+        $excludeDutyId = $request->input('exclude_duty_id') ?: null;
+        $page = $request->input('page', 1);
+        $perPage = 20; // You can adjust this as needed
+
+        $result = $this->dutyService->NewgetAvailableSoldiersForDuty(
+            rankId: $rankId,
+            search: $search,
+            excludeDutyId: $excludeDutyId,
+            page: $page,
+            perPage: $perPage
+        );
+
+        return response()->json([
+            'success' => true,
+            'soldiers' => $result['data'],
+            'pagination' => $result['pagination'],
+            'total' => $result['total']
+        ]);
     }
 
     /**
@@ -138,7 +165,8 @@ class DutyController extends Controller
             ]);
 
             $ranks = Rank::orderBy('name')->get();
-            $availableSoldiers = $this->dutyService->getAvailableSoldiersForDuty(excludeDutyId: $duty->id);
+            // $availableSoldiers = $this->dutyService->getAvailableSoldiersForDuty(excludeDutyId: $duty->id);
+            $availableSoldiers = [];
 
             // Prepare data for the form - FIXED VERSION
             $individualRanks = [];
@@ -220,6 +248,12 @@ class DutyController extends Controller
             $rankManpowerData = $validated['rank_manpower'] ?? [];
             $rankGroupsData = $validated['rank_groups'] ?? [];
             $fixedSoldiersData = $validated['fixed_soldiers'] ?? [];
+
+            \Log::info('Update Duty - Fixed Soldiers Data:', [
+                'duty_id' => $duty->id,
+                'fixed_soldiers_count' => count($fixedSoldiersData),
+                'fixed_soldiers_data' => $fixedSoldiersData
+            ]);
 
             // Prepare data for service
             $dutyData = [

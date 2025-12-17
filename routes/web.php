@@ -356,7 +356,8 @@ Route::prefix('settings')->middleware(['auth', 'role:admin'])->group(function ()
         Route::get('create', [DutyController::class, 'create'])->name('duty.create');
         Route::get('', [DutyController::class, 'index'])->name('duty.index');
         Route::get('{duty}/edit', [DutyController::class, 'edit'])->name('duty.edit');
-
+        // routes/web.php
+        Route::post('/load-soldiers', [DutyController::class, 'loadAvailableSoldiers'])->name('duty.load-soldiers');
         // This route handles the form submission to update the record in the database.
         Route::put('{duty}', [DutyController::class, 'update'])->name('duty.update');
         // Route to handle the form submission and store the new record
