@@ -345,9 +345,12 @@ class ManpowerDataService
         // Fetch additional soldier status data (cadres, courses, ex_areas, att, cmds)
         $additionalStatuses = $this->getAdditionalStatuses($currentDate, $companies);
 
-        // Merge leave types with additional statuses and absent types for combined absent details
-        $absentDetails = $this->mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $leaveManpower);
+        // Get detailed information about absent soldiers (must be called before mergeAbsentDetails)
         $absentSoldierDetails = $this->getAbsentSoldierDetails($currentDate, $companies);
+
+        // Merge leave types with additional statuses and absent types for combined absent details
+        // $absentDetails = $this->mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $leaveManpower);
+        $absentDetails = $this->mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $absentSoldierDetails);
 
         return [
             'companies' => $companies,
@@ -566,10 +569,11 @@ class ManpowerDataService
                 'label' => 'Ex Areas',
                 'data' => $this->getStatusCount('soldier_ex_areas', $currentDate, $companies)
             ],
-            'att' => [
-                'label' => 'ATT',
-                'data' => $this->getStatusCount('soldiers_att', $currentDate, $companies)
-            ],
+            // this is ATT removed as per request ---- ....---
+            // 'att' => [
+            //     'label' => 'ATT',
+            //     'data' => $this->getStatusCount('soldiers_att', $currentDate, $companies)
+            // ],
             'cmds' => [
                 'label' => 'Comd',
                 'data' => $this->getStatusCount('soldiers_cmds', $currentDate, $companies)
@@ -625,13 +629,19 @@ class ManpowerDataService
      * @param \Illuminate\Support\Collection $leaveManpower
      * @return array
      */
-    private function mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $leaveManpower = null)
+    private function mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $absentSoldierDetails)
     {
         $columns = [];
         $columnTotals = [];
         $companyData = [];
 
-        // Add leave type columns and calculate totals
+        // Initialize arrays for all companies
+        foreach ($companies as $company) {
+            $companyData[$company->id] = [];
+        }
+
+        // Build columns in the correct order
+        // 1. Leave types
         foreach ($leaveTypes as $leaveType) {
             $columns[] = [
                 'id' => 'leave_' . $leaveType->id,
@@ -640,26 +650,16 @@ class ManpowerDataService
                 'type_id' => $leaveType->id,
             ];
 
-            // Calculate total for this leave type
-            $total = 0;
-            foreach ($companies as $company) {
-                if (isset($leaveTypeManpower[$company->id][$leaveType->id])) {
-                    $count = $leaveTypeManpower[$company->id][$leaveType->id]->count ?? 0;
-                    $total += $count;
-                } else {
-                    $count = 0;
-                }
+            // Initialize column totals
+            $columnTotals['leave_' . $leaveType->id] = 0;
 
-                // Add to company data
-                if (!isset($companyData[$company->id])) {
-                    $companyData[$company->id] = [];
-                }
-                $companyData[$company->id]['leave_' . $leaveType->id] = $count;
+            // Initialize company data
+            foreach ($companies as $company) {
+                $companyData[$company->id]['leave_' . $leaveType->id] = 0;
             }
-            $columnTotals['leave_' . $leaveType->id] = $total;
         }
 
-        // Add additional status columns
+        // 2. Additional statuses
         foreach ($additionalStatuses as $key => $status) {
             $columns[] = [
                 'id' => 'status_' . $key,
@@ -668,25 +668,14 @@ class ManpowerDataService
                 'type_key' => $key,
             ];
 
-            // Add status data to company data and calculate total
-            $total = 0;
-            foreach ($companies as $company) {
-                if (isset($status['data'][$company->id])) {
-                    $count = $status['data'][$company->id]->count ?? 0;
-                    $total += $count;
-                } else {
-                    $count = 0;
-                }
+            $columnTotals['status_' . $key] = 0;
 
-                if (!isset($companyData[$company->id])) {
-                    $companyData[$company->id] = [];
-                }
-                $companyData[$company->id]['status_' . $key] = $count;
+            foreach ($companies as $company) {
+                $companyData[$company->id]['status_' . $key] = 0;
             }
-            $columnTotals['status_' . $key] = $total;
         }
 
-        // Add absent type columns and calculate totals
+        // 3. Absent types
         foreach ($absentTypes as $absentType) {
             $columns[] = [
                 'id' => 'absent_' . $absentType->id,
@@ -695,36 +684,68 @@ class ManpowerDataService
                 'type_id' => $absentType->id,
             ];
 
-            // Calculate total for this absent type
-            $total = 0;
+            $columnTotals['absent_' . $absentType->id] = 0;
+
             foreach ($companies as $company) {
-                if (isset($absentTypeManpower[$company->id][$absentType->id])) {
-                    $count = $absentTypeManpower[$company->id][$absentType->id]->count ?? 0;
-                    $total += $count;
-                } else {
-                    $count = 0;
-                }
-
-                if (!isset($companyData[$company->id])) {
-                    $companyData[$company->id] = [];
-                }
-                $companyData[$company->id]['absent_' . $absentType->id] = $count;
+                $companyData[$company->id]['absent_' . $absentType->id] = 0;
             }
-            $columnTotals['absent_' . $absentType->id] = $total;
         }
 
-        // Calculate company totals - use the leaveManpower data to avoid double counting
+        // Calculate company totals and category breakdown from the absent soldier details
         $companyTotals = [];
+
+        // Initialize company totals
         foreach ($companies as $company) {
-            $total = 0;
-            // Sum up the leaveManpower counts for this company (unique soldiers)
-            if ($leaveManpower && isset($leaveManpower[$company->id])) {
-                foreach ($leaveManpower[$company->id] as $rankData) {
-                    $total += $rankData->count;
+            $companyTotals[$company->id] = 0;
+        }
+
+        // Process absent soldier details to categorize each soldier
+        foreach ($absentSoldierDetails as $companyName => $soldiers) {
+            // Find the company ID
+            $company = $companies->firstWhere('name', $companyName);
+            if (!$company) continue;
+
+            $companyId = $company->id;
+            $companyTotals[$companyId] = count($soldiers);
+
+            // Categorize each soldier
+            foreach ($soldiers as $soldier) {
+                $reason = $soldier->absence_reason;
+
+                // Parse the reason to determine category
+                if (str_contains($reason, 'Leave')) {
+                    // Extract leave type name (e.g., "P Lve" from "P Lve Leave")
+                    $leaveTypeName = trim(str_replace('Leave', '', $reason));
+
+                    // Find matching leave type
+                    $leaveType = $leaveTypes->firstWhere('name', $leaveTypeName);
+                    if ($leaveType) {
+                        $companyData[$companyId]['leave_' . $leaveType->id]++;
+                        $columnTotals['leave_' . $leaveType->id]++;
+                    }
+                } elseif (str_contains($reason, 'Absent')) {
+                    // Extract absent type name (e.g., "403 BG" from "403 BG Absent")
+                    $absentTypeName = trim(str_replace('Absent', '', $reason));
+
+                    // Find matching absent type
+                    $absentType = $absentTypes->firstWhere('name', $absentTypeName);
+                    if ($absentType) {
+                        $companyData[$companyId]['absent_' . $absentType->id]++;
+                        $columnTotals['absent_' . $absentType->id]++;
+                    }
+                } else {
+                    // It's an additional status (Cadre, Course, etc.)
+                    $statusKey = $this->mapReasonToStatusKey($reason);
+                    if ($statusKey) {
+                        $companyData[$companyId]['status_' . $statusKey]++;
+                        $columnTotals['status_' . $statusKey]++;
+                    }
                 }
             }
-            $companyTotals[$company->id] = $total;
         }
+
+        // Validate that the sum of categories equals the total for each company
+        $this->validateCategorySums($companies, $companyData, $companyTotals);
 
         return [
             'columns' => $columns,
@@ -732,5 +753,43 @@ class ManpowerDataService
             'columnTotals' => $columnTotals,
             'companyTotals' => $companyTotals,
         ];
+    }
+    /**
+     * Map reason string to status key
+     */
+    private function mapReasonToStatusKey($reason)
+    {
+        $mapping = [
+            'Cadre' => 'cadres',
+            'Course' => 'courses',
+            'Exercise Area' => 'ex_areas',
+            'ATT' => 'att',
+            'Comd' => 'cmds',
+        ];
+
+        return $mapping[$reason] ?? null;
+    }
+
+    /**
+     * Validate that category sums match company totals
+     */
+    private function validateCategorySums($companies, $companyData, $companyTotals)
+    {
+        foreach ($companies as $company) {
+            $companyId = $company->id;
+            $categorySum = 0;
+
+            if (isset($companyData[$companyId])) {
+                foreach ($companyData[$companyId] as $count) {
+                    $categorySum += $count;
+                }
+            }
+
+            $distinctTotal = $companyTotals[$companyId] ?? 0;
+
+            if ($categorySum != $distinctTotal) {
+                \Log::warning("Company {$company->name}: Category sum ({$categorySum}) doesn't match distinct total ({$distinctTotal})");
+            }
+        }
     }
 }
