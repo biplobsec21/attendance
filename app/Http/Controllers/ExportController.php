@@ -113,6 +113,9 @@ class ExportController extends Controller
         if ($type === 'pdf') {
             $fileName = 'manpower_distribution_' . now()->format('Ymd_His') . '.pdf';
 
+            // Clear cache before generating PDF to ensure fresh data
+            ManpowerDataCache::clear($date);
+
             // Create a single instance and get the data once
             $manpowerPdfExport = new ManpowerPdfExport($date);
             $view = $manpowerPdfExport->view();
