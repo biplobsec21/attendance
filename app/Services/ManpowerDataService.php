@@ -346,7 +346,7 @@ class ManpowerDataService
         $additionalStatuses = $this->getAdditionalStatuses($currentDate, $companies);
 
         // Merge leave types with additional statuses and absent types for combined absent details
-        $absentDetails = $this->mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $leaveManpower);
+        $absentDetails = $this->mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $leaveManpower, $currentDate);
         $absentSoldierDetails = $this->getAbsentSoldierDetails($currentDate, $companies);
 
         return [
@@ -625,11 +625,16 @@ class ManpowerDataService
      * @param \Illuminate\Support\Collection $leaveManpower
      * @return array
      */
-    private function mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $leaveManpower = null)
+    private function mergeAbsentDetails($leaveTypes, $leaveTypeManpower, $absentTypes, $absentTypeManpower, $additionalStatuses, $companies, $leaveManpower = null, $currentDate = null)
     {
         $columns = [];
         $columnTotals = [];
         $companyData = [];
+
+        // Default to today if no date provided
+        if ($currentDate === null) {
+            $currentDate = now()->toDateString();
+        }
 
         // Build columns list first
         foreach ($leaveTypes as $leaveType) {
@@ -659,8 +664,8 @@ class ManpowerDataService
             ];
         }
 
-        // Get absent soldier details with priority-based categorization
-        $absentDetails = $this->getAbsentSoldierDetails(now()->toDateString(), $companies);
+        // Get absent soldier details with priority-based categorization using correct date
+        $absentDetails = $this->getAbsentSoldierDetails($currentDate, $companies);
 
         // Track counted soldiers to avoid double counting
         $countedSoldiers = [];  // soldier_id -> column_id
