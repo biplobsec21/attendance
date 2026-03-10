@@ -1612,6 +1612,26 @@ class DutyAssignmentService
             ->with('dutyRanks')
             ->get();
 
+        // Helper function to convert UTC times to local time (UTC+6)
+        $convertToLocalTime = function ($datetime) {
+            if (!$datetime) return 'N/A';
+
+            if ($datetime instanceof \Carbon\Carbon) {
+                return $datetime->copy()->setTimezone('Asia/Dhaka')->format('H:i');
+            }
+
+            if (is_string($datetime)) {
+                try {
+                    $carbon = Carbon::parse($datetime);
+                    return $carbon->setTimezone('Asia/Dhaka')->format('H:i');
+                } catch (\Exception $e) {
+                    return $datetime; // Return original if parsing fails
+                }
+            }
+
+            return 'N/A';
+        };
+
         $unfulfilled = [];
 
         foreach ($activeDuties as $duty) {
@@ -1625,8 +1645,11 @@ class DutyAssignmentService
                 $unfulfilled[] = [
                     'duty_id' => $duty->id,
                     'duty_name' => $duty->duty_name,
-                    'required' => $required,
-                    'assigned' => $assigned,
+                    'start_time' => $convertToLocalTime($duty->start_time),
+                    'end_time' => $convertToLocalTime($duty->end_time),
+                    'duration_days' => $duty->duration_days,
+                    'required_manpower' => $required,
+                    'assigned_count' => $assigned,
                     'shortage' => $required - $assigned,
                     'fulfillment_rate' => $required > 0
                         ? round(($assigned / $required) * 100, 2)

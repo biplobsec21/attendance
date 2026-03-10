@@ -68,8 +68,35 @@
         <tbody>
             @foreach ($details['roster_duties'] as $duty)
                 @php
-                    $startTime = \Carbon\Carbon::parse($duty['start_time'])->format('H:i');
-                    $endTime = \Carbon\Carbon::parse($duty['end_time'])->format('H:i');
+                    // Check if times are already formatted or need parsing
+                    if (
+                        is_string($duty['start_time']) &&
+                        strlen($duty['start_time']) === 5 &&
+                        strpos($duty['start_time'], ':') !== false
+                    ) {
+                        $startTime = $duty['start_time'];
+                    } else {
+                        try {
+                            $startTime = \Carbon\Carbon::parse($duty['start_time'])->format('H:i');
+                        } catch (\Exception $e) {
+                            $startTime = 'N/A';
+                        }
+                    }
+
+                    if (
+                        is_string($duty['end_time']) &&
+                        strlen($duty['end_time']) === 5 &&
+                        strpos($duty['end_time'], ':') !== false
+                    ) {
+                        $endTime = $duty['end_time'];
+                    } else {
+                        try {
+                            $endTime = \Carbon\Carbon::parse($duty['end_time'])->format('H:i');
+                        } catch (\Exception $e) {
+                            $endTime = 'N/A';
+                        }
+                    }
+
                     $assignedSoldiers = $duty['assigned_soldiers'];
 
                     // Handle both array and object formats for assigned_soldiers
@@ -128,8 +155,34 @@
             <tbody>
                 @foreach ($details['fixed_duties'] as $duty)
                     @php
-                        $startTime = \Carbon\Carbon::parse($duty['start_time'])->format('H:i');
-                        $endTime = \Carbon\Carbon::parse($duty['end_time'])->format('H:i');
+                        // Check if times are already formatted or need parsing
+                        if (
+                            is_string($duty['start_time']) &&
+                            strlen($duty['start_time']) === 5 &&
+                            strpos($duty['start_time'], ':') !== false
+                        ) {
+                            $startTime = $duty['start_time'];
+                        } else {
+                            try {
+                                $startTime = \Carbon\Carbon::parse($duty['start_time'])->format('H:i');
+                            } catch (\Exception $e) {
+                                $startTime = 'N/A';
+                            }
+                        }
+
+                        if (
+                            is_string($duty['end_time']) &&
+                            strlen($duty['end_time']) === 5 &&
+                            strpos($duty['end_time'], ':') !== false
+                        ) {
+                            $endTime = $duty['end_time'];
+                        } else {
+                            try {
+                                $endTime = \Carbon\Carbon::parse($duty['end_time'])->format('H:i');
+                            } catch (\Exception $e) {
+                                $endTime = 'N/A';
+                            }
+                        }
                     @endphp
                     <tr>
                         <td>{{ $duty['duty_name'] }}</td>
@@ -162,8 +215,34 @@
             <tbody>
                 @foreach ($details['unfulfilled_duties'] as $duty)
                     @php
-                        $startTime = \Carbon\Carbon::parse($duty['start_time'])->format('H:i');
-                        $endTime = \Carbon\Carbon::parse($duty['end_time'])->format('H:i');
+                        // Check if times are already formatted or need parsing
+                        if (
+                            is_string($duty['start_time']) &&
+                            strlen($duty['start_time']) === 5 &&
+                            strpos($duty['start_time'], ':') !== false
+                        ) {
+                            $startTime = $duty['start_time'];
+                        } else {
+                            try {
+                                $startTime = \Carbon\Carbon::parse($duty['start_time'])->format('H:i');
+                            } catch (\Exception $e) {
+                                $startTime = 'N/A';
+                            }
+                        }
+
+                        if (
+                            is_string($duty['end_time']) &&
+                            strlen($duty['end_time']) === 5 &&
+                            strpos($duty['end_time'], ':') !== false
+                        ) {
+                            $endTime = $duty['end_time'];
+                        } else {
+                            try {
+                                $endTime = \Carbon\Carbon::parse($duty['end_time'])->format('H:i');
+                            } catch (\Exception $e) {
+                                $endTime = 'N/A';
+                            }
+                        }
                     @endphp
                     <tr>
                         <td>{{ $duty['duty_name'] }}</td>
