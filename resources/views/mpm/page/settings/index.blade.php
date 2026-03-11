@@ -161,10 +161,10 @@
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-green-50 hover:text-green-600 transition">
                             <i class="fas fa-user-tag text-green-500"></i> Roles
                         </a></li>
-                    <li><a href="{{ route('permissions.index') }}"
+                    {{-- <li><a href="{{ route('permissions.index') }}"
                             class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-green-50 hover:text-green-600 transition">
                             <i class="fas fa-key text-green-500"></i> Permissions
-                        </a></li>
+                        </a></li> --}}
                 </ul>
             </div>
 
