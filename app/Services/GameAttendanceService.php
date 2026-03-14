@@ -793,7 +793,21 @@ class GameAttendanceService
 
         $data[] = $totalRow;
 
-        Log::info("📈 FORMAT1 COMPLETED - Total present: {$totals['total']}, Total excused: {$totals['excused']}, Net total: {$totals['all_total']}");
+        // Calculate total on-leave and on-absent soldiers
+        $totalOnLeave = LeaveApplication::where('application_current_status', 'approved')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->whereDate('end_date', '>=', $carbonDate)
+            ->count();
+
+        $totalOnAbsent = \App\Models\Absent::where('absent_current_status', 'approved')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($q) use ($carbonDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->count();
+
+        Log::info("📈 FORMAT1 COMPLETED - Total present: {$totals['total']}, Total excused: {$totals['excused']}, Net total: {$totals['all_total']}, On Leave: {$totalOnLeave}, On Absent: {$totalOnAbsent}");
 
         return $data;
     }
