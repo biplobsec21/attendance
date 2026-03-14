@@ -705,6 +705,7 @@ class GameAttendanceService
     {
         Log::info("📊 GENERATING FORMAT1 DATA for {$this->reportType} report on date: {$date}");
 
+        $carbonDate = Carbon::parse($date);
         $companies = Company::orderBy('id')->get();
         $rankTypes = $this->getRankTypes();
         $data = [];
@@ -730,6 +731,9 @@ class GameAttendanceService
                     ->where(function ($query) use ($date) {
                         $this->excludeSoldiersWithActiveEre($query, $date);
                     })
+                    ->where(function ($query) use ($carbonDate) {
+                        $this->excludeSoldiersOnApprovedLeave($query, $carbonDate);
+                    })
                     ->count();
 
                 $row[$type] = $count;
@@ -743,6 +747,9 @@ class GameAttendanceService
             $allSoldiers = Soldier::where('company_id', $company->id)
                 ->where(function ($query) use ($date) {
                     $this->excludeSoldiersWithActiveEre($query, $date);
+                })
+                ->where(function ($query) use ($carbonDate) {
+                    $this->excludeSoldiersOnApprovedLeave($query, $carbonDate);
                 })
                 ->get();
 
@@ -969,6 +976,18 @@ class GameAttendanceService
                     $q2->whereNull('end_date')
                         ->orWhereDate('end_date', '>=', $carbonDate);
                 });
+        });
+    }
+
+    /**
+     * Common method to exclude soldiers on approved leave for query optimization
+     */
+    private function excludeSoldiersOnApprovedLeave($query, $carbonDate)
+    {
+        return $query->whereDoesntHave('leaveApplications', function ($q) use ($carbonDate) {
+            $q->where('application_current_status', 'approved')
+                ->whereDate('start_date', '<=', $carbonDate)
+                ->whereDate('end_date', '>=', $carbonDate);
         });
     }
 
