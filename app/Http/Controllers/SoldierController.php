@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateProfilePersonalRequest;
 use App\Http\Requests\SoldierServiceRequest;
 use App\Http\Requests\StoreMedicalRequest;
 use App\Http\Requests\StoreQualificationRequest;
+use App\Models\Absent;
 use App\Models\Appointment;
 use App\Models\Atts;
 use App\Models\Cadre;
@@ -72,7 +73,16 @@ class SoldierController extends Controller
             ]);
         }
 
-        return view('mpm.page.profile.index');
+        // Calculate total absent soldiers for today
+        $totalAbsentSoldiers = Absent::where('absent_current_status', 'approved')
+            ->whereDate('start_date', '<=', now())
+            ->where(function ($q) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', now());
+            })
+            ->count();
+
+        return view('mpm.page.profile.index', compact('totalAbsentSoldiers'));
     }
 
     // <start>*************************Profile personal information<start>

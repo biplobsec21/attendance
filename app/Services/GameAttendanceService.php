@@ -734,6 +734,9 @@ class GameAttendanceService
                     ->where(function ($query) use ($carbonDate) {
                         $this->excludeSoldiersOnApprovedLeave($query, $carbonDate);
                     })
+                    ->where(function ($query) use ($carbonDate) {
+                        $this->excludeSoldiersOnApprovedAbsent($query, $carbonDate);
+                    })
                     ->count();
 
                 $row[$type] = $count;
@@ -750,6 +753,9 @@ class GameAttendanceService
                 })
                 ->where(function ($query) use ($carbonDate) {
                     $this->excludeSoldiersOnApprovedLeave($query, $carbonDate);
+                })
+                ->where(function ($query) use ($carbonDate) {
+                    $this->excludeSoldiersOnApprovedAbsent($query, $carbonDate);
                 })
                 ->get();
 
@@ -988,6 +994,22 @@ class GameAttendanceService
             $q->where('application_current_status', 'approved')
                 ->whereDate('start_date', '<=', $carbonDate)
                 ->whereDate('end_date', '>=', $carbonDate);
+        });
+    }
+
+    /**
+     * Common method to exclude soldiers on approved absent for query optimization
+     * Handles NULL end_date (ongoing absences)
+     */
+    private function excludeSoldiersOnApprovedAbsent($query, $carbonDate)
+    {
+        return $query->whereDoesntHave('absents', function ($q) use ($carbonDate) {
+            $q->where('absent_current_status', 'approved')
+                ->whereDate('start_date', '<=', $carbonDate)
+                ->where(function ($q2) use ($carbonDate) {
+                    $q2->whereNull('end_date')
+                        ->orWhereDate('end_date', '>=', $carbonDate);
+                });
         });
     }
 

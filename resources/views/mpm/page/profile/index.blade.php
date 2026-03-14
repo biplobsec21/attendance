@@ -57,6 +57,11 @@
                                 <p class="text-sm font-medium text-gray-600">On Leave</p>
                                 <p class="text-2xl font-bold text-gray-900" id="leave-count">0</p>
                             </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Absent</p>
+                                <p class="text-lg font-bold text-gray-900">{{ $totalAbsentSoldiers }}</p>
+
+                            </div>
                         </div>
                     </div>
                     {{-- ERE Stats Card --}}
@@ -764,9 +769,9 @@
 
         /* Ensure proper z-index hierarchy */
         /* .bg-gradient-to-r.from-green-800.to-green-600:not(#filters-sidebar .bg-gradient-to-r) {
-                                                                                                                                                                                                        position: relative;
-                                                                                                                                                                                                        z-index: 40;
-                                                                                                                                                                                                    } */
+                                                                                                                                                                                                                        position: relative;
+                                                                                                                                                                                                                        z-index: 40;
+                                                                                                                                                                                                                    } */
 
         #filters-sidebar {
             z-index: 60 !important;
