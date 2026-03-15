@@ -184,12 +184,12 @@ class GameAttendanceService
 
         // Check all excusal conditions with priority
         $excusalChecks = [
-            // [
-            //     'name' => 'Leave',
-            //     'priority' => self::PRIORITY_LEAVE,
-            //     'check' => fn() => $this->isOnApprovedLeaveOnDate($soldier, $carbonDate),
-            //     'details_fn' => fn() => $this->getLeaveDetails($soldier, $carbonDate)
-            // ],
+            [
+                'name' => 'Leave',
+                'priority' => self::PRIORITY_LEAVE,
+                'check' => fn() => $this->isOnApprovedLeaveOnDate($soldier, $carbonDate),
+                'details_fn' => fn() => $this->getLeaveDetails($soldier, $carbonDate)
+            ],
             [
                 'name' => 'Roaster Duty',
                 'priority' => self::PRIORITY_ROSTER_DUTY,
@@ -208,18 +208,18 @@ class GameAttendanceService
             //     'check' => fn() => $this->hasActiveAppointmentOnDate($soldier, $carbonDate),
             //     'details_fn' => fn() => $this->getAppointmentDetails($soldier, $carbonDate)
             // ],
-            // [
-            //     'name' => 'Course',
-            //     'priority' => self::PRIORITY_COURSE,
-            //     'check' => fn() => $this->hasActiveCourseOnDate($soldier, $carbonDate),
-            //     'details_fn' => fn() => $this->getCourseDetails($soldier, $carbonDate)
-            // ],
-            // [
-            //     'name' => 'Cadre',
-            //     'priority' => self::PRIORITY_CADRE,
-            //     'check' => fn() => $this->hasActiveCadreOnDate($soldier, $carbonDate),
-            //     'details_fn' => fn() => $this->getCadreDetails($soldier, $carbonDate)
-            // ],
+            [
+                'name' => 'Course',
+                'priority' => self::PRIORITY_COURSE,
+                'check' => fn() => $this->hasActiveCourseOnDate($soldier, $carbonDate),
+                'details_fn' => fn() => $this->getCourseDetails($soldier, $carbonDate)
+            ],
+            [
+                'name' => 'Cadre',
+                'priority' => self::PRIORITY_CADRE,
+                'check' => fn() => $this->hasActiveCadreOnDate($soldier, $carbonDate),
+                'details_fn' => fn() => $this->getCadreDetails($soldier, $carbonDate)
+            ],
         ];
 
         // Find the highest priority (lowest number) excusal reason
@@ -817,11 +817,12 @@ class GameAttendanceService
 
         $data[] = $totalRow;
 
-        // Calculate total on-leave and on-absent soldiers
+        // Calculate total on-leave and on-absent soldiers (distinct soldier IDs)
         $totalOnLeave = LeaveApplication::where('application_current_status', 'approved')
             ->whereDate('start_date', '<=', $carbonDate)
             ->whereDate('end_date', '>=', $carbonDate)
-            ->count();
+            ->distinct('soldier_id')
+            ->count('soldier_id');
 
         $totalOnAbsent = \App\Models\Absent::where('absent_current_status', 'approved')
             ->whereDate('start_date', '<=', $carbonDate)
@@ -829,45 +830,119 @@ class GameAttendanceService
                 $q->whereNull('end_date')
                     ->orWhereDate('end_date', '>=', $carbonDate);
             })
-            ->count();
+            ->distinct('soldier_id')
+            ->count('soldier_id');
 
-        // Calculate total soldiers with active courses
+        // Calculate total soldiers with active courses (distinct soldier IDs)
         $totalOnActiveCourses = SoldierCourse::where('status', 'active')
             ->whereDate('start_date', '<=', $carbonDate)
             ->where(function ($q) use ($carbonDate) {
                 $q->whereNull('end_date')
                     ->orWhereDate('end_date', '>=', $carbonDate);
             })
-            ->count();
+            ->distinct('soldier_id')
+            ->count('soldier_id');
 
-        // Calculate total soldiers with active cadres
+        // Calculate total soldiers with active cadres (distinct soldier IDs)
         $totalOnActiveCadres = SoldierCadre::where('status', 'active')
             ->whereDate('start_date', '<=', $carbonDate)
             ->where(function ($q) use ($carbonDate) {
                 $q->whereNull('end_date')
                     ->orWhereDate('end_date', '>=', $carbonDate);
             })
-            ->count();
+            ->distinct('soldier_id')
+            ->count('soldier_id');
 
-        // Calculate total soldiers with active ATT (Attestation)
+        // Calculate total soldiers with active ATT (Attestation) - distinct soldier IDs
         $totalOnActiveAtts = DB::table('soldiers_att')
             ->whereDate('start_date', '<=', $carbonDate)
             ->where(function ($q) use ($carbonDate) {
                 $q->whereNull('end_date')
                     ->orWhereDate('end_date', '>=', $carbonDate);
             })
-            ->count();
+            ->distinct('soldier_id')
+            ->count('soldier_id');
 
-        // Calculate total soldiers with active CMD (Command)
+        // Calculate total soldiers with active CMD (Command) - distinct soldier IDs
         $totalOnActiveCmds = DB::table('soldiers_cmds')
             ->whereDate('start_date', '<=', $carbonDate)
             ->where(function ($q) use ($carbonDate) {
                 $q->whereNull('end_date')
                     ->orWhereDate('end_date', '>=', $carbonDate);
             })
-            ->count();
+            ->distinct('soldier_id')
+            ->count('soldier_id');
 
-        Log::info("📈 FORMAT1 COMPLETED - Total present: {$totals['total']}, Total excused: {$totals['excused']}, Net total: {$totals['all_total']}, On Leave: {$totalOnLeave}, On Absent: {$totalOnAbsent}, On Active Courses: {$totalOnActiveCourses}, On Active Cadres: {$totalOnActiveCadres}, On Active ATT: {$totalOnActiveAtts}, On Active CMD: {$totalOnActiveCmds}");
+        // Calculate total distinct soldiers with any exclusion (may overlap)
+        $excludedSoldierIds = [];
+
+        // Get soldier IDs on leave
+        $onLeaveIds = LeaveApplication::where('application_current_status', 'approved')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->whereDate('end_date', '>=', $carbonDate)
+            ->pluck('soldier_id')
+            ->toArray();
+        $excludedSoldierIds = array_merge($excludedSoldierIds, $onLeaveIds);
+
+        // Get soldier IDs on absent
+        $onAbsentIds = \App\Models\Absent::where('absent_current_status', 'approved')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($q) use ($carbonDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->pluck('soldier_id')
+            ->toArray();
+        $excludedSoldierIds = array_merge($excludedSoldierIds, $onAbsentIds);
+
+        // Get soldier IDs with active courses
+        $onCourseIds = SoldierCourse::where('status', 'active')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($q) use ($carbonDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->pluck('soldier_id')
+            ->toArray();
+        $excludedSoldierIds = array_merge($excludedSoldierIds, $onCourseIds);
+
+        // Get soldier IDs with active cadres
+        $onCadreIds = SoldierCadre::where('status', 'active')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($q) use ($carbonDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->pluck('soldier_id')
+            ->toArray();
+        $excludedSoldierIds = array_merge($excludedSoldierIds, $onCadreIds);
+
+        // Get soldier IDs with active ATT
+        $onAttIds = DB::table('soldiers_att')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($q) use ($carbonDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->pluck('soldier_id')
+            ->toArray();
+        $excludedSoldierIds = array_merge($excludedSoldierIds, $onAttIds);
+
+        // Get soldier IDs with active CMD
+        $onCmdIds = DB::table('soldiers_cmds')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($q) use ($carbonDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->pluck('soldier_id')
+            ->toArray();
+        $excludedSoldierIds = array_merge($excludedSoldierIds, $onCmdIds);
+
+        // Get unique count of soldiers with ANY exclusion
+        $totalWithAnyExclusion = count(array_unique($excludedSoldierIds));
+
+        Log::info("📈 FORMAT1 COMPLETED - Total present: {$totals['total']}, Total excused: {$totals['excused']}, Net total: {$totals['all_total']}, On Leave: {$totalOnLeave}, On Absent: {$totalOnAbsent}, On Active Courses: {$totalOnActiveCourses}, On Active Cadres: {$totalOnActiveCadres}, On Active ATT: {$totalOnActiveAtts}, On Active CMD: {$totalOnActiveCmds}, Total with ANY exclusion: {$totalWithAnyExclusion}");
 
         return $data;
     }
