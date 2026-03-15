@@ -737,6 +737,18 @@ class GameAttendanceService
                     ->where(function ($query) use ($carbonDate) {
                         $this->excludeSoldiersOnApprovedAbsent($query, $carbonDate);
                     })
+                    ->where(function ($query) use ($carbonDate) {
+                        $this->excludeSoldiersWithActiveCourses($query, $carbonDate);
+                    })
+                    ->where(function ($query) use ($carbonDate) {
+                        $this->excludeSoldiersWithActiveCadres($query, $carbonDate);
+                    })
+                    ->where(function ($query) use ($carbonDate) {
+                        $this->excludeSoldiersWithActiveAtts($query, $carbonDate);
+                    })
+                    ->where(function ($query) use ($carbonDate) {
+                        $this->excludeSoldiersWithActiveCmds($query, $carbonDate);
+                    })
                     ->count();
 
                 $row[$type] = $count;
@@ -756,6 +768,18 @@ class GameAttendanceService
                 })
                 ->where(function ($query) use ($carbonDate) {
                     $this->excludeSoldiersOnApprovedAbsent($query, $carbonDate);
+                })
+                ->where(function ($query) use ($carbonDate) {
+                    $this->excludeSoldiersWithActiveCourses($query, $carbonDate);
+                })
+                ->where(function ($query) use ($carbonDate) {
+                    $this->excludeSoldiersWithActiveCadres($query, $carbonDate);
+                })
+                ->where(function ($query) use ($carbonDate) {
+                    $this->excludeSoldiersWithActiveAtts($query, $carbonDate);
+                })
+                ->where(function ($query) use ($carbonDate) {
+                    $this->excludeSoldiersWithActiveCmds($query, $carbonDate);
                 })
                 ->get();
 
@@ -807,7 +831,43 @@ class GameAttendanceService
             })
             ->count();
 
-        Log::info("📈 FORMAT1 COMPLETED - Total present: {$totals['total']}, Total excused: {$totals['excused']}, Net total: {$totals['all_total']}, On Leave: {$totalOnLeave}, On Absent: {$totalOnAbsent}");
+        // Calculate total soldiers with active courses
+        $totalOnActiveCourses = SoldierCourse::where('status', 'active')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($q) use ($carbonDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->count();
+
+        // Calculate total soldiers with active cadres
+        $totalOnActiveCadres = SoldierCadre::where('status', 'active')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($q) use ($carbonDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->count();
+
+        // Calculate total soldiers with active ATT (Attestation)
+        $totalOnActiveAtts = DB::table('soldiers_att')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($q) use ($carbonDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->count();
+
+        // Calculate total soldiers with active CMD (Command)
+        $totalOnActiveCmds = DB::table('soldiers_cmds')
+            ->whereDate('start_date', '<=', $carbonDate)
+            ->where(function ($q) use ($carbonDate) {
+                $q->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $carbonDate);
+            })
+            ->count();
+
+        Log::info("📈 FORMAT1 COMPLETED - Total present: {$totals['total']}, Total excused: {$totals['excused']}, Net total: {$totals['all_total']}, On Leave: {$totalOnLeave}, On Absent: {$totalOnAbsent}, On Active Courses: {$totalOnActiveCourses}, On Active Cadres: {$totalOnActiveCadres}, On Active ATT: {$totalOnActiveAtts}, On Active CMD: {$totalOnActiveCmds}");
 
         return $data;
     }
@@ -1020,6 +1080,64 @@ class GameAttendanceService
         return $query->whereDoesntHave('absents', function ($q) use ($carbonDate) {
             $q->where('absent_current_status', 'approved')
                 ->whereDate('start_date', '<=', $carbonDate)
+                ->where(function ($q2) use ($carbonDate) {
+                    $q2->whereNull('end_date')
+                        ->orWhereDate('end_date', '>=', $carbonDate);
+                });
+        });
+    }
+
+    /**
+     * Common method to exclude soldiers with active courses for query optimization
+     */
+    private function excludeSoldiersWithActiveCourses($query, $carbonDate)
+    {
+        return $query->whereDoesntHave('courses', function ($q) use ($carbonDate) {
+            $q->where('soldier_courses.status', 'active')
+                ->whereDate('soldier_courses.start_date', '<=', $carbonDate)
+                ->where(function ($q2) use ($carbonDate) {
+                    $q2->whereNull('soldier_courses.end_date')
+                        ->orWhereDate('soldier_courses.end_date', '>=', $carbonDate);
+                });
+        });
+    }
+
+    /**
+     * Common method to exclude soldiers with active cadres for query optimization
+     */
+    private function excludeSoldiersWithActiveCadres($query, $carbonDate)
+    {
+        return $query->whereDoesntHave('cadres', function ($q) use ($carbonDate) {
+            $q->where('soldier_cadres.status', 'active')
+                ->whereDate('soldier_cadres.start_date', '<=', $carbonDate)
+                ->where(function ($q2) use ($carbonDate) {
+                    $q2->whereNull('soldier_cadres.end_date')
+                        ->orWhereDate('soldier_cadres.end_date', '>=', $carbonDate);
+                });
+        });
+    }
+
+    /**
+     * Common method to exclude soldiers with active ATT for query optimization
+     */
+    private function excludeSoldiersWithActiveAtts($query, $carbonDate)
+    {
+        return $query->whereDoesntHave('att', function ($q) use ($carbonDate) {
+            $q->whereDate('start_date', '<=', $carbonDate)
+                ->where(function ($q2) use ($carbonDate) {
+                    $q2->whereNull('end_date')
+                        ->orWhereDate('end_date', '>=', $carbonDate);
+                });
+        });
+    }
+
+    /**
+     * Common method to exclude soldiers with active CMD for query optimization
+     */
+    private function excludeSoldiersWithActiveCmds($query, $carbonDate)
+    {
+        return $query->whereDoesntHave('cmds', function ($q) use ($carbonDate) {
+            $q->whereDate('start_date', '<=', $carbonDate)
                 ->where(function ($q2) use ($carbonDate) {
                     $q2->whereNull('end_date')
                         ->orWhereDate('end_date', '>=', $carbonDate);
