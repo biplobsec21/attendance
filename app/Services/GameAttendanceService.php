@@ -184,12 +184,12 @@ class GameAttendanceService
 
         // Check all excusal conditions with priority
         $excusalChecks = [
-            [
-                'name' => 'Leave',
-                'priority' => self::PRIORITY_LEAVE,
-                'check' => fn() => $this->isOnApprovedLeaveOnDate($soldier, $carbonDate),
-                'details_fn' => fn() => $this->getLeaveDetails($soldier, $carbonDate)
-            ],
+            // [
+            //     'name' => 'Leave',
+            //     'priority' => self::PRIORITY_LEAVE,
+            //     'check' => fn() => $this->isOnApprovedLeaveOnDate($soldier, $carbonDate),
+            //     'details_fn' => fn() => $this->getLeaveDetails($soldier, $carbonDate)
+            // ],
             [
                 'name' => 'Roaster Duty',
                 'priority' => self::PRIORITY_ROSTER_DUTY,
@@ -208,18 +208,18 @@ class GameAttendanceService
             //     'check' => fn() => $this->hasActiveAppointmentOnDate($soldier, $carbonDate),
             //     'details_fn' => fn() => $this->getAppointmentDetails($soldier, $carbonDate)
             // ],
-            [
-                'name' => 'Course',
-                'priority' => self::PRIORITY_COURSE,
-                'check' => fn() => $this->hasActiveCourseOnDate($soldier, $carbonDate),
-                'details_fn' => fn() => $this->getCourseDetails($soldier, $carbonDate)
-            ],
-            [
-                'name' => 'Cadre',
-                'priority' => self::PRIORITY_CADRE,
-                'check' => fn() => $this->hasActiveCadreOnDate($soldier, $carbonDate),
-                'details_fn' => fn() => $this->getCadreDetails($soldier, $carbonDate)
-            ],
+            // [
+            //     'name' => 'Course',
+            //     'priority' => self::PRIORITY_COURSE,
+            //     'check' => fn() => $this->hasActiveCourseOnDate($soldier, $carbonDate),
+            //     'details_fn' => fn() => $this->getCourseDetails($soldier, $carbonDate)
+            // ],
+            // [
+            //     'name' => 'Cadre',
+            //     'priority' => self::PRIORITY_CADRE,
+            //     'check' => fn() => $this->hasActiveCadreOnDate($soldier, $carbonDate),
+            //     'details_fn' => fn() => $this->getCadreDetails($soldier, $carbonDate)
+            // ],
         ];
 
         // Find the highest priority (lowest number) excusal reason
